@@ -32,53 +32,45 @@ if seccion == "🔝 Top 10 de Cargas":
     archivo = st.file_uploader("📁 Subí tu archivo de cargas recientes:", type=["xlsx", "xls", "csv"], key="top10")
 
     if archivo:
-        if archivo.name.endswith((".xlsx", ".xls")):
-            try:
-                # Usamos 'openpyxl' para .xlsx y 'xlrd' para .xls
-                if archivo.name.endswith(".xlsx"):
-                    df = pd.read_excel(archivo, engine="openpyxl")
-                else:
-                    df = pd.read_excel(archivo, engine="xlrd")
-                df = preparar_dataframe(df)
+        df = pd.read_excel(archivo) if archivo.name.endswith((".xlsx", ".xls")) else pd.read_csv(archivo)
+        df = preparar_dataframe(df)
 
-                if df is not None:
-                    df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
-                    df["Monto"] = pd.to_numeric(df["Monto"], errors="coerce").fillna(0)
-                    df_cargas = df[df["Tipo"] == "in"]
+        if df is not None:
+            df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
+            df["Monto"] = pd.to_numeric(df["Monto"], errors="coerce").fillna(0)
+            df_cargas = df[df["Tipo"] == "in"]
 
-                    top_monto = (
-                        df_cargas.groupby("Jugador")
-                        .agg(Monto_Total_Cargado=("Monto", "sum"), Cantidad_Cargas=("Jugador", "count"))
-                        .sort_values(by="Monto_Total_Cargado", ascending=False)
-                        .head(10)
-                        .reset_index()
-                    )
+            top_monto = (
+                df_cargas.groupby("Jugador")
+                .agg(Monto_Total_Cargado=("Monto", "sum"), Cantidad_Cargas=("Jugador", "count"))
+                .sort_values(by="Monto_Total_Cargado", ascending=False)
+                .head(10)
+                .reset_index()
+            )
 
-                    top_cant = (
-                        df_cargas.groupby("Jugador")
-                        .agg(Cantidad_Cargas=("Jugador", "count"), Monto_Total_Cargado=("Monto", "sum"))
-                        .sort_values(by="Cantidad_Cargas", ascending=False)
-                        .head(10)
-                        .reset_index()
-                    )
+            top_cant = (
+                df_cargas.groupby("Jugador")
+                .agg(Cantidad_Cargas=("Jugador", "count"), Monto_Total_Cargado=("Monto", "sum"))
+                .sort_values(by="Cantidad_Cargas", ascending=False)
+                .head(10)
+                .reset_index()
+            )
 
-                    st.subheader("💰 Top 10 por Monto Total Cargado")
-                    st.dataframe(top_monto)
+            st.subheader("💰 Top 10 por Monto Total Cargado")
+            st.dataframe(top_monto)
 
-                    st.subheader("🔢 Top 10 por Cantidad de Cargas")
-                    st.dataframe(top_cant)
+            st.subheader("🔢 Top 10 por Cantidad de Cargas")
+            st.dataframe(top_cant)
 
-                    writer = pd.ExcelWriter("Top10_Cargas.xlsx", engine="xlsxwriter")
-                    top_monto.to_excel(writer, sheet_name="Top Monto", index=False)
-                    top_cant.to_excel(writer, sheet_name="Top Cantidad", index=False)
-                    writer.close()
+            writer = pd.ExcelWriter("Top10_Cargas.xlsx", engine="xlsxwriter")
+            top_monto.to_excel(writer, sheet_name="Top Monto", index=False)
+            top_cant.to_excel(writer, sheet_name="Top Cantidad", index=False)
+            writer.close()
 
-                    with open("Top10_Cargas.xlsx", "rb") as f:
-                        st.download_button("📥 Descargar Excel", f, file_name="Top10_Cargas.xlsx")
-                else:
-                    st.error("❌ El archivo no tiene el formato esperado.")
-            except Exception as e:
-                st.error(f"❌ Error al leer el archivo: {e}")
+            with open("Top10_Cargas.xlsx", "rb") as f:
+                st.download_button("📥 Descargar Excel", f, file_name="Top10_Cargas.xlsx")
+        else:
+            st.error("❌ El archivo no tiene el formato esperado.")
 
 # SECCIÓN 2: JUGADORES INACTIVOS
 elif seccion == "📉 Jugadores Inactivos":
@@ -86,60 +78,110 @@ elif seccion == "📉 Jugadores Inactivos":
     archivo_inactivos = st.file_uploader("📁 Subí tu archivo con historial amplio de cargas:", type=["xlsx", "xls", "csv"], key="inactivos")
 
     if archivo_inactivos:
-        if archivo_inactivos.name.endswith((".xlsx", ".xls")):
-            try:
-                # Usamos 'openpyxl' para .xlsx y 'xlrd' para .xls
-                if archivo_inactivos.name.endswith(".xlsx"):
-                    df2 = pd.read_excel(archivo_inactivos, engine="openpyxl")
+        df2 = pd.read_excel(archivo_inactivos) if archivo_inactivos.name.endswith((".xlsx", ".xls")) else pd.read_csv(archivo_inactivos)
+        df2 = preparar_dataframe(df2)
+
+        if df2 is not None:
+            df2["Fecha"] = pd.to_datetime(df2["Fecha"], errors="coerce")
+            df2 = df2[df2["Tipo"] == "in"]
+
+            hoy = pd.to_datetime(datetime.date.today())
+            ultima_carga = df2.groupby("Jugador")["Fecha"].max().reset_index()
+            ultima_carga["Dias_inactivo"] = (hoy - ultima_carga["Fecha"]).dt.days
+
+            def campaña_y_mensaje(jugador, dias):
+                if 6 <= dias <= 13:
+                    return ("Inactivo reciente: Bono moderado (50%) + mensaje 'Te esperamos'", f"Hola {jugador}, hace {dias} días que no te vemos. ¡Te esperamos con un bono del 50% si volvés hoy! 🎁")
+                elif 14 <= dias <= 22:
+                    return ("Semi-perdido: Bono fuerte (150%) + mensaje directo", f"¡{jugador}, volvé a cargar y duplicamos tu saldo con un 150% extra! Hace {dias} días que te extrañamos. 🔥")
+                elif 23 <= dias <= 30:
+                    return ("Inactivo prolongado: Oferta irresistible + mensaje emocional", f"{jugador}, tu cuenta sigue activa y tenemos algo especial para vos. Hace {dias} días que no jugás, ¿te pasó algo? 💬 Tenés un regalo esperándote.")
                 else:
-                    df2 = pd.read_excel(archivo_inactivos, engine="xlrd")
-                df2 = preparar_dataframe(df2)
+                    return ("", "")
 
-                if df2 is not None:
-                    df2["Fecha"] = pd.to_datetime(df2["Fecha"], errors="coerce")
-                    df2 = df2[df2["Tipo"] == "in"]
+            ultima_carga[["Campaña sugerida", "Mensaje personalizado"]] = ultima_carga.apply(lambda row: pd.Series(campaña_y_mensaje(row["Jugador"], row["Dias_inactivo"])), axis=1)
+            resultado = ultima_carga[ultima_carga["Campaña sugerida"] != ""].sort_values(by="Dias_inactivo", ascending=False)
 
-                    hoy = pd.to_datetime(datetime.date.today())
-                    ultima_carga = df2.groupby("Jugador")["Fecha"].max().reset_index()
-                    ultima_carga["Dias_inactivo"] = (hoy - ultima_carga["Fecha"]).dt.days
+            st.subheader("📋 Jugadores inactivos segmentados con mensajes")
+            enviados = []
 
-                    def campaña_y_mensaje(jugador, dias):
-                        if 6 <= dias <= 13:
-                            return ("Inactivo reciente: Bono moderado (50%) + mensaje 'Te esperamos'", f"Hola {jugador}, hace {dias} días que no te vemos. ¡Te esperamos con un bono del 50% si volvés hoy! 🎁")
-                        elif 14 <= dias <= 22:
-                            return ("Semi-perdido: Bono fuerte (150%) + mensaje directo", f"¡{jugador}, volvé a cargar y duplicamos tu saldo con un 150% extra! Hace {dias} días que te extrañamos. 🔥")
-                        elif 23 <= dias <= 30:
-                            return ("Inactivo prolongado: Oferta irresistible + mensaje emocional", f"{jugador}, tu cuenta sigue activa y tenemos algo especial para vos. Hace {dias} días que no jugás, ¿te pasó algo? 💬 Tenés un regalo esperándote.")
-                        else:
-                            return ("", "")
+            for _, row in resultado.iterrows():
+                with st.expander(f"{row['Jugador']} ({row['Dias_inactivo']} días inactivo)"):
+                    st.markdown(f"**Campaña sugerida:** {row['Campaña sugerida']}")
+                    st.text_area("📨 Mensaje personalizado", value=row["Mensaje personalizado"], key=row["Jugador"])
+                    enviado = st.checkbox("✅ Mensaje enviado", key=f"check_{row['Jugador']}")
+                    enviados.append({
+                        "Jugador": row["Jugador"],
+                        "Días inactivo": row["Dias_inactivo"],
+                        "Mensaje personalizado": row["Mensaje personalizado"],
+                        "Enviado": enviado
+                    })
 
-                    ultima_carga[["Campaña sugerida", "Mensaje personalizado"]] = ultima_carga.apply(lambda row: pd.Series(campaña_y_mensaje(row["Jugador"], row["Dias_inactivo"])), axis=1)
-                    resultado = ultima_carga[ultima_carga["Campaña sugerida"] != ""].sort_values(by="Dias_inactivo", ascending=False)
+            if enviados:
+                df_enviados = pd.DataFrame(enviados)
+                df_enviados.to_excel("seguimiento_reactivacion.xlsx", index=False)
+                with open("seguimiento_reactivacion.xlsx", "rb") as f:
+                    st.download_button("📥 Descargar seguimiento", f, file_name="seguimiento_reactivacion.xlsx")
+        else:
+            st.error("❌ El archivo no tiene el formato esperado.")
 
-                    st.subheader("📋 Jugadores inactivos segmentados con mensajes")
-                    enviados = []
+# SECCIÓN 3: REGISTRO
+elif seccion == "📋 Registro":
+    st.header("📋 Registro General de Jugadores")
+    archivo = st.file_uploader("📁 Subí tu archivo de cargas:", type=["xlsx", "xls", "csv"], key="registro")
+    dias_filtrado = st.number_input("📅 Filtrar jugadores inactivos hace al menos X días (opcional):", min_value=0, max_value=365, value=0)
 
-                    for _, row in resultado.iterrows():
-                        with st.expander(f"{row['Jugador']} ({row['Dias_inactivo']} días inactivo)"):
-                            st.markdown(f"**Campaña sugerida:** {row['Campaña sugerida']}")
-                            st.text_area("📨 Mensaje personalizado", value=row["Mensaje personalizado"], key=row["Jugador"])
-                            enviado = st.checkbox("✅ Mensaje enviado", key=f"check_{row['Jugador']}")
-                            enviados.append({
-                                "Jugador": row["Jugador"],
-                                "Días inactivo": row["Dias_inactivo"],
-                                "Mensaje personalizado": row["Mensaje personalizado"],
-                                "Enviado": enviado
-                            })
+    if archivo:
+        df = pd.read_excel(archivo) if archivo.name.endswith((".xlsx", ".xls")) else pd.read_csv(archivo)
+        df = preparar_dataframe(df)
 
-                    if enviados:
-                        df_enviados = pd.DataFrame(enviados)
-                        df_enviados.to_excel("seguimiento_reactivacion.xlsx", index=False)
-                        with open("seguimiento_reactivacion.xlsx", "rb") as f:
-                            st.download_button("📥 Descargar seguimiento", f, file_name="seguimiento_reactivacion.xlsx")
-                else:
-                    st.error("❌ El archivo no tiene el formato esperado.")
-            except Exception as e:
-                st.error(f"❌ Error al leer el archivo: {e}")
+        if df is not None:
+            df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
+            df["Monto"] = pd.to_numeric(df["Monto"], errors="coerce").fillna(0)
+            df["Retiro"] = df["Retiro"].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
+            df["Retiro"] = pd.to_numeric(df["Retiro"], errors="coerce").fillna(0)
+
+            jugadores = df["Jugador"].dropna().unique()
+            resumen = []
+
+            for jugador in jugadores:
+                historial = df[df["Jugador"] == jugador].sort_values("Fecha")
+                cargas = historial[historial["Tipo"] == "in"]
+                retiros = historial[historial["Tipo"] == "out"]
+
+                if not cargas.empty:
+                    fecha_ingreso = cargas["Fecha"].min()
+                    ultima_carga = cargas["Fecha"].max()
+                    veces_que_cargo = len(cargas)
+                    suma_de_cargas = cargas["Monto"].sum()
+                    cantidad_retiro = retiros["Retiro"].sum()
+                    dias_inactivo = (pd.to_datetime(datetime.date.today()) - ultima_carga).days
+
+                    resumen.append({
+                        "Nombre de jugador": jugador,
+                        "Fecha que ingresó": fecha_ingreso,
+                        "Veces que cargó": veces_que_cargo,
+                        "Suma de las cargas": suma_de_cargas,
+                        "Última vez que cargó": ultima_carga,
+                        "Días inactivo": dias_inactivo,
+                        "Cantidad de retiro": cantidad_retiro
+                    })
+
+            df_registro = pd.DataFrame(resumen)
+
+            if dias_filtrado > 0:
+                df_registro = df_registro[df_registro["Días inactivo"] >= dias_filtrado]
+
+            df_registro = df_registro.sort_values("Días inactivo", ascending=False)
+
+            st.subheader("📄 Registro completo de jugadores")
+            st.dataframe(df_registro)
+
+            df_registro.to_excel("registro_jugadores.xlsx", index=False)
+            with open("registro_jugadores.xlsx", "rb") as f:
+                st.download_button("📥 Descargar Excel", f, file_name="registro_jugadores.xlsx")
+        else:
+            st.error("❌ El archivo no tiene el formato esperado.")
 
 
 # SECCIÓN 4: INACTIVOS AGENDA
@@ -150,8 +192,8 @@ elif seccion == "📆 Inactivos Agenda":
 
     if archivo_agenda:
         try:
-            df_hoja1 = pd.read_excel(archivo_agenda, sheet_name=0, engine="openpyxl")
-            df_hoja2 = pd.read_excel(archivo_agenda, sheet_name=1, engine="openpyxl")
+            df_hoja1 = pd.read_excel(archivo_agenda, sheet_name=0)
+            df_hoja2 = pd.read_excel(archivo_agenda, sheet_name=1)
 
             df_hoja2 = df_hoja2.rename(columns={
                 "operación": "Tipo",
@@ -188,11 +230,25 @@ elif seccion == "📆 Inactivos Agenda":
                         "Veces que cargó": veces_que_cargo,
                         "Suma de las cargas": suma_de_cargas,
                         "Última vez que cargó": ultima_carga,
-                        "Días inactivos": dias_inactivo
+                        "Días inactivos": dias_inactivo,
+                        "Cantidad de retiro": historial[historial["Tipo"] == "out"]["Retirar"].sum()
                     })
 
+            
+            
             if resumen:
                 df_resultado = pd.DataFrame(resumen).sort_values("Días inactivos", ascending=False)
+
+                df_hoja1["Nombre_normalizado"] = df_hoja1["Nombre"].astype(str).str.strip().str.lower()
+                df_hoja1 = df_hoja1[["Nombre_normalizado", "Sesiones"]]
+                df_resultado["Nombre_normalizado"] = df_resultado["Nombre de Usuario"].astype(str).str.strip().str.lower()
+                df_resultado = df_resultado.merge(df_hoja1, on="Nombre_normalizado", how="left")
+                df_resultado.drop(columns=["Nombre_normalizado"], inplace=True)
+
+                sesiones_disponibles = df_resultado["Sesiones"].dropna().unique()
+                sesion_filtrada = st.selectbox("🎯 Filtrar por Sesión (opcional):", options=["Todas"] + sorted(sesiones_disponibles.tolist()))
+                if sesion_filtrada != "Todas":
+                    df_resultado = df_resultado[df_resultado["Sesiones"] == sesion_filtrada]
 
                 st.subheader("📋 Resumen de Actividad de Jugadores Coincidentes")
                 st.dataframe(df_resultado)
