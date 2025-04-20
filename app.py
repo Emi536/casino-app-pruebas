@@ -32,7 +32,7 @@ if seccion == "🔝 Top 10 de Cargas":
     archivo = st.file_uploader("📁 Subí tu archivo de cargas recientes:", type=["xlsx", "xls", "csv"], key="top10")
 
     if archivo:
-        df = pd.read_excel(archivo) if archivo.name.endswith((".xlsx", ".xls")) else pd.read_csv(archivo)
+        df = pd.read_excel(archivo, engine="openpyxl") if archivo.name.endswith((".xlsx", ".xls")) else pd.read_csv(archivo)
         df = preparar_dataframe(df)
 
         if df is not None:
@@ -78,7 +78,7 @@ elif seccion == "📉 Jugadores Inactivos":
     archivo_inactivos = st.file_uploader("📁 Subí tu archivo con historial amplio de cargas:", type=["xlsx", "xls", "csv"], key="inactivos")
 
     if archivo_inactivos:
-        df2 = pd.read_excel(archivo_inactivos) if archivo_inactivos.name.endswith((".xlsx", ".xls")) else pd.read_csv(archivo_inactivos)
+        df2 = pd.read_excel(archivo_inactivos, engine="openpyxl") if archivo_inactivos.name.endswith((".xlsx", ".xls")) else pd.read_csv(archivo_inactivos)
         df2 = preparar_dataframe(df2)
 
         if df2 is not None:
@@ -125,7 +125,6 @@ elif seccion == "📉 Jugadores Inactivos":
         else:
             st.error("❌ El archivo no tiene el formato esperado.")
 
-
 # SECCIÓN 4: INACTIVOS AGENDA
 elif seccion == "📆 Inactivos Agenda":
     st.header("📆 Agenda de Jugadores Inactivos Detectados")
@@ -134,8 +133,8 @@ elif seccion == "📆 Inactivos Agenda":
 
     if archivo_agenda:
         try:
-            df_hoja1 = pd.read_excel(archivo_agenda, sheet_name=0)
-            df_hoja2 = pd.read_excel(archivo_agenda, sheet_name=1)
+            df_hoja1 = pd.read_excel(archivo_agenda, sheet_name=0, engine="openpyxl")
+            df_hoja2 = pd.read_excel(archivo_agenda, sheet_name=1, engine="openpyxl")
 
             df_hoja2 = df_hoja2.rename(columns={
                 "operación": "Tipo",
@@ -200,3 +199,4 @@ elif seccion == "📆 Inactivos Agenda":
 
         except Exception as e:
             st.error(f"❌ Error al procesar el archivo: {e}")
+
