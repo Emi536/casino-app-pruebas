@@ -1,27 +1,23 @@
+Agregalo a este codigo
+
 import streamlit as st
 import pandas as pd
 import datetime
 import plotly.express as px
 
-# Configuracion inicial
-st.set_page_config(page_title="PlayerMetrics - Dashboard", layout="wide")
+st.set_page_config(page_title="PlayerMetrics - Análisis de Cargas", layout="wide")
+st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>", unsafe_allow_html=True)
 
-# Titulo principal
+# Agregar CSS para ocultar GitHub Icon
 st.markdown("""
-    <h1 style='text-align: center; color:#4CAF50;'>Player Intelligence Dashboard</h1>
+    <style>
+    .stApp .header .stGitHub { display: none; }
+    </style>
 """, unsafe_allow_html=True)
 
-# Estilo para ocultar GitHub Icon y mejorar fondo
-st.markdown("""
-<style>
-.stApp .header .stGitHub { display: none; }
-</style>
-""", unsafe_allow_html=True)
+seccion = st.sidebar.radio("Seleccioná una sección:", ["🔝 Métricas de jugadores", "📋 Registro de actividad de jugadores", "📆 Seguimiento de jugadores inactivos"])
 
-# Sidebar
-seccion = st.sidebar.radio("Seleccioná una sección:", ["📊 Métricas de jugadores", "📋 Registro de actividad de jugadores", "📆 Seguimiento de jugadores inactivos"])
-
-# Funciones auxiliares
+# --- FUNCIONES ---
 def preparar_dataframe(df):
     df = df.rename(columns={
         "operación": "Tipo",
@@ -40,10 +36,11 @@ def preparar_dataframe(df):
     })
     return df
 
-# --- Sección 1: Dashboard de Métricas de Jugadores ---
-if seccion == "📊 Métricas de jugadores":
-    st.header("📈 Análisis de Cargas y Actividad de Jugadores")
+# --- SECCION 1: METRICAS DE JUGADORES ---
+if seccion == "🔝 Métricas de jugadores":
+    st.header("📊 Métricas de Jugadores - Análisis de Cargas")
 
+    top_n = st.selectbox("Selecciona el número de jugadores a mostrar:", [30, 50, 100, 150, 200], index=0)
     archivo = st.file_uploader("📁 Subí tu archivo de cargas recientes:", type=["xlsx", "xls", "csv"], key="top10")
 
     if archivo:
@@ -55,21 +52,17 @@ if seccion == "📊 Métricas de jugadores":
             df["Monto"] = pd.to_numeric(df["Monto"], errors="coerce").fillna(0)
             df_cargas = df[df["Tipo"] == "in"]
 
-            # KPIs principales
+            # KPIs
             total_cargado = df_cargas["Monto"].sum()
             promedio_carga = df_cargas["Monto"].mean()
-            jugadores_unicos = df_cargas["Jugador"].nunique()
+            total_jugadores = df_cargas["Jugador"].nunique()
 
             col1, col2, col3 = st.columns(3)
             col1.metric("💰 Total Cargado", f"${total_cargado:,.0f}")
             col2.metric("🎯 Promedio por Carga", f"${promedio_carga:,.0f}")
-            col3.metric("🧍 Jugadores Únicos", jugadores_unicos)
+            col3.metric("🧍 Jugadores Unicos", total_jugadores)
 
-            st.divider()
-
-            # TOP jugadores
-            top_n = st.selectbox("Cantidad de jugadores en los Top Charts:", [30, 50, 100, 150, 200], index=0)
-
+            # --- TOP MONTO ---
             top_monto = (
                 df_cargas.groupby("Jugador")
                 .agg(Monto_Total_Cargado=("Monto", "sum"), Cantidad_Cargas=("Jugador", "count"))
@@ -79,6 +72,7 @@ if seccion == "📊 Métricas de jugadores":
             )
             top_monto['Última vez que cargó'] = top_monto['Jugador'].apply(lambda x: df_cargas[df_cargas['Jugador'] == x]['Fecha'].max())
 
+            # --- TOP CANTIDAD ---
             top_cant = (
                 df_cargas.groupby("Jugador")
                 .agg(Cantidad_Cargas=("Jugador", "count"), Monto_Total_Cargado=("Monto", "sum"))
@@ -88,36 +82,30 @@ if seccion == "📊 Métricas de jugadores":
             )
             top_cant['Última vez que cargó'] = top_cant['Jugador'].apply(lambda x: df_cargas[df_cargas['Jugador'] == x]['Fecha'].max())
 
-            # Graficos
-            col4, col5 = st.columns(2)
-            with col4:
-                st.subheader("💵 Monto total cargado por jugador")
-                fig1 = px.bar(top_monto, x="Jugador", y="Monto_Total_Cargado", color="Monto_Total_Cargado", height=400)
-                st.plotly_chart(fig1, use_container_width=True)
-
-            with col5:
-                st.subheader("📊 Distribución de cargas")
-                fig2 = px.pie(top_cant, values="Cantidad_Cargas", names="Jugador", height=400)
-                st.plotly_chart(fig2, use_container_width=True)
-
-            st.divider()
-
-            # Tablas detalladas
-            st.subheader("📋 Top jugadores por Monto Total Cargado")
+            # --- TABLAS ---
+            st.subheader(f"💵 Top {top_n} por Monto Total")
             st.dataframe(top_monto)
 
-            st.subheader("📋 Top jugadores por Cantidad de Cargas")
+            st.subheader(f"📈 Top {top_n} por Cantidad de Cargas")
             st.dataframe(top_cant)
 
-            # Exportar excel
+            # --- GRAFICOS ---
+            st.subheader("📊 Visualizaciones")
+            graf1 = px.bar(top_monto, x="Jugador", y="Monto_Total_Cargado", title=f"Top {top_n} - Monto Total Cargado", labels={"Monto_Total_Cargado": "Monto Cargado ($)"})
+            graf2 = px.bar(top_cant, x="Jugador", y="Cantidad_Cargas", title=f"Top {top_n} - Cantidad de Cargas", labels={"Cantidad_Cargas": "Cantidad de Cargas"})
+
+            st.plotly_chart(graf1, use_container_width=True)
+            st.plotly_chart(graf2, use_container_width=True)
+
+            # --- EXPORTAR ---
             try:
-                with pd.ExcelWriter("Top_Cargas_Dashboard.xlsx", engine="openpyxl") as writer:
+                with pd.ExcelWriter(f"Top{top_n}_Cargas.xlsx", engine="openpyxl") as writer:
                     top_monto.to_excel(writer, sheet_name="Top Monto", index=False)
                     top_cant.to_excel(writer, sheet_name="Top Cantidad", index=False)
-                with open("Top_Cargas_Dashboard.xlsx", "rb") as f:
-                    st.download_button("📥 Descargar Excel Consolidado", f, file_name="Top_Cargas_Dashboard.xlsx")
+                with open(f"Top{top_n}_Cargas.xlsx", "rb") as f:
+                    st.download_button(f"📥 Descargar Excel - Top {top_n} Cargas", f, file_name=f"Top{top_n}_Cargas.xlsx")
             except Exception as e:
-                st.error(f"❌ Error al exportar Excel: {e}")
+                st.error(f"❌ Error al guardar el archivo: {e}")
 
         else:
             st.error("❌ El archivo no tiene el formato esperado.")
