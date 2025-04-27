@@ -129,64 +129,11 @@ if seccion == "🔝 Métricas de jugadores":
             st.error("❌ El archivo no tiene el formato esperado.")
 
 
-# SECCIÓN 2: JUGADORES INACTIVOS
-elif seccion == "📉 Jugadores Inactivos":
-    st.header("📉 Detección y Segmentación de Jugadores Inactivos")
-    archivo_inactivos = st.file_uploader("📁 Subí tu archivo con historial amplio de cargas:", type=["xlsx", "xls", "csv"], key="inactivos")
-
-    if archivo_inactivos:
-        df2 = pd.read_excel(archivo_inactivos) if archivo_inactivos.name.endswith((".xlsx", ".xls")) else pd.read_csv(archivo_inactivos)
-        df2 = preparar_dataframe(df2)
-
-        if df2 is not None:
-            df2["Fecha"] = pd.to_datetime(df2["Fecha"], errors="coerce")
-            df2 = df2[df2["Tipo"] == "in"]
-
-            hoy = pd.to_datetime(datetime.date.today())
-            ultima_carga = df2.groupby("Jugador")["Fecha"].max().reset_index()
-            ultima_carga["Dias_inactivo"] = (hoy - ultima_carga["Fecha"]).dt.days
-
-            def campaña_y_mensaje(jugador, dias):
-                if 6 <= dias <= 13:
-                    return ("Inactivo reciente: Bono moderado (50%) + mensaje 'Te esperamos'", f"Hola {jugador}, hace {dias} días que no te vemos. ¡Te esperamos con un bono del 50% si volvés hoy! 🎁")
-                elif 14 <= dias <= 22:
-                    return ("Semi-perdido: Bono fuerte (150%) + mensaje directo", f"¡{jugador}, volvé a cargar y duplicamos tu saldo con un 150% extra! Hace {dias} días que te extrañamos. 🔥")
-                elif 23 <= dias <= 30:
-                    return ("Inactivo prolongado: Oferta irresistible + mensaje emocional", f"{jugador}, tu cuenta sigue activa y tenemos algo especial para vos. Hace {dias} días que no jugás, ¿te pasó algo? 💬 Tenés un regalo esperándote.")
-                else:
-                    return ("", "")
-
-            ultima_carga[["Campaña sugerida", "Mensaje personalizado"]] = ultima_carga.apply(lambda row: pd.Series(campaña_y_mensaje(row["Jugador"], row["Dias_inactivo"])), axis=1)
-            resultado = ultima_carga[ultima_carga["Campaña sugerida"] != ""].sort_values(by="Dias_inactivo", ascending=False)
-
-            st.subheader("📋 Jugadores inactivos segmentados con mensajes")
-            enviados = []
-
-            for _, row in resultado.iterrows():
-                with st.expander(f"{row['Jugador']} ({row['Dias_inactivo']} días inactivo)"):
-                    st.markdown(f"**Campaña sugerida:** {row['Campaña sugerida']}")
-                    st.text_area("📨 Mensaje personalizado", value=row["Mensaje personalizado"], key=row["Jugador"])
-                    enviado = st.checkbox("✅ Mensaje enviado", key=f"check_{row['Jugador']}")
-                    enviados.append({
-                        "Jugador": row["Jugador"],
-                        "Días inactivo": row["Dias_inactivo"],
-                        "Mensaje personalizado": row["Mensaje personalizado"],
-                        "Enviado": enviado
-                    })
-
-            if enviados:
-                df_enviados = pd.DataFrame(enviados)
-                df_enviados.to_excel("seguimiento_reactivacion.xlsx", index=False)
-                with open("seguimiento_reactivacion.xlsx", "rb") as f:
-                    st.download_button("📥 Descargar seguimiento", f, file_name="seguimiento_reactivacion.xlsx")
-        else:
-            st.error("❌ El archivo no tiene el formato esperado.")
-
-# SECCIÓN 3: REGISTRO
-elif seccion == "📋 Registro":
-    st.header("📋 Registro General de Jugadores")
+# SECCIÓN 2: REGISTRO
+elif seccion == "📋 Registro de actividad de jugadores":
+    st.header("📋 Registro general de jugadores")
     archivo = st.file_uploader("📁 Subí tu archivo de cargas:", type=["xlsx", "xls", "csv"], key="registro")
-    dias_filtrado = st.number_input("📅 Filtrar jugadores inactivos hace al menos X días (opcional):", min_value=0, max_value=365, value=0)
+    
 
     if archivo:
         df = pd.read_excel(archivo) if archivo.name.endswith((".xlsx", ".xls")) else pd.read_csv(archivo)
@@ -226,9 +173,6 @@ elif seccion == "📋 Registro":
 
             df_registro = pd.DataFrame(resumen)
 
-            if dias_filtrado > 0:
-                df_registro = df_registro[df_registro["Días inactivo"] >= dias_filtrado]
-
             df_registro = df_registro.sort_values("Días inactivo", ascending=False)
 
             st.subheader("📄 Registro completo de jugadores")
@@ -241,9 +185,9 @@ elif seccion == "📋 Registro":
             st.error("❌ El archivo no tiene el formato esperado.")
 
 
-# SECCIÓN 4: INACTIVOS AGENDA
-elif seccion == "📆 Inactivos Agenda":
-    st.header("📆 Agenda de Jugadores Inactivos Detectados")
+# SECCIÓN 3: INACTIVOS AGENDA
+elif seccion == "📆 Seguimiento de jugadores inactivos":
+    st.header("📆 Jugadores inactivos detectados")
 
     archivo_agenda = st.file_uploader("📁 Subí tu archivo con dos hojas (Nombre y Reporte General):", type=["xlsx", "xls"], key="agenda")
 
