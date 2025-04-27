@@ -13,7 +13,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-seccion = st.sidebar.radio("Seleccioná una sección:", ["🔝 Métricas de jugadores", "📋 Registro de actividad de jugadores", "📆 Seguimiento de jugadores inactivos"])
+seccion = st.sidebar.radio("Seleccioná una sección:", ["🔝 Métricas de jugadores", "📋 Registro de actividad de jugadores", "🗖️ Seguimiento de jugadores inactivos"])
 
 # --- FUNCIONES ---
 def preparar_dataframe(df):
@@ -59,7 +59,7 @@ if seccion == "🔝 Métricas de jugadores":
             col1, col2, col3 = st.columns(3)
             col1.metric("💰 Total Cargado", f"${total_cargado:,.0f}")
             col2.metric("🎯 Promedio por Carga", f"${promedio_carga:,.0f}")
-            col3.metric("🧍 Jugadores Únicos", total_jugadores)
+            col3.metric("🧑 Jugadores Únicos", total_jugadores)
 
             st.markdown("---")
 
@@ -92,10 +92,18 @@ if seccion == "🔝 Métricas de jugadores":
             graf_hist = px.histogram(df_cargas, x="Monto", nbins=20, title="Distribución de Montos de Carga", labels={"Monto": "Monto Cargado ($)"})
             st.plotly_chart(graf_hist, use_container_width=True)
 
-            st.subheader("🌡️ Carga de fichas por hora")
-            graf_heatmap = px.density_heatmap(df_cargas, x="Hora", y="Fecha", nbinsx=24, nbinsy=len(df_cargas["Fecha"].dt.date.unique()), 
-                                              title="Mapa de calor - Horario de cargas",
-                                              labels={"Hora": "Hora del día", "Fecha": "Fecha"})
+            st.subheader("🌡️ Mapa de Calor de Actividad Horaria")
+            heatmap_data = df_cargas.copy()
+            heatmap_data["Día"] = heatmap_data["Fecha"].dt.strftime("%Y-%m-%d")
+            graf_heatmap = px.density_heatmap(
+                heatmap_data,
+                x="Hora",
+                y="Día",
+                nbinsx=24,
+                color_continuous_scale="Blues",
+                title="Actividad de cargas por hora y día",
+                labels={"Hora": "Hora del día", "Día": "Fecha"}
+            )
             st.plotly_chart(graf_heatmap, use_container_width=True)
 
             st.markdown("---")
@@ -113,13 +121,12 @@ if seccion == "🔝 Métricas de jugadores":
                     top_monto.to_excel(writer, sheet_name="Top Monto", index=False)
                     top_cant.to_excel(writer, sheet_name="Top Cantidad", index=False)
                 with open(f"Top{top_n}_Cargas.xlsx", "rb") as f:
-                    st.download_button(f"📥 Descargar Excel - Top {top_n} Cargas", f, file_name=f"Top{top_n}_Cargas.xlsx")
+                    st.download_button(f"📅 Descargar Excel - Top {top_n} Cargas", f, file_name=f"Top{top_n}_Cargas.xlsx")
             except Exception as e:
                 st.error(f"❌ Error al guardar el archivo: {e}")
 
         else:
             st.error("❌ El archivo no tiene el formato esperado.")
-
 
 
 # SECCIÓN 2: JUGADORES INACTIVOS
