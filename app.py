@@ -1,34 +1,8 @@
-import streamlit as st
-import pandas as pd
-import datetime
+# --- SECCION 1: METRICAS DE JUGADORES ---
+if seccion == "🔝 Métricas de jugadores":
+    st.header("📊 Métricas de Jugadores - Análisis de Cargas")
 
-st.set_page_config(page_title="App de Cargas - Casino", layout="wide")
-st.title("🎰 App de Análisis de Cargas del Casino")
-
-seccion = st.sidebar.radio("Seleccioná una sección:", ["🔝 Top 10 de Cargas", "📉 Jugadores Inactivos", "📋 Registro", "📆 Inactivos Agenda"])
-
-# FUNCIONES AUXILIARES
-def preparar_dataframe(df):
-    df = df.rename(columns={
-        "operación": "Tipo",
-        "Depositar": "Monto",
-        "Retirar": "Retiro",
-        "Wager": "?2",
-        "Límites": "?3",
-        "Balance antes de operación": "Saldo",
-        "Fecha": "Fecha",
-        "Tiempo": "Hora",
-        "Iniciador": "UsuarioSistema",
-        "Del usuario": "Plataforma",
-        "Sistema": "Admin",
-        "Al usuario": "Jugador",
-        "IP": "Extra"
-    })
-    return df
-
-# SECCIÓN 1: TOP 10 DE CARGAS
-if seccion == "🔝 Top 10 de Cargas":
-    st.header("🔝 Top 10 por Monto y Cantidad de Cargas")
+    top_n = st.selectbox("Selecciona el número de jugadores a mostrar:", [30, 50, 100, 150, 200], index=0)
     archivo = st.file_uploader("📁 Subí tu archivo de cargas recientes:", type=["xlsx", "xls", "csv"], key="top10")
 
     if archivo:
@@ -40,35 +14,61 @@ if seccion == "🔝 Top 10 de Cargas":
             df["Monto"] = pd.to_numeric(df["Monto"], errors="coerce").fillna(0)
             df_cargas = df[df["Tipo"] == "in"]
 
+            # KPIs
+            total_cargado = df_cargas["Monto"].sum()
+            promedio_carga = df_cargas["Monto"].mean()
+            total_jugadores = df_cargas["Jugador"].nunique()
+
+            col1, col2, col3 = st.columns(3)
+            col1.metric("💰 Total Cargado", f"${total_cargado:,.0f}")
+            col2.metric("🎯 Promedio por Carga", f"${promedio_carga:,.0f}")
+            col3.metric("🧍 Jugadores Unicos", total_jugadores)
+
+            # --- TOP MONTO ---
             top_monto = (
                 df_cargas.groupby("Jugador")
                 .agg(Monto_Total_Cargado=("Monto", "sum"), Cantidad_Cargas=("Jugador", "count"))
                 .sort_values(by="Monto_Total_Cargado", ascending=False)
-                .head(10)
+                .head(top_n)
                 .reset_index()
             )
+            top_monto['Última vez que cargó'] = top_monto['Jugador'].apply(lambda x: df_cargas[df_cargas['Jugador'] == x]['Fecha'].max())
 
+            # --- TOP CANTIDAD ---
             top_cant = (
                 df_cargas.groupby("Jugador")
                 .agg(Cantidad_Cargas=("Jugador", "count"), Monto_Total_Cargado=("Monto", "sum"))
                 .sort_values(by="Cantidad_Cargas", ascending=False)
-                .head(10)
+                .head(top_n)
                 .reset_index()
             )
+            top_cant['Última vez que cargó'] = top_cant['Jugador'].apply(lambda x: df_cargas[df_cargas['Jugador'] == x]['Fecha'].max())
 
-            st.subheader("💰 Top 10 por Monto Total Cargado")
+            # --- TABLAS ---
+            st.subheader(f"💵 Top {top_n} por Monto Total")
             st.dataframe(top_monto)
 
-            st.subheader("🔢 Top 10 por Cantidad de Cargas")
+            st.subheader(f"📈 Top {top_n} por Cantidad de Cargas")
             st.dataframe(top_cant)
 
-            writer = pd.ExcelWriter("Top10_Cargas.xlsx", engine="xlsxwriter")
-            top_monto.to_excel(writer, sheet_name="Top Monto", index=False)
-            top_cant.to_excel(writer, sheet_name="Top Cantidad", index=False)
-            writer.close()
+            # --- GRAFICOS ---
+            st.subheader("📊 Visualizaciones")
+            graf1 = px.bar(top_monto, x="Jugador", y="Monto_Total_Cargado", title=f"Top {top_n} - Monto Total Cargado", labels={"Monto_Total_Cargado": "Monto Cargado ($)"})
+            graf2 = px.bar(top_cant, x="Jugador", y="Cantidad_Cargas", title=f"Top {top_n} - Cantidad de Cargas", labels={"Cantidad_Cargas": "Cantidad de Cargas"})
 
-            with open("Top10_Cargas.xlsx", "rb") as f:
-                st.download_button("📥 Descargar Excel", f, file_name="Top10_Cargas.xlsx")
+            st.plotly_chart(graf1, use_container_width=True)
+            st.plotly_chart(graf2, use_container_width=True)
+
+            # --- EXPORTAR ---
+            try:
+                with pd.ExcelWriter(f"Top{top_n}_Cargas.xlsx", engine="openpyxl") as writer:
+                    top_monto.to_excel(writer, sheet_name="Top Monto", index=False)
+                    top_cant.to_excel(writer, sheet_name="Top Cantidad", index=False)
+                with open(f"Top{top_n}_Cargas.xlsx", "rb") as f:
+                    st.download_button(f"📥 Descargar Excel - Top {top_n} Cargas", f, file_name=f"Top{top_n}_Cargas.xlsx")
+            except Exception as e:
+                st.error(f"❌ Error al guardar el archivo: {e}")
+
         else:
             st.error("❌ El archivo no tiene el formato esperado.")
 
