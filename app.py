@@ -5,6 +5,7 @@ import plotly.express as px
 
 st.set_page_config(page_title="PlayerMetrics - Análisis de Cargas", layout="wide")
 st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>", unsafe_allow_html=True)
+st.set_page_config(page_title="Seguimiento de Jugadores Inactivos", layout="wide")
 
 # Agregar CSS para ocultar GitHub Icon
 st.markdown("""
@@ -187,99 +188,96 @@ elif seccion == "📋 Registro de actividad de jugadores":
 
 # SECCIÓN 3: INACTIVOS AGENDA
 elif seccion == "📆 Seguimiento de jugadores inactivos":
-    st.header("📆 Seguimiento de jugadores inactivos")
+st.header("📆 Seguimiento de Jugadores Inactivos Mejorado")
 
-    archivo_agenda = st.file_uploader("📁 Subí tu archivo con dos hojas (Nombre y Reporte General):", type=["xlsx", "xls"], key="agenda")
+archivo_agenda = st.file_uploader("📁 Subí tu archivo con dos hojas (Nombre y Reporte General):", type=["xlsx", "xls"], key="agenda_mejorado")
 
-    if archivo_agenda:
-        try:
-            df_hoja1 = pd.read_excel(archivo_agenda, sheet_name=0)
-            df_hoja2 = pd.read_excel(archivo_agenda, sheet_name=1)
+if archivo_agenda:
+    try:
+        df_hoja1 = pd.read_excel(archivo_agenda, sheet_name=0)
+        df_hoja2 = pd.read_excel(archivo_agenda, sheet_name=1)
 
-            df_hoja2 = df_hoja2.rename(columns={
-                "operación": "Tipo",
-                "Depositar": "Monto",
-                "Fecha": "Fecha",
-                "Al usuario": "Jugador"
-            })
+        df_hoja2 = df_hoja2.rename(columns={
+            "operación": "Tipo",
+            "Depositar": "Monto",
+            "Fecha": "Fecha",
+            "Al usuario": "Jugador"
+        })
 
-            df_hoja2["Jugador"] = df_hoja2["Jugador"].astype(str).str.strip().str.lower()
-            df_hoja2["Fecha"] = pd.to_datetime(df_hoja2["Fecha"], errors="coerce")
-            df_hoja2["Monto"] = pd.to_numeric(df_hoja2["Monto"], errors="coerce").fillna(0)
+        df_hoja2["Jugador"] = df_hoja2["Jugador"].astype(str).str.strip().str.lower()
+        df_hoja2["Fecha"] = pd.to_datetime(df_hoja2["Fecha"], errors="coerce")
+        df_hoja2["Monto"] = pd.to_numeric(df_hoja2["Monto"], errors="coerce").fillna(0)
 
-            nombres_hoja1 = df_hoja1["Nombre"].dropna().astype(str).str.strip().str.lower().unique()
-            df_filtrado = df_hoja2[df_hoja2["Jugador"].isin(nombres_hoja1)]
+        nombres_hoja1 = df_hoja1["Nombre"].dropna().astype(str).str.strip().str.lower().unique()
+        df_filtrado = df_hoja2[df_hoja2["Jugador"].isin(nombres_hoja1)]
 
-            resumen = []
-            hoy = pd.to_datetime(datetime.date.today())
+        resumen = []
+        hoy = pd.to_datetime(datetime.date.today())
 
-            for jugador in df_filtrado["Jugador"].dropna().unique():
-                historial = df_filtrado[df_filtrado["Jugador"] == jugador].sort_values("Fecha")
-                cargas = historial[historial["Tipo"] == "in"]
+        for jugador in df_filtrado["Jugador"].dropna().unique():
+            historial = df_filtrado[df_filtrado["Jugador"] == jugador].sort_values("Fecha")
+            cargas = historial[historial["Tipo"] == "in"]
+            retiros = historial[historial["Tipo"] == "out"]
 
-                if not cargas.empty:
-                    fecha_ingreso = cargas["Fecha"].min()
-                    ultima_carga = cargas["Fecha"].max()
-                    cargas_30dias = cargas[cargas["Fecha"] >= hoy - pd.Timedelta(days=30)].shape[0]
-                    monto_promedio = cargas[cargas["Fecha"] >= hoy - pd.Timedelta(days=30)]["Monto"].mean()
-                    dias_inactivo = (hoy - ultima_carga).days
+            if not cargas.empty:
+                fecha_ingreso = cargas["Fecha"].min()
+                ultima_carga = cargas["Fecha"].max()
+                veces_que_cargo = len(cargas)
+                suma_de_cargas = cargas["Monto"].sum()
+                cantidad_retiro = retiros["Monto"].sum()
+                dias_inactivo = (hoy - ultima_carga).days
 
-                    # Calcular riesgo de inactividad
-                    riesgo = min(100, (dias_inactivo * 2) + max(0, (10 - cargas_30dias) * 5))
+                # Score de riesgo mejorado
+                riesgo = 0
+                if dias_inactivo >= 30:
+                    riesgo += 60
+                elif dias_inactivo >= 20:
+                    riesgo += 40
+                elif dias_inactivo >= 10:
+                    riesgo += 20
+                if veces_que_cargo <= 5:
+                    riesgo += 20
+                if suma_de_cargas / max(veces_que_cargo,1) < 3000:
+                    riesgo += 15
+                riesgo = min(riesgo, 100)
 
-                    # Clasificar riesgo
-                    if riesgo >= 70:
-                        riesgo_icono = "🔥"
-                        accion = "🚨 Contactar urgente"
-                    elif riesgo >= 40:
-                        riesgo_icono = "🟡"
-                        accion = "⚠️ Seguir de cerca"
-                    else:
-                        riesgo_icono = "🟢"
-                        accion = "📊 Sin intervención"
+                if riesgo >= 70:
+                    color = "red"
+                    icono = "🔥"
+                elif riesgo >= 40:
+                    color = "yellow"
+                    icono = "🟡"
+                else:
+                    color = "green"
+                    icono = "🟢"
 
-                    resumen.append({
-                        "Nombre de Usuario": jugador,
-                        "Fecha que ingresó": fecha_ingreso,
-                        "Última vez que cargó": ultima_carga,
-                        "Cargas últimos 30 días": cargas_30dias,
-                        "Monto promedio 30 días": monto_promedio if pd.notna(monto_promedio) else 0,
-                        "Días inactivo": dias_inactivo,
-                        "Riesgo Inactividad": riesgo,
-                        "Nivel de Riesgo": f"{riesgo_icono} {riesgo}%",
-                        "Acción Sugerida": accion
-                    })
+                resumen.append({
+                    "Nombre de Usuario": jugador,
+                    "Fecha que ingresó": fecha_ingreso,
+                    "Última carga": ultima_carga,
+                    "Veces que cargó": veces_que_cargo,
+                    "Suma de las cargas": suma_de_cargas,
+                    "Días inactivos": dias_inactivo,
+                    "Cantidad de retiro": cantidad_retiro,
+                    "Score de riesgo": f"{icono} {riesgo}%"
+                })
 
-            if resumen:
-                df_resultado = pd.DataFrame(resumen).sort_values("Riesgo Inactividad", ascending=False)
+        if resumen:
+            df_resultado = pd.DataFrame(resumen).sort_values("Score de riesgo", ascending=False)
 
-                # Filtro de riesgo
-                st.subheader("🔍 Filtrar por Riesgo de Inactividad")
-                filtro = st.selectbox("Seleccioná el nivel de riesgo:", ["Todos", "Alta (>=70%)", "Media (40%-70%)", "Baja (<40%)"])
+            df_hoja1["Nombre_normalizado"] = df_hoja1["Nombre"].astype(str).str.strip().str.lower()
+            df_resultado["Nombre_normalizado"] = df_resultado["Nombre de Usuario"].astype(str).str.strip().str.lower()
+            df_resultado = df_resultado.merge(df_hoja1[["Nombre_normalizado", "Sesiones"]], on="Nombre_normalizado", how="left")
+            df_resultado.drop(columns=["Nombre_normalizado"], inplace=True)
 
-                if filtro == "Alta (>=70%)":
-                    df_resultado = df_resultado[df_resultado["Riesgo Inactividad"] >= 70]
-                elif filtro == "Media (40%-70%)":
-                    df_resultado = df_resultado[(df_resultado["Riesgo Inactividad"] >= 40) & (df_resultado["Riesgo Inactividad"] < 70)]
-                elif filtro == "Baja (<40%)":
-                    df_resultado = df_resultado[df_resultado["Riesgo Inactividad"] < 40]
+            st.dataframe(df_resultado)
 
-                # Mostrar tabla
-                st.subheader("📈 Jugadores con Riesgo de Inactividad")
-                st.dataframe(df_resultado)
+            df_resultado.to_excel("seguimiento_inactivos_mejorado.xlsx", index=False)
+            with open("seguimiento_inactivos_mejorado.xlsx", "rb") as f:
+                st.download_button("👅 Descargar Seguimiento Mejorado", f, file_name="seguimiento_inactivos_mejorado.xlsx")
 
-                # Histograma
-                st.subheader("📊 Distribución del Riesgo de Inactividad")
-                graf_hist = px.histogram(df_resultado, x="Riesgo Inactividad", nbins=20, title="Distribución de Score de Inactividad", labels={"Riesgo Inactividad": "Riesgo (%)"})
-                st.plotly_chart(graf_hist, use_container_width=True)
+        else:
+            st.warning("No se encontraron coincidencias entre ambas hojas.")
 
-                # Descargar resumen
-                df_resultado.to_excel("seguimiento_inactivos_score.xlsx", index=False)
-                with open("seguimiento_inactivos_score.xlsx", "rb") as f:
-                    st.download_button("📅 Descargar Excel de Seguimiento", f, file_name="seguimiento_inactivos_score.xlsx")
-
-            else:
-                st.warning("No se encontraron coincidencias entre ambas hojas.")
-
-        except Exception as e:
-            st.error(f"❌ Error al procesar el archivo: {e}")
+    except Exception as e:
+        st.error(f"❌ Error al procesar el archivo: {e}")
