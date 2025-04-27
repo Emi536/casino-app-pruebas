@@ -1,3 +1,39 @@
+import streamlit as st
+import pandas as pd
+import datetime
+import plotly.express as px
+
+st.set_page_config(page_title="PlayerMetrics - Análisis de Cargas", layout="wide")
+st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>", unsafe_allow_html=True)
+
+# Agregar CSS para ocultar GitHub Icon
+st.markdown("""
+    <style>
+    .stApp .header .stGitHub { display: none; }
+    </style>
+""", unsafe_allow_html=True)
+
+seccion = st.sidebar.radio("Seleccioná una sección:", ["🔝 Métricas de jugadores", "📋 Registro de actividad de jugadores", "📆 Seguimiento de jugadores inactivos"])
+
+# --- FUNCIONES ---
+def preparar_dataframe(df):
+    df = df.rename(columns={
+        "operación": "Tipo",
+        "Depositar": "Monto",
+        "Retirar": "Retiro",
+        "Wager": "?2",
+        "Límites": "?3",
+        "Balance antes de operación": "Saldo",
+        "Fecha": "Fecha",
+        "Tiempo": "Hora",
+        "Iniciador": "UsuarioSistema",
+        "Del usuario": "Plataforma",
+        "Sistema": "Admin",
+        "Al usuario": "Jugador",
+        "IP": "Extra"
+    })
+    return df
+
 # --- SECCION 1: METRICAS DE JUGADORES ---
 if seccion == "🔝 Métricas de jugadores":
     st.header("📊 Métricas de Jugadores - Análisis de Cargas")
@@ -71,6 +107,7 @@ if seccion == "🔝 Métricas de jugadores":
 
         else:
             st.error("❌ El archivo no tiene el formato esperado.")
+
 
 # SECCIÓN 2: JUGADORES INACTIVOS
 elif seccion == "📉 Jugadores Inactivos":
