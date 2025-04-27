@@ -47,10 +47,11 @@ if seccion == "🔝 Métricas de jugadores":
 
         if df is not None:
             df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
+            df["Hora"] = pd.to_datetime(df["Hora"], format="%H:%M:%S", errors="coerce").dt.hour
             df["Monto"] = pd.to_numeric(df["Monto"], errors="coerce").fillna(0)
             df_cargas = df[df["Tipo"] == "in"]
 
-            # KPIs
+            # --- KPIs ---
             total_cargado = df_cargas["Monto"].sum()
             promedio_carga = df_cargas["Monto"].mean()
             total_jugadores = df_cargas["Jugador"].nunique()
@@ -58,9 +59,11 @@ if seccion == "🔝 Métricas de jugadores":
             col1, col2, col3 = st.columns(3)
             col1.metric("💰 Total Cargado", f"${total_cargado:,.0f}")
             col2.metric("🎯 Promedio por Carga", f"${promedio_carga:,.0f}")
-            col3.metric("🧍 Jugadores Unicos", total_jugadores)
+            col3.metric("🧍 Jugadores Únicos", total_jugadores)
 
-            # --- TOP MONTO ---
+            st.markdown("---")
+
+            # --- TOP MONTO Y CANTIDAD ---
             top_monto = (
                 df_cargas.groupby("Jugador")
                 .agg(Monto_Total_Cargado=("Monto", "sum"), Cantidad_Cargas=("Jugador", "count"))
@@ -70,7 +73,6 @@ if seccion == "🔝 Métricas de jugadores":
             )
             top_monto['Última vez que cargó'] = top_monto['Jugador'].apply(lambda x: df_cargas[df_cargas['Jugador'] == x]['Fecha'].max())
 
-            # --- TOP CANTIDAD ---
             top_cant = (
                 df_cargas.groupby("Jugador")
                 .agg(Cantidad_Cargas=("Jugador", "count"), Monto_Total_Cargado=("Monto", "sum"))
@@ -80,20 +82,30 @@ if seccion == "🔝 Métricas de jugadores":
             )
             top_cant['Última vez que cargó'] = top_cant['Jugador'].apply(lambda x: df_cargas[df_cargas['Jugador'] == x]['Fecha'].max())
 
+            # --- VISUALIZACIONES ---
+            st.subheader("📈 Evolución diaria de cargas")
+            cargas_diarias = df_cargas.groupby(df_cargas["Fecha"].dt.date)["Monto"].sum().reset_index()
+            graf_linea = px.line(cargas_diarias, x="Fecha", y="Monto", title="Cargas por día", markers=True, labels={"Monto": "Monto Total ($)"})
+            st.plotly_chart(graf_linea, use_container_width=True)
+
+            st.subheader("📊 Distribución de montos de carga")
+            graf_hist = px.histogram(df_cargas, x="Monto", nbins=20, title="Distribución de Montos de Carga", labels={"Monto": "Monto Cargado ($)"})
+            st.plotly_chart(graf_hist, use_container_width=True)
+
+            st.subheader("🌡️ Carga de fichas por hora")
+            graf_heatmap = px.density_heatmap(df_cargas, x="Hora", y="Fecha", nbinsx=24, nbinsy=len(df_cargas["Fecha"].dt.date.unique()), 
+                                              title="Mapa de calor - Horario de cargas",
+                                              labels={"Hora": "Hora del día", "Fecha": "Fecha"})
+            st.plotly_chart(graf_heatmap, use_container_width=True)
+
+            st.markdown("---")
+
             # --- TABLAS ---
-            st.subheader(f"💵 Top {top_n} por Monto Total")
+            st.subheader(f"💵 Top {top_n} por Monto Total Cargado")
             st.dataframe(top_monto)
 
             st.subheader(f"📈 Top {top_n} por Cantidad de Cargas")
             st.dataframe(top_cant)
-
-            # --- GRAFICOS ---
-            st.subheader("📊 Visualizaciones")
-            graf1 = px.bar(top_monto, x="Jugador", y="Monto_Total_Cargado", title=f"Top {top_n} - Monto Total Cargado", labels={"Monto_Total_Cargado": "Monto Cargado ($)"})
-            graf2 = px.bar(top_cant, x="Jugador", y="Cantidad_Cargas", title=f"Top {top_n} - Cantidad de Cargas", labels={"Cantidad_Cargas": "Cantidad de Cargas"})
-
-            st.plotly_chart(graf1, use_container_width=True)
-            st.plotly_chart(graf2, use_container_width=True)
 
             # --- EXPORTAR ---
             try:
@@ -107,6 +119,7 @@ if seccion == "🔝 Métricas de jugadores":
 
         else:
             st.error("❌ El archivo no tiene el formato esperado.")
+
 
 
 # SECCIÓN 2: JUGADORES INACTIVOS
