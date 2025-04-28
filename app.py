@@ -136,10 +136,20 @@ elif seccion == "📋 Registro de actividad de jugadores":
     archivo = st.file_uploader("📁 Subí tu archivo de cargas:", type=["xlsx", "xls", "csv"], key="registro")
 
     if archivo:
+        # Leer el archivo
         df = pd.read_excel(archivo) if archivo.name.endswith((".xlsx", ".xls")) else pd.read_csv(archivo)
-        
+
         if df is not None:
-            # Preparamos columnas
+            # 🔥 Renombrar columnas para que funcionen con la app
+            df = df.rename(columns={
+                "operación": "Tipo",
+                "Depositar": "Monto",
+                "Retirar": "Retiro",
+                "Fecha": "Fecha",
+                "Al usuario": "Jugador"
+            })
+
+            # Preparar las columnas
             df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
             df["Monto"] = pd.to_numeric(df["Monto"], errors="coerce").fillna(0)
             df["Retiro"] = df["Retiro"].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
@@ -179,26 +189,26 @@ elif seccion == "📋 Registro de actividad de jugadores":
             st.subheader("📄 Registro completo de jugadores")
             st.dataframe(df_registro)
 
-            # 📥 Descargar Excel
+            # 📥 Botón para descargar
             df_registro.to_excel("registro_jugadores.xlsx", index=False)
             with open("registro_jugadores.xlsx", "rb") as f:
                 st.download_button("📥 Descargar Excel", f, file_name="registro_jugadores.xlsx")
 
             # 📈 Análisis avanzado - BI
 
-            # 1. Ranking Top 10 jugadores por monto cargado
+            # 1. Top 10 por monto cargado
             st.subheader("🏆 Top 10 jugadores por monto total cargado")
             top_monto = df_registro.sort_values("Suma de las cargas", ascending=False).head(10)
             fig_top_monto = px.bar(top_monto, x="Nombre de jugador", y="Suma de las cargas", title="Top 10 - Monto Total Cargado")
             st.plotly_chart(fig_top_monto, use_container_width=True)
 
-            # 2. Ranking Top 10 jugadores por cantidad de cargas
+            # 2. Top 10 por cantidad de cargas
             st.subheader("🏆 Top 10 jugadores por cantidad de cargas")
             top_cargas = df_registro.sort_values("Veces que cargó", ascending=False).head(10)
             fig_top_cargas = px.bar(top_cargas, x="Nombre de jugador", y="Veces que cargó", title="Top 10 - Cantidad de Cargas")
             st.plotly_chart(fig_top_cargas, use_container_width=True)
 
-            # 3. Evolución diaria de cargas y retiros
+            # 3. Evolución diaria de cargas, retiros y neto
             st.subheader("📈 Evolución diaria de cargas y retiros")
             df_diario = df.groupby(df["Fecha"].dt.date).agg({
                 "Monto": "sum",
@@ -211,7 +221,7 @@ elif seccion == "📋 Registro de actividad de jugadores":
             fig_evolucion = px.line(df_diario, x="Fecha", y=["Monto", "Retiro", "Neto diario"], title="Evolución de cargas, retiros y neto diario")
             st.plotly_chart(fig_evolucion, use_container_width=True)
 
-            # 4. Análisis de actividad por hora
+            # 4. Actividad por hora
             st.subheader("🕐 Análisis de actividad por hora")
             df["Hora"] = df["Fecha"].dt.hour
             df_hora = df.groupby("Hora").size().reset_index(name="Cantidad de movimientos")
@@ -219,7 +229,7 @@ elif seccion == "📋 Registro de actividad de jugadores":
             fig_hora = px.bar(df_hora, x="Hora", y="Cantidad de movimientos", title="Movimientos por hora del día")
             st.plotly_chart(fig_hora, use_container_width=True)
 
-            # 5. Detección de anomalías de carga
+            # 5. Detección de anomalías
             st.subheader("🚨 Detección de anomalías")
             promedio_cargas = df_diario["Monto"].mean()
             df_diario["Anomalía"] = df_diario["Monto"] < (promedio_cargas * 0.7)
@@ -227,7 +237,7 @@ elif seccion == "📋 Registro de actividad de jugadores":
             fig_anomalias = px.scatter(df_diario, x="Fecha", y="Monto", color="Anomalía", title="Anomalías en cargas diarias")
             st.plotly_chart(fig_anomalias, use_container_width=True)
 
-            # 6. Valor del jugador en el tiempo (LTV y duración activa)
+            # 6. Lifetime Value (LTV)
             st.subheader("💵 Análisis del Lifetime Value (LTV) de jugadores")
             fig_ltv = px.scatter(df_registro, x="Duración activa (días)", y="LTV (Lifetime Value)", hover_data=["Nombre de jugador"], title="Relación entre Duración Activa y LTV")
             st.plotly_chart(fig_ltv, use_container_width=True)
