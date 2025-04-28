@@ -6,6 +6,13 @@ import plotly.express as px
 st.set_page_config(page_title="PlayerMetrics - Análisis de Cargas", layout="wide")
 st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>", unsafe_allow_html=True)
 
+def buscar_columna(df, opciones_posibles):
+    for opcion in opciones_posibles:
+        for col in df.columns:
+            if opcion.lower() in col.lower().replace(" ", "").replace("_", ""):
+                return col
+    return None
+
 # Agregar CSS para ocultar GitHub Icon
 st.markdown("""
     <style>
@@ -186,19 +193,6 @@ elif seccion == "📋 Registro de actividad de jugadores":
 
 
 #SECCION 3 AGENDA INACTIVOS
-# SECCION 3: SEGUIMIENTO DE JUGADORES INACTIVOS PROFESIONAL
-import pandas as pd
-import datetime
-import streamlit as st
-import plotly.express as px
-
-def buscar_columna(df, opciones_posibles):
-    for opcion in opciones_posibles:
-        for col in df.columns:
-            if opcion.lower() in col.lower().replace(" ", "").replace("_", ""):
-                return col
-    return None
-
 elif seccion == "📆 Seguimiento de jugadores inactivos":
     st.header("📆 Seguimiento de Jugadores Inactivos Mejorado")
     archivo_agenda = st.file_uploader("📁 Subí tu archivo con dos hojas (Nombre y Reporte General):", type=["xlsx", "xls"], key="agenda")
