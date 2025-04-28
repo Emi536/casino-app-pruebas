@@ -185,10 +185,9 @@ elif seccion == "📋 Registro de actividad de jugadores":
             st.error("❌ El archivo no tiene el formato esperado.")
 
 
-# SECCIÓN 3: INACTIVOS AGENDA
+#SECCION 3 AGENDA INACTIVOS
 elif seccion == "📆 Seguimiento de jugadores inactivos":
     st.header("📆 Seguimiento de Jugadores Inactivos Mejorado")
-
     archivo_agenda = st.file_uploader("📁 Subí tu archivo con dos hojas (Nombre y Reporte General):", type=["xlsx", "xls"], key="agenda")
 
     if archivo_agenda:
@@ -228,15 +227,24 @@ elif seccion == "📆 Seguimiento de jugadores inactivos":
                     dias_inactivo = (hoy - ultima_carga).days
                     cantidad_retiro = historial[historial["Tipo"] == "out"]["Retirar"].sum()
 
-                    # Cargas en los últimos 30 días
-                    ultimos_30_dias = hoy - pd.Timedelta(days=30)
-                    cargas_30 = cargas[cargas["Fecha"] >= ultimos_30_dias]
-                    cargas_ultimos_30 = len(cargas_30)
-                    monto_promedio_30 = cargas_30["Monto"].mean() if not cargas_30.empty else 0
+                    ultimos_30 = cargas[cargas["Fecha"] >= hoy - pd.Timedelta(days=30)]
+                    cargas_30 = len(ultimos_30)
+                    monto_30 = ultimos_30["Monto"].mean() if not ultimos_30.empty else 0
 
-                    # Cálculo de riesgo mejorado
-                    riesgo = min(100, (dias_inactivo * 2) + (10 / (cargas_ultimos_30 + 1)) + (3000 / (monto_promedio_30 + 1)))
+                    # Score mejorado
+                    riesgo = min(100, (dias_inactivo * 2.5) + (10 / (cargas_30 + 1)) + (3000 / (monto_30 + 1)))
                     riesgo = round(riesgo, 2)
+
+                    # Categoría de riesgo
+                    if riesgo >= 70:
+                        categoria = "🔥 Alto"
+                        accion = "Bono urgente / Contacto inmediato"
+                    elif 40 <= riesgo < 70:
+                        categoria = "🔹 Medio"
+                        accion = "Mantener contacto frecuente"
+                    else:
+                        categoria = "🔵 Bajo"
+                        accion = "Sin acción inmediata"
 
                     resumen.append({
                         "Nombre de Usuario": jugador,
@@ -245,45 +253,40 @@ elif seccion == "📆 Seguimiento de jugadores inactivos":
                         "Veces que cargó": veces_que_cargo,
                         "Suma de las cargas": suma_de_cargas,
                         "Monto promedio": promedio_monto,
-                        "Cargas últimos 30 días": cargas_ultimos_30,
-                        "Monto promedio 30 días": monto_promedio_30,
                         "Días inactivos": dias_inactivo,
+                        "Cargas últimos 30d": cargas_30,
+                        "Monto promedio 30d": monto_30,
                         "Cantidad de retiro": cantidad_retiro,
-                        "Riesgo de inactividad": riesgo
+                        "Riesgo de inactividad (%)": riesgo,
+                        "Nivel de riesgo": categoria,
+                        "Acción sugerida": accion
                     })
 
             if resumen:
-                df_resultado = pd.DataFrame(resumen).sort_values("Riesgo de inactividad", ascending=False)
+                df_resultado = pd.DataFrame(resumen).sort_values("Riesgo de inactividad (%)", ascending=False)
 
-                st.subheader("📈 Análisis de Riesgo de Inactividad")
-                filtro_riesgo = st.selectbox("🔍 Filtrar por Riesgo:", ["Todos", "Alto (>=70%)", "Medio (40-70%)", "Bajo (<40%)"])
+                st.subheader("📈 Resumen de Riesgos y Acciones Sugeridas")
 
-                if filtro_riesgo == "Alto (>=70%)":
-                    df_resultado = df_resultado[df_resultado["Riesgo de inactividad"] >= 70]
-                elif filtro_riesgo == "Medio (40-70%)":
-                    df_resultado = df_resultado[(df_resultado["Riesgo de inactividad"] >= 40) & (df_resultado["Riesgo de inactividad"] < 70)]
-                elif filtro_riesgo == "Bajo (<40%)":
-                    df_resultado = df_resultado[df_resultado["Riesgo de inactividad"] < 40]
+                # Filtro por riesgo
+                riesgo_filtrar = st.selectbox("Filtrar jugadores por nivel de riesgo:", ["Todos", "Alto", "Medio", "Bajo"])
+
+                if riesgo_filtrar != "Todos":
+                    df_resultado = df_resultado[df_resultado["Nivel de riesgo"].str.contains(riesgo_filtrar)]
 
                 st.dataframe(df_resultado)
 
-                st.subheader("🔢 Acciones Sugeridas:")
-                st.markdown("""
-                - 🔥 **Riesgo Alto:** Contactar urgentemente. Ofrecer bono de retención.
-                - 🔹 **Riesgo Medio:** Mantener contacto frecuente.
-                - 🟢 **Riesgo Bajo:** Continuar seguimiento normal.
-                """)
+                # Gráfico de distribución
+                st.subheader("📊 Distribución de Riesgos")
+                fig = px.histogram(df_resultado, x="Riesgo de inactividad (%)", nbins=20, title="Score de riesgo de abandono")
+                st.plotly_chart(fig, use_container_width=True)
 
-                st.subheader("📊 Histograma del Score de Riesgo")
-                fig_riesgo = px.histogram(df_resultado, x="Riesgo de inactividad", nbins=20, title="Distribución de Riesgos", color_discrete_sequence=["#FF4B4B"])
-                st.plotly_chart(fig_riesgo, use_container_width=True)
-
-                # Exportar limpio
+                # Exportación corregida
                 df_exportar = df_resultado.copy()
                 for col in df_exportar.select_dtypes(include=["object"]).columns:
                     df_exportar[col] = df_exportar[col].str.replace(r"[^\x00-\x7F]+", "", regex=True)
 
                 df_exportar.to_excel("jugadores_riesgo_inactividad.xlsx", index=False)
+
                 with open("jugadores_riesgo_inactividad.xlsx", "rb") as f:
                     st.download_button("📅 Descargar Excel Riesgo Inactividad", f, file_name="jugadores_riesgo_inactividad.xlsx")
 
@@ -292,4 +295,5 @@ elif seccion == "📆 Seguimiento de jugadores inactivos":
 
         except Exception as e:
             st.error(f"❌ Error al procesar el archivo: {e}")
+
 
