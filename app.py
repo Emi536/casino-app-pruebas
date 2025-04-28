@@ -317,17 +317,18 @@ elif seccion == "📆 Seguimiento de jugadores inactivos":
                 st.plotly_chart(fig_funnel, use_container_width=True)
 
                 st.subheader("📈 Predicción de abandono futuro")
-                abandono_esperado = (df_resultado["Riesgo de inactividad (%)"] >= 80).sum() * 0.7
-                fig_prediccion = px.bar(
-                    x=["Jugadores activos", "Posibles abandonos"],
-                    y=[len(df_resultado) - abandono_esperado, abandono_esperado],
-                    title="Proyección de abandono próximo",
-                    labels={"x": "Estado", "y": "Cantidad"}
-                )
-                st.plotly_chart(fig_prediccion, use_container_width=True)
-
-            else:
-                st.warning("⚠️ No se encontraron coincidencias entre ambas hojas.")
+                cantidad_riesgo_alto = (df_resultado["Riesgo de inactividad (%)"] >= 60).sum()
+                abandono_esperado = cantidad_riesgo_alto * 0.7
+                if abandono_esperado > 0:
+                    fig_prediccion = px.bar(
+                        x=["Jugadores activos", "Posibles abandonos"],
+                        y=[len(df_resultado) - abandono_esperado, abandono_esperado],
+                        title="Proyección de abandono próximo",
+                        labels={"x": "Estado", "y": "Cantidad"}
+                    )
+                    st.plotly_chart(fig_prediccion, use_container_width=True)
+                else:
+                    st.info("Actualmente no hay suficientes jugadores en riesgo medio-alto (60%+) para proyectar abandonos.")
 
         except Exception as e:
             st.error(f"❌ Error al procesar el archivo: {e}")
