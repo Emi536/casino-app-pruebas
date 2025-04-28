@@ -244,15 +244,22 @@ elif seccion == "📆 Seguimiento de jugadores inactivos":
 
             if resumen:
                 df_resultado = pd.DataFrame(resumen).sort_values("Riesgo de inactividad", ascending=False)
+
                 st.dataframe(df_resultado)
 
-                st.subheader("\ud83d\udcc8 Distribución del Score de Riesgo")
+                st.subheader("📈 Distribución del Score de Riesgo")
                 fig_riesgo = px.histogram(df_resultado, x="Riesgo de inactividad", nbins=20, title="Distribución de Riesgos")
                 st.plotly_chart(fig_riesgo, use_container_width=True)
 
-                df_resultado.to_excel("jugadores_riesgo_inactividad.xlsx", index=False)
+                # --- CORRECCIÓN PARA EXPORTAR SIN EMOJIS ---
+                df_exportar = df_resultado.copy()
+                for col in df_exportar.select_dtypes(include=["object"]).columns:
+                    df_exportar[col] = df_exportar[col].str.replace(r"[^\x00-\x7F]+", "", regex=True)
+
+                df_exportar.to_excel("jugadores_riesgo_inactividad.xlsx", index=False)
+
                 with open("jugadores_riesgo_inactividad.xlsx", "rb") as f:
-                    st.download_button("\ud83d\udcc5 Descargar Excel Riesgo Inactividad", f, file_name="jugadores_riesgo_inactividad.xlsx")
+                    st.download_button("📥 Descargar Excel Riesgo Inactividad", f, file_name="jugadores_riesgo_inactividad.xlsx")
 
         except Exception as e:
-            st.error(f"\u274c Error al procesar el archivo: {e}")
+            st.error(f"❌ Error al procesar el archivo: {e}")
