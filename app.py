@@ -226,6 +226,7 @@ elif seccion == "📆 Seguimiento de jugadores inactivos":
                     suma_de_cargas = cargas["Monto"].sum()
                     promedio_monto = cargas["Monto"].mean()
                     dias_inactivo = (hoy - ultima_carga).days
+                    dias_activos = (ultima_carga - fecha_ingreso).days
                     cantidad_retiro = historial[historial["Tipo"] == "out"]["Retirar"].sum()
 
                     ultimos_30 = cargas[cargas["Fecha"] >= hoy - pd.Timedelta(days=30)]
@@ -253,6 +254,7 @@ elif seccion == "📆 Seguimiento de jugadores inactivos":
                         "Suma de las cargas": suma_de_cargas,
                         "Monto promedio": promedio_monto,
                         "Días inactivos": dias_inactivo,
+                        "Tiempo activo antes de inactividad (días)": dias_activos,
                         "Cargas últimos 30d": cargas_30,
                         "Monto promedio 30d": monto_30,
                         "Cantidad de retiro": cantidad_retiro,
@@ -265,35 +267,81 @@ elif seccion == "📆 Seguimiento de jugadores inactivos":
             if resumen:
                 df_resultado = pd.DataFrame(resumen).sort_values("Riesgo de inactividad (%)", ascending=False)
 
+                # 🚨 Agregar alerta de inactividad por color
+                def color_alerta(dias):
+                    if dias > 30:
+                        return "🔴 Rojo"
+                    elif dias >= 15:
+                        return "🟡 Amarillo"
+                    else:
+                        return "🟢 Verde"
+
+                df_resultado["Alerta de inactividad"] = df_resultado["Días inactivos"].apply(color_alerta)
+
                 st.subheader("📊 Resumen de Inactividad y Riesgos")
 
                 riesgo_filtrar = st.selectbox("Filtrar jugadores por nivel de riesgo:", ["Todos", "Alto", "Medio", "Bajo"])
                 if riesgo_filtrar != "Todos":
                     df_resultado = df_resultado[df_resultado["Nivel de riesgo"].str.contains(riesgo_filtrar)]
 
-                st.data_editor(df_resultado, num_rows="dynamic", use_container_width=True)
+                # 📝 Tabla editable
+                editable_cols = ["Historial de contacto"]
+                st.data_editor(
+                    df_resultado,
+                    num_rows="dynamic",
+                    use_container_width=True,
+                    column_config={col: st.column_config.TextColumn() for col in editable_cols}
+                )
 
-                # Gráfico de tendencia
+                # 📈 Gráfico de tendencia de inactividad
                 st.subheader("📉 Tendencia promedio de inactividad")
                 dias_inactivos_media = df_resultado.groupby("Días inactivos").size().reset_index(name="Cantidad")
                 fig_linea = px.line(dias_inactivos_media, x="Días inactivos", y="Cantidad", title="Días promedio de inactividad")
                 st.plotly_chart(fig_linea, use_container_width=True)
 
-                # Score de reactivación
+                # 🧠 Probabilidad de reactivación
                 st.subheader("🧐 Probabilidad de reactivación")
                 df_resultado["Probabilidad de reactivación (%)"] = 100 - df_resultado["Riesgo de inactividad (%)"]
                 fig_reactivacion = px.bar(df_resultado, x="Nombre de Usuario", y="Probabilidad de reactivación (%)", color="Nivel de riesgo", title="Chance de que recarguen")
                 st.plotly_chart(fig_reactivacion, use_container_width=True)
 
-                # Exportar
+                # ⏳ Tiempo promedio de retención antes de inactividad
+                st.subheader("⏳ Tiempo promedio de retención")
+                tiempo_promedio_retencion = df_resultado["Tiempo activo antes de inactividad (días)"].mean()
+                st.metric("Tiempo activo promedio", f"{tiempo_promedio_retencion:.1f} días")
+
+                # 🔻 Funnel de abandono
+                st.subheader("🔻 Funnel de abandono")
+                funnel = {
+                    "0-15 días": (df_resultado["Días inactivos"] <= 15).sum(),
+                    "16-30 días": ((df_resultado["Días inactivos"] > 15) & (df_resultado["Días inactivos"] <= 30)).sum(),
+                    "31-60 días": ((df_resultado["Días inactivos"] > 30) & (df_resultado["Días inactivos"] <= 60)).sum(),
+                    "60+ días": (df_resultado["Días inactivos"] > 60).sum()
+                }
+                funnel_df = pd.DataFrame(list(funnel.items()), columns=["Periodo", "Cantidad"])
+                fig_funnel = px.funnel(funnel_df, x="Cantidad", y="Periodo", title="Funnel de abandono")
+                st.plotly_chart(fig_funnel, use_container_width=True)
+
+                # 📈 Predicción de abandono futuro
+                st.subheader("📈 Predicción de abandono futuro")
+                abandono_esperado = (df_resultado["Riesgo de inactividad (%)"] >= 80).sum() * 0.7
+                fig_prediccion = px.bar(
+                    x=["Jugadores activos", "Posibles abandonos"],
+                    y=[len(df_resultado) - abandono_esperado, abandono_esperado],
+                    title="Proyección de abandono próximo",
+                    labels={"x": "Estado", "y": "Cantidad"}
+                )
+                st.plotly_chart(fig_prediccion, use_container_width=True)
+
+                # 💾 Exportar
                 df_exportar = df_resultado.copy()
                 for col in df_exportar.select_dtypes(include=["object"]).columns:
-                    df_exportar[col] = df_exportar[col].str.replace(r"[^\x00-\x7F]+", "", regex=True)
+                    df_exportar[col] = df_exportar[col].astype(str).str.replace(r"[^\x00-\x7F]+", "", regex=True)
 
                 df_exportar.to_excel("jugadores_riesgo_inactividad.xlsx", index=False)
 
                 with open("jugadores_riesgo_inactividad.xlsx", "rb") as f:
-                    st.download_button("\ud83d\udcc5 Descargar Excel Riesgo Inactividad", f, file_name="jugadores_riesgo_inactividad.xlsx")
+                    st.download_button("📥 Descargar Excel Riesgo Inactividad", f, file_name="jugadores_riesgo_inactividad.xlsx")
             else:
                 st.warning("⚠️ No se encontraron coincidencias entre ambas hojas.")
 
