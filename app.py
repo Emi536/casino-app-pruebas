@@ -186,6 +186,7 @@ elif seccion == "📋 Registro de actividad de jugadores":
 
 
 #SECCION 3 AGENDA INACTIVOS
+# SECCION 3: SEGUIMIENTO DE JUGADORES INACTIVOS PROFESIONAL
 elif seccion == "📆 Seguimiento de jugadores inactivos":
     st.header("📆 Seguimiento de Jugadores Inactivos Mejorado")
     archivo_agenda = st.file_uploader("📁 Subí tu archivo con dos hojas (Nombre y Reporte General):", type=["xlsx", "xls"], key="agenda")
@@ -231,11 +232,9 @@ elif seccion == "📆 Seguimiento de jugadores inactivos":
                     cargas_30 = len(ultimos_30)
                     monto_30 = ultimos_30["Monto"].mean() if not ultimos_30.empty else 0
 
-                    # Score mejorado
                     riesgo = min(100, (dias_inactivo * 2.5) + (10 / (cargas_30 + 1)) + (3000 / (monto_30 + 1)))
                     riesgo = round(riesgo, 2)
 
-                    # Categoría de riesgo
                     if riesgo >= 70:
                         categoria = "🔥 Alto"
                         accion = "Bono urgente / Contacto inmediato"
@@ -243,7 +242,7 @@ elif seccion == "📆 Seguimiento de jugadores inactivos":
                         categoria = "🔹 Medio"
                         accion = "Mantener contacto frecuente"
                     else:
-                        categoria = "🔵 Bajo"
+                        categoria = "🔷 Bajo"
                         accion = "Sin acción inmediata"
 
                     resumen.append({
@@ -259,28 +258,34 @@ elif seccion == "📆 Seguimiento de jugadores inactivos":
                         "Cantidad de retiro": cantidad_retiro,
                         "Riesgo de inactividad (%)": riesgo,
                         "Nivel de riesgo": categoria,
-                        "Acción sugerida": accion
+                        "Acción sugerida": accion,
+                        "Historial de contacto": "Sin contacto"
                     })
 
             if resumen:
                 df_resultado = pd.DataFrame(resumen).sort_values("Riesgo de inactividad (%)", ascending=False)
 
-                st.subheader("📈 Resumen de Riesgos y Acciones Sugeridas")
+                st.subheader("📊 Resumen de Inactividad y Riesgos")
 
-                # Filtro por riesgo
                 riesgo_filtrar = st.selectbox("Filtrar jugadores por nivel de riesgo:", ["Todos", "Alto", "Medio", "Bajo"])
-
                 if riesgo_filtrar != "Todos":
                     df_resultado = df_resultado[df_resultado["Nivel de riesgo"].str.contains(riesgo_filtrar)]
 
-                st.dataframe(df_resultado)
+                st.data_editor(df_resultado, num_rows="dynamic", use_container_width=True)
 
-                # Gráfico de distribución
-                st.subheader("📊 Distribución de Riesgos")
-                fig = px.histogram(df_resultado, x="Riesgo de inactividad (%)", nbins=20, title="Score de riesgo de abandono")
-                st.plotly_chart(fig, use_container_width=True)
+                # Gráfico de tendencia
+                st.subheader("📉 Tendencia promedio de inactividad")
+                dias_inactivos_media = df_resultado.groupby("Días inactivos").size().reset_index(name="Cantidad")
+                fig_linea = px.line(dias_inactivos_media, x="Días inactivos", y="Cantidad", title="Días promedio de inactividad")
+                st.plotly_chart(fig_linea, use_container_width=True)
 
-                # Exportación corregida
+                # Score de reactivación
+                st.subheader("🧐 Probabilidad de reactivación")
+                df_resultado["Probabilidad de reactivación (%)"] = 100 - df_resultado["Riesgo de inactividad (%)"]
+                fig_reactivacion = px.bar(df_resultado, x="Nombre de Usuario", y="Probabilidad de reactivación (%)", color="Nivel de riesgo", title="Chance de que recarguen")
+                st.plotly_chart(fig_reactivacion, use_container_width=True)
+
+                # Exportar
                 df_exportar = df_resultado.copy()
                 for col in df_exportar.select_dtypes(include=["object"]).columns:
                     df_exportar[col] = df_exportar[col].str.replace(r"[^\x00-\x7F]+", "", regex=True)
@@ -288,12 +293,12 @@ elif seccion == "📆 Seguimiento de jugadores inactivos":
                 df_exportar.to_excel("jugadores_riesgo_inactividad.xlsx", index=False)
 
                 with open("jugadores_riesgo_inactividad.xlsx", "rb") as f:
-                    st.download_button("📅 Descargar Excel Riesgo Inactividad", f, file_name="jugadores_riesgo_inactividad.xlsx")
-
+                    st.download_button("\ud83d\udcc5 Descargar Excel Riesgo Inactividad", f, file_name="jugadores_riesgo_inactividad.xlsx")
             else:
                 st.warning("⚠️ No se encontraron coincidencias entre ambas hojas.")
 
         except Exception as e:
             st.error(f"❌ Error al procesar el archivo: {e}")
+
 
 
