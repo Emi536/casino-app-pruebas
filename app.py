@@ -3,11 +3,19 @@ import pandas as pd
 import datetime
 import plotly.express as px
 from io import StringIO
+import os
 
 df = None
 
 st.set_page_config(page_title="PlayerMetrics - Análisis de Cargas", layout="wide")
 st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>", unsafe_allow_html=True)
+
+# --- ARCHIVO PERMANENTE DE HISTORIAL ---
+archivo_historial = "historial_registro.csv"
+if os.path.exists(archivo_historial):
+    df_historial = pd.read_csv(archivo_historial)
+else:
+    df_historial = pd.DataFrame()
 
 # Agregar CSS para ocultar GitHub Icon
 st.markdown("""
@@ -136,10 +144,12 @@ if seccion == "🔝 Métricas de jugadores":
 
 elif "Registro de actividad de jugadores" in seccion:
     st.header("📋 Registro general de jugadores")
-    
+
     metodo_carga = st.radio("¿Cómo querés cargar el reporte?", ["📄 Subir archivo", "📋 Pegar reporte manualmente"])
 
     df = None  # Siempre inicializamos df dentro de la sección
+
+    historial_path = "historial_registro.csv"
 
     if metodo_carga == "📄 Subir archivo":
         archivo = st.file_uploader("📁 Subí tu archivo de cargas:", type=["xlsx", "xls", "csv"], key="registro")
@@ -159,12 +169,30 @@ elif "Registro de actividad de jugadores" in seccion:
                     sep_detectado = ","
 
                 archivo_simulado = StringIO(texto_pegar)
-                df = pd.read_csv(archivo_simulado, sep=sep_detectado, decimal=",")
+                df_nuevo = pd.read_csv(archivo_simulado, sep=sep_detectado, decimal=",")
 
-                st.success(f"✅ Datos cargados correctamente detectando separador '{sep_detectado}' y decimal ','!")
+                # 🔥 Append al historial
+                try:
+                    historial_existente = pd.read_csv(historial_path)
+                    df = pd.concat([historial_existente, df_nuevo], ignore_index=True)
+                except FileNotFoundError:
+                    df = df_nuevo  # Si no existe historial, el primero que pegas es el historial
+
+                # Guardamos actualizado
+                df.to_csv(historial_path, index=False)
+                st.success(f"✅ Datos agregados exitosamente al historial (separador '{sep_detectado}').")
+
             except Exception as e:
                 st.error(f"❌ Error al procesar los datos pegados: {e}")
 
+    # 🔵 Leemos el historial para trabajar si existe
+    try:
+        if df is None and metodo_carga == "📋 Pegar reporte manualmente":
+            df = pd.read_csv(historial_path)
+    except:
+        df = None
+
+    # Si logramos obtener un DataFrame
     if df is not None:
         try:
             # 🔥 Renombrar columnas
@@ -257,7 +285,6 @@ elif "Registro de actividad de jugadores" in seccion:
 
         except Exception as e:
             st.error(f"❌ Error al procesar el reporte: {e}")
-
 
 elif seccion == "📆 Seguimiento de jugadores inactivos":
     st.header("📆 Seguimiento de Jugadores Inactivos Mejorado")
