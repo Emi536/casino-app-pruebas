@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import datetime
 import plotly.express as px
+from io import StringIO
 
 st.set_page_config(page_title="PlayerMetrics - Análisis de Cargas", layout="wide")
 st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>", unsafe_allow_html=True)
@@ -133,14 +134,33 @@ if seccion == "🔝 Métricas de jugadores":
 
 elif seccion == "📋 Registro de actividad de jugadores":
     st.header("📋 Registro general de jugadores")
-    archivo = st.file_uploader("📁 Subí tu archivo de cargas:", type=["xlsx", "xls", "csv"], key="registro")
+    
+    metodo_carga = st.radio("¿Cómo querés cargar el reporte?", ["📄 Subir archivo", "📋 Pegar reporte manualmente"])
 
-    if archivo:
-        # Leer el archivo
-        df = pd.read_excel(archivo) if archivo.name.endswith((".xlsx", ".xls")) else pd.read_csv(archivo)
+    if metodo_carga == "📄 Subir archivo":
+        archivo = st.file_uploader("📁 Subí tu archivo de cargas:", type=["xlsx", "xls", "csv"], key="registro")
+        if archivo:
+            df = pd.read_excel(archivo) if archivo.name.endswith((".xlsx", ".xls")) else pd.read_csv(archivo)
+        else:
+            df = None
 
-        if df is not None:
-            # 🔥 Renombrar columnas para que funcionen con la app
+    elif metodo_carga == "📋 Pegar reporte manualmente":
+        texto_pegar = st.text_area("📋 Pegá aquí el reporte copiado (incluí encabezados)", height=300)
+        if texto_pegar:
+            archivo_simulado = StringIO(texto_pegar)
+            try:
+                df = pd.read_csv(archivo_simulado, sep="\t")  # Asumimos separación por tabulaciones
+                st.success("✅ Datos cargados correctamente desde el texto pegado.")
+            except Exception as e:
+                st.error(f"❌ Error al procesar los datos pegados: {e}")
+                df = None
+        else:
+            df = None
+
+    # Si logramos obtener un DataFrame
+    if df is not None:
+        try:
+            # 🔥 Renombrar columnas
             df = df.rename(columns={
                 "operación": "Tipo",
                 "Depositar": "Monto",
@@ -149,7 +169,7 @@ elif seccion == "📋 Registro de actividad de jugadores":
                 "Al usuario": "Jugador"
             })
 
-            # Preparar las columnas
+            # Preparar columnas
             df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
             df["Monto"] = pd.to_numeric(df["Monto"], errors="coerce").fillna(0)
             df["Retiro"] = df["Retiro"].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
@@ -242,9 +262,8 @@ elif seccion == "📋 Registro de actividad de jugadores":
             fig_ltv = px.scatter(df_registro, x="Duración activa (días)", y="LTV (Lifetime Value)", hover_data=["Nombre de jugador"], title="Relación entre Duración Activa y LTV")
             st.plotly_chart(fig_ltv, use_container_width=True)
 
-        else:
-            st.error("❌ El archivo no tiene el formato esperado.")
-
+        except Exception as e:
+            st.error(f"❌ Error al procesar el reporte: {e}")
 elif seccion == "📆 Seguimiento de jugadores inactivos":
     st.header("📆 Seguimiento de Jugadores Inactivos Mejorado")
     archivo_agenda = st.file_uploader("📁 Subí tu archivo con dos hojas (Nombres y Reporte General):", type=["xlsx", "xls"], key="agenda")
