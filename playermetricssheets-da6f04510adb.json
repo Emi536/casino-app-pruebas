@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "playermetricssheets",
+  "private_key_id": "da6f04510adb7881a370f6078e13ee218033d30d",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC6LcuH2GdpfaTR\n0/AkdWZOWMyHU6LkgQZdngNfX656UOVgqVH652mH5ZoMMnS3d9MAQhPWKzgCfSFP\nGLQnqx7kVdf47fh7SHs25Nv3MoQgQsnaimYn6BpIb7UzgqLmRKzxXZWBGhgAgcqp\nYus2zUEMe3u9o46TLIaE3OMEwjU+oY4jF5nLg2hsc0p9nEHs5gYEiuN3ALKiGmvb\nZyS4ZF0AupOw/u6I7vq3/7jLzuytXxQdGq9USetASyyn/5DwqF6Odl3whGSJ290e\nzeeGJQ1wbiPhaKSj+tGkaFbLf8kIKQ0lbrQpjq3K/TYrRlIr49URv55vLL71gCzq\nZN+60s2DAgMBAAECggEACPBp9VEj+0ytEpC6gbBMA+GqRapzsm+qKT83qjyjLqbz\nsdBvaedH3zPcUaRFNl8/zPi0kHPtcdvQMvFctQriUNROVQVtXiinbIX7NG3t1Mlg\nJ74Svu0bVfRcdDyxgEeL24rtbWVzVug5yChCYuniqwFtejgq1aYtpJ4hHaQK1Rbs\n3sH0juR/CE5glj17cwsu9oLkVsCe11HwoBKnLRju1anTgXuZ7WINfOXCwfdLRntf\nnvHT0i+YuTIVI4TrSVYtGNaTEGx3ITcNXZcWqNZ6NTW/x9IP5mcuYb0A2fpM1Pmx\nPWSS5YGuJm3ItgQ9o9bcfS/BzKTpez2RM3KmZ4Z3AQKBgQD57i8RlTDG1xas5ltE\nYe7bHJcGXwWuYn4gb0HeqCifmmzG/daFnGmaDfQPf/d7ai7UrYs3ALY0r26roVo7\nOUAJID215v/PKp5k+KT2o6HKukClxa/tcWUv4OqLFx8S4ZAG6yWHLvHrF8/ZIfN8\nYP0FpnqyS5U4sTyXkLzqO7r8ZwKBgQC+s0Suwppkqfc6SU8r7VrNC9Cz9N19hyPk\nbL8m19FU8b+aULxPBuHIBHdL0DsHknweDdDDf458k3QR7RhqQGaCM8e+B9ISFu1Q\nSWCRbuUS5lgK45lH3WXynGHQxv723E3jX4/gqRncEvcyNIcKEiDtB1gYsH8pZmcE\nx42Os9l0hQKBgQCs/8Xs8cwVlwTHIZzDNNbVLHENo/CWyO5tHRYHPXcBIy9wfnxj\nd+VREZ+Cqx1vfAx2grn+lKuKxHRisQl4PSSqLHsK0p73k5SYZ9QoNRPk9A+Tr8cb\nIIbeIV24cYS82Q2M/G+5pzElfhINRob37Vq28omzqMXdvDEo6LMbn8TKuQKBgHtG\n7DmFN8WnUljtly6wa6ht4ObUfnJtcDh0TEXR8lLVTKV3V6RGsKJasLvjyqUkfvP2\nvmQDC5tgvwHvoX7eTuYQjyk7aQOkqpjiNnkNlSxYl8XCSA57AzKJAXqziZMP65H2\n7s2uwzbPU9mytzE9cueHfd3ICww6VJJ0ZgBAJ2z5AoGADLcwVtIZjL6f36ibHktu\nOMBf3vaGJLrm7mG0RcQgmuX8VxbuDyrt6kA5yemboSVkM6SJKNke6jJKeJXXThiS\n9n0/n2RWdEln3Pk4qJK7dqfkFPfuMGQJSwQr3FU4qWAN/HQ3a7nZKIMLSBbHf/hU\nnPv5DUShnuSD5pR6h1YC1Gs=\n-----END PRIVATE KEY-----\n",
+  "client_email": "streamlit-access@playermetricssheets.iam.gserviceaccount.com",
+  "client_id": "105575748883971581622",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/streamlit-access%40playermetricssheets.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
