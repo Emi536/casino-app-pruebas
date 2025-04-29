@@ -180,6 +180,9 @@ elif "Registro de actividad de jugadores" in seccion:
                 df_nuevo = pd.read_csv(archivo_simulado, sep=sep_detectado, decimal=",")
 
                 df_historial = pd.concat([df_historial, df_nuevo], ignore_index=True)
+                 # 🔥 Reemplazar NaNs para evitar error JSON
+                df_historial = df_historial.fillna("")
+
                 worksheet.clear()
                 worksheet.update([df_historial.columns.values.tolist()] + df_historial.values.tolist())
 
