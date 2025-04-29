@@ -136,32 +136,32 @@ elif seccion == "📋 Registro de actividad de jugadores":
     archivo = st.file_uploader("📁 Subí tu archivo de cargas:", type=["xlsx", "xls", "csv"], key="registro")
 
     if archivo:
-        # 🛠️ Cargar el archivo
-        df = pd.read_excel(archivo) if archivo.name.endswith((".xlsx", ".xls")) else pd.read_csv(archivo)
+    # 🛠️ Cargar el archivo
+    df = pd.read_excel(archivo) if archivo.name.endswith((".xlsx", ".xls")) else pd.read_csv(archivo)
 
-        if df is not None:
-            # 🔥 Renombrar columnas apenas abrimos
-            df = df.rename(columns={
-                "operación": "Tipo",
-                "Depositar": "Monto",
-                "Retirar": "Retiro",
-                "Fecha": "Fecha",
-                "Al usuario": "Jugador"
-            })
+    if df is not None:
+        # 🔥 Renombrar columnas de tu archivo real
+        df = df.rename(columns={
+            "operación": "Tipo",
+            "Depositar": "Monto",
+            "Retirar": "Retiro",
+            "Fecha": "Fecha",
+            "Al usuario": "Jugador"
+        })
 
-            # 🔎 Verificar columnas clave
-            columnas_necesarias = ["Tipo", "Monto", "Retiro", "Fecha", "Jugador"]
-            columnas_faltantes = [col for col in columnas_necesarias if col not in df.columns]
+        # 🔎 Verificar columnas necesarias después de renombrar
+        columnas_necesarias = ["Tipo", "Monto", "Retiro", "Fecha", "Jugador"]
+        columnas_faltantes = [col for col in columnas_necesarias if col not in df.columns]
 
-            if columnas_faltantes:
-                st.error(f"❌ El archivo no contiene las columnas necesarias: {', '.join(columnas_faltantes)}")
-                st.stop()
+        if columnas_faltantes:
+            st.error(f"❌ El archivo no contiene las columnas necesarias: {', '.join(columnas_faltantes)}")
+            st.stop()
 
-            # ✅ Procesar las columnas
-            df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
-            df["Monto"] = pd.to_numeric(df["Monto"], errors="coerce").fillna(0)
-            df["Retiro"] = df["Retiro"].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
-            df["Retiro"] = pd.to_numeric(df["Retiro"], errors="coerce").fillna(0)
+        # ✅ Procesar columnas
+        df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
+        df["Monto"] = pd.to_numeric(df["Monto"], errors="coerce").fillna(0)
+        df["Retiro"] = df["Retiro"].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
+        df["Retiro"] = pd.to_numeric(df["Retiro"], errors="coerce").fillna(0)
 
             jugadores = df["Jugador"].dropna().unique()
             resumen = []
