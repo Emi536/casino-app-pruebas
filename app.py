@@ -132,7 +132,7 @@ if seccion == "🔝 Métricas de jugadores":
 
 # SECCIÓN 2: REGISTRO
 
-elif seccion == "📋 Registro de actividad de jugadores":
+elif "Registro de actividad de jugadores" in seccion:
     st.header("📋 Registro general de jugadores")
     
     metodo_carga = st.radio("¿Cómo querés cargar el reporte?", ["📄 Subir archivo", "📋 Pegar reporte manualmente"])
