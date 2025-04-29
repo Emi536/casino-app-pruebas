@@ -4,6 +4,8 @@ import datetime
 import plotly.express as px
 from io import StringIO
 
+df = None
+
 st.set_page_config(page_title="PlayerMetrics - Análisis de Cargas", layout="wide")
 st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>", unsafe_allow_html=True)
 
