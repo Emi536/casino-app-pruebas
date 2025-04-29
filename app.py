@@ -255,6 +255,40 @@ elif "Registro de actividad de jugadores" in seccion:
             with open("registro_jugadores.xlsx", "rb") as f:
                 st.download_button("📅 Descargar Excel", f, file_name="registro_jugadores.xlsx")
 
+            # :1234: Gráficos adicionales
+            st.subheader(":trophy: Top 10 jugadores por monto total cargado")
+            top_monto = df_registro.sort_values("Suma de las cargas", ascending=False).head(10)
+            fig_top_monto = px.bar(top_monto, x="Nombre de jugador", y="Suma de las cargas", title="Top 10 - Monto Total Cargado")
+            st.plotly_chart(fig_top_monto, use_container_width=True)
+
+            st.subheader(":trophy: Top 10 jugadores por cantidad de cargas")
+            top_cargas = df_registro.sort_values("Veces que cargó", ascending=False).head(10)
+            fig_top_cargas = px.bar(top_cargas, x="Nombre de jugador", y="Veces que cargó", title="Top 10 - Cantidad de Cargas")
+            st.plotly_chart(fig_top_cargas, use_container_width=True)
+
+            st.subheader(":chart_with_upwards_trend: Evolución diaria de cargas y retiros")
+            df_diario = df.groupby(df["Fecha"].dt.date).agg({"Monto": "sum", "Retiro": "sum", "Jugador": "count"}).reset_index()
+            df_diario = df_diario.rename(columns={"Jugador": "Cantidad de operaciones"})
+            df_diario["Neto diario"] = df_diario["Monto"] - df_diario["Retiro"]
+            fig_evolucion = px.line(df_diario, x="Fecha", y=["Monto", "Retiro", "Neto diario"], title="Evolución de cargas, retiros y neto diario")
+            st.plotly_chart(fig_evolucion, use_container_width=True)
+
+            st.subheader(":clock1: Análisis de actividad por hora")
+            df["Hora"] = df["Fecha"].dt.hour
+            df_hora = df.groupby("Hora").size().reset_index(name="Cantidad de movimientos")
+            fig_hora = px.bar(df_hora, x="Hora", y="Cantidad de movimientos", title="Movimientos por hora del día")
+            st.plotly_chart(fig_hora, use_container_width=True)
+
+            st.subheader("🛘 Detección de anomalías")
+            promedio_cargas = df_diario["Monto"].mean()
+            df_diario["Anomalía"] = df_diario["Monto"] < (promedio_cargas * 0.7)
+            fig_anomalias = px.scatter(df_diario, x="Fecha", y="Monto", color="Anomalía", title="Anomalías en cargas diarias")
+            st.plotly_chart(fig_anomalias, use_container_width=True)
+
+            st.subheader(":dollar: Análisis del LTV")
+            fig_ltv = px.scatter(df_registro, x="Duración activa (días)", y="LTV (Lifetime Value)", hover_data=["Nombre de jugador"], title="Relación entre Duración Activa y LTV")
+            st.plotly_chart(fig_ltv, use_container_width=True)
+
         except Exception as e:
             st.error(f"❌ Error al procesar el reporte: {e}")
 
