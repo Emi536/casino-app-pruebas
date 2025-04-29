@@ -152,21 +152,20 @@ if seccion == "🔝 Métricas de jugadores":
             st.error("❌ El archivo no tiene el formato esperado.")
 
 
-# --- SECCIÓN 2: REGISTRO ---
-elif "Registro de actividad de jugadores" in seccion:
+# --- SECCIÓN 📋 Registro de actividad de jugadores ---
+if "Registro de actividad de jugadores" in st.sidebar.radio("Seleccioná una sección:", ["🔝 Métricas de jugadores", "📋 Registro de actividad de jugadores", "📆 Seguimiento de jugadores inactivos"]):
     st.header("📋 Registro general de jugadores")
 
     metodo_carga = st.radio("¿Cómo querés cargar el reporte?", ["📄 Subir archivo", "📋 Pegar reporte manualmente"])
 
-    df = None  # Siempre inicializamos df dentro de la sección
-
     if metodo_carga == "📄 Subir archivo":
         archivo = st.file_uploader("📁 Subí tu archivo de cargas:", type=["xlsx", "xls", "csv"], key="registro")
         if archivo:
-            df = pd.read_excel(archivo) if archivo.name.endswith((".xlsx", ".xls")) else pd.read_csv(archivo)
-            df_historial = pd.concat([df_historial, df], ignore_index=True)
+            df_nuevo = pd.read_excel(archivo) if archivo.name.endswith((".xlsx", ".xls")) else pd.read_csv(archivo)
+            df_historial = pd.concat([df_historial, df_nuevo], ignore_index=True)
+            worksheet.clear()
             worksheet.update([df_historial.columns.values.tolist()] + df_historial.values.tolist())
-            st.success("✅ Reporte subido y guardado exitosamente en el historial.")
+            st.success("✅ Archivo subido y actualizado en Google Sheets.")
 
     elif metodo_carga == "📋 Pegar reporte manualmente":
         texto_pegar = st.text_area("📋 Pegá aquí el reporte copiado (incluí encabezados)", height=300)
@@ -182,21 +181,22 @@ elif "Registro de actividad de jugadores" in seccion:
 
                 archivo_simulado = StringIO(texto_pegar)
                 df_nuevo = pd.read_csv(archivo_simulado, sep=sep_detectado, decimal=",")
+
                 df_historial = pd.concat([df_historial, df_nuevo], ignore_index=True)
+                worksheet.clear()
                 worksheet.update([df_historial.columns.values.tolist()] + df_historial.values.tolist())
-                st.success(f"✅ Reporte agregado y guardado correctamente en historial (detectado separador '{sep_detectado}').")
+
+                st.success(f"✅ Reporte pegado y sincronizado exitosamente con Google Sheets.")
 
             except Exception as e:
                 st.error(f"❌ Error al procesar los datos pegados: {e}")
 
-    # 🔵 Si df no tiene datos nuevos, seguimos trabajando con el historial
-    if df is None:
-        df = df_historial.copy()
-
-    # Si logramos obtener un DataFrame
-    if df is not None and not df.empty:
+    # --- MOSTRAR INFORMACIÓN ACTUAL ---
+    if not df_historial.empty:
         try:
-            # 🔥 Renombrar columnas
+            st.info(f"🔵 Actualmente hay {len(df_historial)} registros acumulados.")
+
+            df = df_historial.copy()
             df = df.rename(columns={
                 "operación": "Tipo",
                 "Depositar": "Monto",
@@ -205,14 +205,12 @@ elif "Registro de actividad de jugadores" in seccion:
                 "Al usuario": "Jugador"
             })
 
-            # 🛠️ Preparar columnas correctamente
             df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
             df["Monto"] = df["Monto"].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
             df["Monto"] = pd.to_numeric(df["Monto"], errors="coerce").fillna(0)
             df["Retiro"] = df["Retiro"].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
             df["Retiro"] = pd.to_numeric(df["Retiro"], errors="coerce").fillna(0)
 
-            # 👥 Procesar jugadores
             jugadores = df["Jugador"].dropna().unique()
             resumen = []
             for jugador in jugadores:
@@ -242,13 +240,17 @@ elif "Registro de actividad de jugadores" in seccion:
 
             df_registro = pd.DataFrame(resumen).sort_values("Días inactivo", ascending=False)
 
-            # Mostrar resultados
             st.subheader("📄 Registro completo de jugadores")
-            st.dataframe(df_registro)
+            st.dataframe(df_registro, use_container_width=True)
 
             df_registro.to_excel("registro_jugadores.xlsx", index=False)
             with open("registro_jugadores.xlsx", "rb") as f:
-                st.download_button("📅 Descargar Excel", f, file_name="registro_jugadores.xlsx")
+                st.download_button("📥 Descargar Excel de Registro", f, file_name="registro_jugadores.xlsx")
+
+            # 🔥 Botón para borrar historial
+            if st.button("🧹 Borrar TODO el historial"):
+                worksheet.clear()
+                st.success("✅ Historial borrado exitosamente. Refrescar la página para ver cambios.")
 
             # 🔢 Gráficos adicionales
             st.subheader("🏆 Top 10 jugadores por monto total cargado")
