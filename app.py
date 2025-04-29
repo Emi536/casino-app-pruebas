@@ -4,17 +4,29 @@ import datetime
 import plotly.express as px
 from io import StringIO
 import os
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
 df = None
 
 st.set_page_config(page_title="PlayerMetrics - Análisis de Cargas", layout="wide")
 st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>", unsafe_allow_html=True)
 
-# --- ARCHIVO PERMANENTE DE HISTORIAL ---
-archivo_historial = "historial_registro.csv"
-if os.path.exists(archivo_historial):
-    df_historial = pd.read_csv(archivo_historial)
-else:
+# --- Conexión a Google Sheets ---
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+credentials = service_account.Credentials.from_service_account_file(
+    "playermetricssheets-da6f04510adb.json", scopes=scope
+)
+gc = gspread.authorize(credentials)
+SPREADSHEET_ID = "1HxbIBXBs8tlFtNy8RUQq8oANei1MHp_VleQmvCmLabY"  # 🚨 Acá ponés el ID real de tu Google Sheet
+sh = gc.open_by_key(SPREADSHEET_ID)
+worksheet = sh.sheet1
+
+# 🔵 Cargar historial si existe
+try:
+    historial_data = worksheet.get_all_records()
+    df_historial = pd.DataFrame(historial_data)
+except:
     df_historial = pd.DataFrame()
 
 # Agregar CSS para ocultar GitHub Icon
@@ -140,8 +152,7 @@ if seccion == "🔝 Métricas de jugadores":
             st.error("❌ El archivo no tiene el formato esperado.")
 
 
-# SECCIÓN 2: REGISTRO
-
+# --- SECCIÓN 2: REGISTRO ---
 elif "Registro de actividad de jugadores" in seccion:
     st.header("📋 Registro general de jugadores")
 
@@ -149,12 +160,13 @@ elif "Registro de actividad de jugadores" in seccion:
 
     df = None  # Siempre inicializamos df dentro de la sección
 
-    historial_path = "historial_registro.csv"
-
     if metodo_carga == "📄 Subir archivo":
         archivo = st.file_uploader("📁 Subí tu archivo de cargas:", type=["xlsx", "xls", "csv"], key="registro")
         if archivo:
             df = pd.read_excel(archivo) if archivo.name.endswith((".xlsx", ".xls")) else pd.read_csv(archivo)
+            df_historial = pd.concat([df_historial, df], ignore_index=True)
+            worksheet.update([df_historial.columns.values.tolist()] + df_historial.values.tolist())
+            st.success("✅ Reporte subido y guardado exitosamente en el historial.")
 
     elif metodo_carga == "📋 Pegar reporte manualmente":
         texto_pegar = st.text_area("📋 Pegá aquí el reporte copiado (incluí encabezados)", height=300)
@@ -167,31 +179,22 @@ elif "Registro de actividad de jugadores" in seccion:
                     sep_detectado = ";"
                 else:
                     sep_detectado = ","
-    
+
                 archivo_simulado = StringIO(texto_pegar)
                 df_nuevo = pd.read_csv(archivo_simulado, sep=sep_detectado, decimal=",")
-    
-                # 🔥 Agregamos el nuevo reporte al historial existente
                 df_historial = pd.concat([df_historial, df_nuevo], ignore_index=True)
-    
-                # 🔥 Guardamos el historial actualizado
-                df_historial.to_csv(archivo_historial, index=False)
-    
+                worksheet.update([df_historial.columns.values.tolist()] + df_historial.values.tolist())
                 st.success(f"✅ Reporte agregado y guardado correctamente en historial (detectado separador '{sep_detectado}').")
-    
+
             except Exception as e:
                 st.error(f"❌ Error al procesar los datos pegados: {e}")
 
-
-    # 🔵 Leemos el historial para trabajar si existe
-    try:
-        if df is None and metodo_carga == "📋 Pegar reporte manualmente":
-            df = pd.read_csv(historial_path)
-    except:
-        df = None
+    # 🔵 Si df no tiene datos nuevos, seguimos trabajando con el historial
+    if df is None:
+        df = df_historial.copy()
 
     # Si logramos obtener un DataFrame
-    if df is not None:
+    if df is not None and not df.empty:
         try:
             # 🔥 Renombrar columnas
             df = df.rename(columns={
@@ -246,13 +249,6 @@ elif "Registro de actividad de jugadores" in seccion:
             df_registro.to_excel("registro_jugadores.xlsx", index=False)
             with open("registro_jugadores.xlsx", "rb") as f:
                 st.download_button("📅 Descargar Excel", f, file_name="registro_jugadores.xlsx")
-
-            # 🔄 Mostrar cantidad acumulada y botón de reseteo
-            st.info(f"📋 Hay actualmente {len(df_historial)} registros guardados en el historial.")
-            if st.button("🗑️ Borrar todo el historial"):
-                os.remove(archivo_historial)
-                df_historial = pd.DataFrame()
-                st.success("✅ Historial borrado correctamente. Actualizá la página para ver los cambios.")
 
             # 🔢 Gráficos adicionales
             st.subheader("🏆 Top 10 jugadores por monto total cargado")
