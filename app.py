@@ -145,6 +145,7 @@ elif "Registro de actividad de jugadores" in seccion:
             df = None
 
     elif metodo_carga == "📋 Pegar reporte manualmente":
+        df = None
         texto_pegar = st.text_area("📋 Pegá aquí el reporte copiado (incluí encabezados)", height=300)
         if texto_pegar:
             try:
