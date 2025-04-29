@@ -6,6 +6,7 @@ from io import StringIO
 import os
 import gspread
 from google.oauth2 import service_account
+import pytz
 
 df = None
 
@@ -156,7 +157,8 @@ if seccion == "🔝 Métricas de jugadores":
 elif "Registro de actividad de jugadores" in seccion:
     st.header("📋 Registro general de jugadores")
 
-    ahora = datetime.datetime.now()
+    argentina = pytz.timezone("America/Argentina/Buenos_Aires")
+    ahora = datetime.datetime.now(argentina)
     fecha_actual = ahora.strftime("%d/%m/%Y - %H:%M hs")
     st.info(f"⏰ Última actualización: {fecha_actual}")
 
