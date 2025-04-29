@@ -156,13 +156,26 @@ if seccion == "🔝 Métricas de jugadores":
 elif "Registro de actividad de jugadores" in seccion:
     st.header("📋 Registro general de jugadores")
 
+    ahora = datetime.datetime.now()
+    fecha_actual = ahora.strftime("%d/%m/%Y - %H:%M hs")
+    st.info(f"⏰ Última actualización: {fecha_actual}")
+
     metodo_carga = st.radio("¿Cómo querés cargar el reporte?", ["📄 Subir archivo", "📋 Pegar reporte manualmente"])
+    responsable = st.text_input("👤 Ingresá tu nombre para registrar quién sube el reporte", value="Anónimo")
+
     df = None
 
     if metodo_carga == "📄 Subir archivo":
         archivo = st.file_uploader("📁 Subí tu archivo de cargas:", type=["xlsx", "xls", "csv"], key="registro")
         if archivo:
             df = pd.read_excel(archivo) if archivo.name.endswith((".xlsx", ".xls")) else pd.read_csv(archivo)
+            df["Responsable"] = responsable
+            df["Fecha_Subida"] = fecha_actual
+            df_historial = pd.concat([df_historial, df], ignore_index=True)
+            df_historial = df_historial.fillna("")
+            worksheet.clear()
+            worksheet.update([df_historial.columns.values.tolist()] + df_historial.values.tolist())
+            st.success("✅ Archivo subido y guardado exitosamente.")
 
     elif metodo_carga == "📋 Pegar reporte manualmente":
         texto_pegar = st.text_area("📋 Pegá aquí el reporte copiado (incluí encabezados)", height=300)
@@ -178,11 +191,11 @@ elif "Registro de actividad de jugadores" in seccion:
 
                 archivo_simulado = StringIO(texto_pegar)
                 df_nuevo = pd.read_csv(archivo_simulado, sep=sep_detectado, decimal=",")
+                df_nuevo["Responsable"] = responsable
+                df_nuevo["Fecha_Subida"] = fecha_actual
 
                 df_historial = pd.concat([df_historial, df_nuevo], ignore_index=True)
-                 # 🔥 Reemplazar NaNs para evitar error JSON
                 df_historial = df_historial.fillna("")
-
                 worksheet.clear()
                 worksheet.update([df_historial.columns.values.tolist()] + df_historial.values.tolist())
 
@@ -192,6 +205,11 @@ elif "Registro de actividad de jugadores" in seccion:
                 st.error(f"❌ Error al procesar los datos pegados: {e}")
 
     if not df_historial.empty:
+        st.info(f"📊 Total de registros acumulados: {len(df_historial)}")
+        if st.button("🗑️ Borrar todo el historial"):
+            worksheet.clear()
+            df_historial = pd.DataFrame()
+            st.success("✅ Historial borrado correctamente. Recargá la app.")
         df = df_historial.copy()
 
     if df is not None:
