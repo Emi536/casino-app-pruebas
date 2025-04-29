@@ -170,62 +170,69 @@ elif "Registro de actividad de jugadores" in seccion:
     else:
         df = None
 
-    # Si logramos obtener un DataFrame
-    if df is not None:
-        try:
-            # 🔥 Renombrar columnas
-            df = df.rename(columns={
-                "operación": "Tipo",
-                "Depositar": "Monto",
-                "Retirar": "Retiro",
-                "Fecha": "Fecha",
-                "Al usuario": "Jugador"
-            })
+   # Si logramos obtener un DataFrame
+if df is not None:
+    try:
+        # 🔥 Renombrar columnas
+        df = df.rename(columns={
+            "operación": "Tipo",
+            "Depositar": "Monto",
+            "Retirar": "Retiro",
+            "Fecha": "Fecha",
+            "Al usuario": "Jugador"
+        })
 
-            # Preparar columnas
-            df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
-            df["Monto"] = pd.to_numeric(df["Monto"], errors="coerce").fillna(0)
-            df["Retiro"] = df["Retiro"].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
-            df["Retiro"] = pd.to_numeric(df["Retiro"], errors="coerce").fillna(0)
+        # 🛠️ Preparar columnas correctamente
+        df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
 
-            jugadores = df["Jugador"].dropna().unique()
-            resumen = []
+        # 🔥🔥 Normalizamos Monto y Retiro (puntos y comas bien tratados)
+        df["Monto"] = df["Monto"].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
+        df["Monto"] = pd.to_numeric(df["Monto"], errors="coerce").fillna(0)
 
-            for jugador in jugadores:
-                historial = df[df["Jugador"] == jugador].sort_values("Fecha")
-                cargas = historial[historial["Tipo"].str.lower() == "in"]
-                retiros = historial[historial["Tipo"].str.lower() == "out"]
+        df["Retiro"] = df["Retiro"].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
+        df["Retiro"] = pd.to_numeric(df["Retiro"], errors="coerce").fillna(0)
 
-                if not cargas.empty:
-                    fecha_ingreso = cargas["Fecha"].min()
-                    ultima_carga = cargas["Fecha"].max()
-                    veces_que_cargo = len(cargas)
-                    suma_de_cargas = cargas["Monto"].sum()
-                    cantidad_retiro = retiros["Retiro"].sum()
-                    dias_inactivo = (pd.to_datetime(datetime.date.today()) - ultima_carga).days
+        jugadores = df["Jugador"].dropna().unique()
+        resumen = []
 
-                    resumen.append({
-                        "Nombre de jugador": jugador,
-                        "Fecha que ingresó": fecha_ingreso,
-                        "Veces que cargó": veces_que_cargo,
-                        "Suma de las cargas": suma_de_cargas,
-                        "Última vez que cargó": ultima_carga,
-                        "Días inactivo": dias_inactivo,
-                        "Cantidad de retiro": cantidad_retiro,
-                        "LTV (Lifetime Value)": suma_de_cargas,
-                        "Duración activa (días)": (ultima_carga - fecha_ingreso).days
-                    })
+        for jugador in jugadores:
+            historial = df[df["Jugador"] == jugador].sort_values("Fecha")
+            cargas = historial[historial["Tipo"].str.lower() == "in"]
+            retiros = historial[historial["Tipo"].str.lower() == "out"]
 
-            df_registro = pd.DataFrame(resumen)
-            df_registro = df_registro.sort_values("Días inactivo", ascending=False)
+            if not cargas.empty:
+                fecha_ingreso = cargas["Fecha"].min()
+                ultima_carga = cargas["Fecha"].max()
+                veces_que_cargo = len(cargas)
+                suma_de_cargas = cargas["Monto"].sum()
+                cantidad_retiro = retiros["Retiro"].sum()
+                dias_inactivo = (pd.to_datetime(datetime.date.today()) - ultima_carga).days
 
-            st.subheader("📄 Registro completo de jugadores")
-            st.dataframe(df_registro)
+                resumen.append({
+                    "Nombre de jugador": jugador,
+                    "Fecha que ingresó": fecha_ingreso,
+                    "Veces que cargó": veces_que_cargo,
+                    "Suma de las cargas": suma_de_cargas,
+                    "Última vez que cargó": ultima_carga,
+                    "Días inactivo": dias_inactivo,
+                    "Cantidad de retiro": cantidad_retiro,
+                    "LTV (Lifetime Value)": suma_de_cargas,
+                    "Duración activa (días)": (ultima_carga - fecha_ingreso).days
+                })
 
-            # 📥 Botón para descargar
-            df_registro.to_excel("registro_jugadores.xlsx", index=False)
-            with open("registro_jugadores.xlsx", "rb") as f:
-                st.download_button("📥 Descargar Excel", f, file_name="registro_jugadores.xlsx")
+        df_registro = pd.DataFrame(resumen)
+        df_registro = df_registro.sort_values("Días inactivo", ascending=False)
+
+        st.subheader("📄 Registro completo de jugadores")
+        st.dataframe(df_registro)
+
+        # 📥 Botón para descargar
+        df_registro.to_excel("registro_jugadores.xlsx", index=False)
+        with open("registro_jugadores.xlsx", "rb") as f:
+            st.download_button("📥 Descargar Excel", f, file_name="registro_jugadores.xlsx")
+
+    except Exception as e:
+        st.error(f"❌ Error al procesar el reporte: {e}")
 
             # 📈 Análisis avanzado - BI
 
