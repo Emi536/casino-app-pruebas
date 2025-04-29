@@ -145,7 +145,7 @@ elif "Registro de actividad de jugadores" in seccion:
             df = None
 
     elif metodo_carga == "📋 Pegar reporte manualmente":
-    texto_pegar = st.text_area("📋 Pegá aquí el reporte copiado (incluí encabezados)", height=300)
+        texto_pegar = st.text_area("📋 Pegá aquí el reporte copiado (incluí encabezados)", height=300)
         if texto_pegar:
             try:
                 texto_pegar_preview = texto_pegar[:500]  # Analizamos primeros caracteres
@@ -165,7 +165,6 @@ elif "Registro de actividad de jugadores" in seccion:
             except Exception as e:
                 st.error(f"❌ Error al procesar los datos pegados: {e}")
                 df = None
-
 
     else:
         df = None
