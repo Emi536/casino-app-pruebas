@@ -247,6 +247,13 @@ elif "Registro de actividad de jugadores" in seccion:
             with open("registro_jugadores.xlsx", "rb") as f:
                 st.download_button("📅 Descargar Excel", f, file_name="registro_jugadores.xlsx")
 
+            # 🔄 Mostrar cantidad acumulada y botón de reseteo
+            st.info(f"📋 Hay actualmente {len(df_historial)} registros guardados en el historial.")
+            if st.button("🗑️ Borrar todo el historial"):
+                os.remove(archivo_historial)
+                df_historial = pd.DataFrame()
+                st.success("✅ Historial borrado correctamente. Actualizá la página para ver los cambios.")
+
             # 🔢 Gráficos adicionales
             st.subheader("🏆 Top 10 jugadores por monto total cargado")
             top_monto = df_registro.sort_values("Suma de las cargas", ascending=False).head(10)
