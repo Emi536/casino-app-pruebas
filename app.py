@@ -14,11 +14,11 @@ st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>"
 
 # --- Conexión a Google Sheets ---
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-credentials = service_account.Credentials.from_service_account_file(
-    "playermetricssheets-da6f04510adb.json", scopes=scope
+credentials = service_account.Credentials.from_service_account_info(
+    st.secrets["gcp_service_account"], scopes=scope
 )
 gc = gspread.authorize(credentials)
-SPREADSHEET_ID = "1HxbIBXBs8tlFtNy8RUQq8oANei1MHp_VleQmvCmLabY"  # 🚨 Acá ponés el ID real de tu Google Sheet
+SPREADSHEET_ID = "1HxbIBXBs8tlFtNy8RUQq8oANei1MHp_VleQmvCmLabY"
 sh = gc.open_by_key(SPREADSHEET_ID)
 worksheet = sh.sheet1
 
@@ -152,20 +152,17 @@ if seccion == "🔝 Métricas de jugadores":
             st.error("❌ El archivo no tiene el formato esperado.")
 
 
-# --- SECCIÓN 📋 Registro de actividad de jugadores ---
-if "Registro de actividad de jugadores" in st.sidebar.radio("Seleccioná una sección:", ["🔝 Métricas de jugadores", "📋 Registro de actividad de jugadores", "📆 Seguimiento de jugadores inactivos"]):
+# ---SECCIÓN 2: REGISTRO
+elif "Registro de actividad de jugadores" in seccion:
     st.header("📋 Registro general de jugadores")
 
     metodo_carga = st.radio("¿Cómo querés cargar el reporte?", ["📄 Subir archivo", "📋 Pegar reporte manualmente"])
+    df = None
 
     if metodo_carga == "📄 Subir archivo":
         archivo = st.file_uploader("📁 Subí tu archivo de cargas:", type=["xlsx", "xls", "csv"], key="registro")
         if archivo:
-            df_nuevo = pd.read_excel(archivo) if archivo.name.endswith((".xlsx", ".xls")) else pd.read_csv(archivo)
-            df_historial = pd.concat([df_historial, df_nuevo], ignore_index=True)
-            worksheet.clear()
-            worksheet.update([df_historial.columns.values.tolist()] + df_historial.values.tolist())
-            st.success("✅ Archivo subido y actualizado en Google Sheets.")
+            df = pd.read_excel(archivo) if archivo.name.endswith((".xlsx", ".xls")) else pd.read_csv(archivo)
 
     elif metodo_carga == "📋 Pegar reporte manualmente":
         texto_pegar = st.text_area("📋 Pegá aquí el reporte copiado (incluí encabezados)", height=300)
@@ -186,17 +183,16 @@ if "Registro de actividad de jugadores" in st.sidebar.radio("Seleccioná una sec
                 worksheet.clear()
                 worksheet.update([df_historial.columns.values.tolist()] + df_historial.values.tolist())
 
-                st.success(f"✅ Reporte pegado y sincronizado exitosamente con Google Sheets.")
+                st.success(f"✅ Reporte agregado y guardado correctamente en historial (detectado separador '{sep_detectado}').")
 
             except Exception as e:
                 st.error(f"❌ Error al procesar los datos pegados: {e}")
 
-    # --- MOSTRAR INFORMACIÓN ACTUAL ---
     if not df_historial.empty:
-        try:
-            st.info(f"🔵 Actualmente hay {len(df_historial)} registros acumulados.")
+        df = df_historial.copy()
 
-            df = df_historial.copy()
+    if df is not None:
+        try:
             df = df.rename(columns={
                 "operación": "Tipo",
                 "Depositar": "Monto",
@@ -241,17 +237,13 @@ if "Registro de actividad de jugadores" in st.sidebar.radio("Seleccioná una sec
             df_registro = pd.DataFrame(resumen).sort_values("Días inactivo", ascending=False)
 
             st.subheader("📄 Registro completo de jugadores")
-            st.dataframe(df_registro, use_container_width=True)
+            st.dataframe(df_registro)
 
             df_registro.to_excel("registro_jugadores.xlsx", index=False)
             with open("registro_jugadores.xlsx", "rb") as f:
-                st.download_button("📥 Descargar Excel de Registro", f, file_name="registro_jugadores.xlsx")
+                st.download_button("📅 Descargar Excel", f, file_name="registro_jugadores.xlsx")
 
-            # 🔥 Botón para borrar historial
-            if st.button("🧹 Borrar TODO el historial"):
-                worksheet.clear()
-                st.success("✅ Historial borrado exitosamente. Refrescar la página para ver cambios.")
-
+            st.info(f"📋 Hay actualmente {len(df_historial)} registros guardados en el historial.")
             # 🔢 Gráficos adicionales
             st.subheader("🏆 Top 10 jugadores por monto total cargado")
             top_monto = df_registro.sort_values("Suma de las cargas", ascending=False).head(10)
