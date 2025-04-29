@@ -157,54 +157,43 @@ if seccion == "🔝 Métricas de jugadores":
 elif "Registro de actividad de jugadores" in seccion:
     st.header("📋 Registro general de jugadores")
 
+    # Mostrar fecha última actualización
     argentina = pytz.timezone("America/Argentina/Buenos_Aires")
     ahora = datetime.datetime.now(argentina)
     fecha_actual = ahora.strftime("%d/%m/%Y - %H:%M hs")
     st.info(f"⏰ Última actualización: {fecha_actual}")
 
-    metodo_carga = st.radio("¿Cómo querés cargar el reporte?", ["📄 Subir archivo", "📋 Pegar reporte manualmente"])
     responsable = st.text_input("👤 Ingresá tu nombre para registrar quién sube el reporte", value="Anónimo")
 
+    texto_pegar = st.text_area("📋 Pegá aquí el reporte copiado (incluí encabezados)", height=300)
     df = None
 
-    if metodo_carga == "📄 Subir archivo":
-        archivo = st.file_uploader("📁 Subí tu archivo de cargas:", type=["xlsx", "xls", "csv"], key="registro")
-        if archivo:
-            df = pd.read_excel(archivo) if archivo.name.endswith((".xlsx", ".xls")) else pd.read_csv(archivo)
-            df["Responsable"] = responsable
-            df["Fecha_Subida"] = fecha_actual
-            df_historial = pd.concat([df_historial, df], ignore_index=True)
+    if texto_pegar:
+        try:
+            texto_pegar_preview = texto_pegar[:500]
+            if "\t" in texto_pegar_preview:
+                sep_detectado = "\t"
+            elif ";" in texto_pegar_preview:
+                sep_detectado = ";"
+            else:
+                sep_detectado = ","
+
+            archivo_simulado = StringIO(texto_pegar)
+            df_nuevo = pd.read_csv(archivo_simulado, sep=sep_detectado, decimal=",")
+
+            df_nuevo["Responsable"] = responsable
+            df_nuevo["Fecha_Subida"] = fecha_actual
+
+            df_historial = pd.concat([df_historial, df_nuevo], ignore_index=True)
             df_historial = df_historial.fillna("")
+
             worksheet.clear()
             worksheet.update([df_historial.columns.values.tolist()] + df_historial.values.tolist())
-            st.success("✅ Archivo subido y guardado exitosamente.")
 
-    elif metodo_carga == "📋 Pegar reporte manualmente":
-        texto_pegar = st.text_area("📋 Pegá aquí el reporte copiado (incluí encabezados)", height=300)
-        if texto_pegar:
-            try:
-                texto_pegar_preview = texto_pegar[:500]
-                if "\t" in texto_pegar_preview:
-                    sep_detectado = "\t"
-                elif ";" in texto_pegar_preview:
-                    sep_detectado = ";"
-                else:
-                    sep_detectado = ","
+            st.success(f"✅ Reporte agregado y guardado correctamente (detectado separador '{sep_detectado}').")
 
-                archivo_simulado = StringIO(texto_pegar)
-                df_nuevo = pd.read_csv(archivo_simulado, sep=sep_detectado, decimal=",")
-                df_nuevo["Responsable"] = responsable
-                df_nuevo["Fecha_Subida"] = fecha_actual
-
-                df_historial = pd.concat([df_historial, df_nuevo], ignore_index=True)
-                df_historial = df_historial.fillna("")
-                worksheet.clear()
-                worksheet.update([df_historial.columns.values.tolist()] + df_historial.values.tolist())
-
-                st.success(f"✅ Reporte agregado y guardado correctamente en historial (detectado separador '{sep_detectado}').")
-
-            except Exception as e:
-                st.error(f"❌ Error al procesar los datos pegados: {e}")
+        except Exception as e:
+            st.error(f"❌ Error al procesar los datos pegados: {e}")
 
     if not df_historial.empty:
         st.info(f"📊 Total de registros acumulados: {len(df_historial)}")
@@ -266,7 +255,6 @@ elif "Registro de actividad de jugadores" in seccion:
             with open("registro_jugadores.xlsx", "rb") as f:
                 st.download_button("📅 Descargar Excel", f, file_name="registro_jugadores.xlsx")
 
-            st.info(f"📋 Hay actualmente {len(df_historial)} registros guardados en el historial.")
             # 🔢 Gráficos adicionales
             st.subheader("🏆 Top 10 jugadores por monto total cargado")
             top_monto = df_registro.sort_values("Suma de las cargas", ascending=False).head(10)
