@@ -284,7 +284,7 @@ elif "Registro de actividad de jugadores" in seccion:
             st.plotly_chart(fig_ltv, use_container_width=True)
 
         except Exception as e:
-        st.error(f"❌ Error al procesar el reporte: {e}")
+            st.error(f"❌ Error al procesar el reporte: {e}")
 
 elif seccion == "📆 Seguimiento de jugadores inactivos":
     st.header("📆 Seguimiento de Jugadores Inactivos Mejorado")
