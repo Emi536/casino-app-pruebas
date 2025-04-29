@@ -165,9 +165,9 @@ elif "Registro de actividad de jugadores" in seccion:
     
                 st.success(f"✅ Datos cargados correctamente detectando separador '{sep_detectado}' y decimal ','.")
 
-            except Exception as e:
-                st.error(f"❌ Error al procesar los datos pegados: {e}")
-                df = None
+          except Exception as e:
+             st.error(f"❌ Error al procesar los datos pegados: {e}")
+             df = None
 
     else:
         df = None
