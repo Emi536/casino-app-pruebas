@@ -38,8 +38,6 @@ def preparar_dataframe(df):
 # --- SECCION 1: METRICAS DE JUGADORES ---
 if seccion == "🔝 Métricas de jugadores":
     st.header("📊 Métricas de Jugadores - Análisis de Cargas")
-    
-    df = None 
 
     top_n = st.selectbox("Selecciona el número de jugadores a mostrar:", [30, 50, 100, 150, 200], index=0)
     archivo = st.file_uploader("📁 Subí tu archivo de cargas recientes:", type=["xlsx", "xls", "csv"], key="top10")
