@@ -136,11 +136,11 @@ elif seccion == "📋 Registro de actividad de jugadores":
     archivo = st.file_uploader("📁 Subí tu archivo de cargas:", type=["xlsx", "xls", "csv"], key="registro")
 
     if archivo:
-        # Leer el archivo
+        # 🛠️ Cargar el archivo
         df = pd.read_excel(archivo) if archivo.name.endswith((".xlsx", ".xls")) else pd.read_csv(archivo)
 
         if df is not None:
-            # 🔥 Renombrar columnas para que funcionen con la app
+            # 🔥 Renombrar columnas apenas abrimos
             df = df.rename(columns={
                 "operación": "Tipo",
                 "Depositar": "Monto",
@@ -149,7 +149,15 @@ elif seccion == "📋 Registro de actividad de jugadores":
                 "Al usuario": "Jugador"
             })
 
-            # Preparar las columnas
+            # 🔎 Verificar columnas clave
+            columnas_necesarias = ["Tipo", "Monto", "Retiro", "Fecha", "Jugador"]
+            columnas_faltantes = [col for col in columnas_necesarias if col not in df.columns]
+
+            if columnas_faltantes:
+                st.error(f"❌ El archivo no contiene las columnas necesarias: {', '.join(columnas_faltantes)}")
+                st.stop()
+
+            # ✅ Procesar las columnas
             df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
             df["Monto"] = pd.to_numeric(df["Monto"], errors="coerce").fillna(0)
             df["Retiro"] = df["Retiro"].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
@@ -186,6 +194,14 @@ elif seccion == "📋 Registro de actividad de jugadores":
             df_registro = pd.DataFrame(resumen)
             df_registro = df_registro.sort_values("Días inactivo", ascending=False)
 
+            # 📊 Métricas principales
+            st.subheader("📊 Métricas generales")
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Total jugadores", len(df_registro))
+            col2.metric("Total cargas", f"${int(df['Monto'].sum()):,}".replace(",", "."))
+            col3.metric("Total retiros", f"${int(df['Retiro'].sum()):,}".replace(",", "."))
+
+            # 📄 Tabla general de jugadores
             st.subheader("📄 Registro completo de jugadores")
             st.dataframe(df_registro)
 
@@ -194,38 +210,24 @@ elif seccion == "📋 Registro de actividad de jugadores":
             with open("registro_jugadores.xlsx", "rb") as f:
                 st.download_button("📥 Descargar Excel", f, file_name="registro_jugadores.xlsx")
 
-            # 📈 Análisis avanzado - BI
+            # 📈 Gráficos Mejorados
 
             # Top 10 jugadores por monto cargado
             st.subheader("🏆 Top 10 jugadores por monto total cargado")
             top_monto = df_registro.sort_values("Suma de las cargas", ascending=False).head(10)
-            fig_top_monto = px.bar(
-                top_monto,
-                x="Nombre de jugador",
-                y="Suma de las cargas",
-                text="Suma de las cargas",
-                title="Top 10 jugadores que más dinero cargaron",
-                labels={"Suma de las cargas": "Monto total cargado"},
-            )
+            fig_top_monto = px.bar(top_monto, x="Nombre de jugador", y="Suma de las cargas", text="Suma de las cargas",
+                                   title="Top 10 jugadores que más dinero cargaron", labels={"Suma de las cargas": "Monto total cargado"})
             fig_top_monto.update_traces(texttemplate='%{text:.2s}', textposition='outside')
-            fig_top_monto.update_layout(yaxis_title="Monto total", xaxis_title="Jugador", uniformtext_minsize=8, uniformtext_mode='hide')
             st.plotly_chart(fig_top_monto, use_container_width=True)
-            
+
             # Top 10 jugadores por cantidad de cargas
             st.subheader("🏆 Top 10 jugadores por cantidad de cargas")
             top_cargas = df_registro.sort_values("Veces que cargó", ascending=False).head(10)
-            fig_top_cargas = px.bar(
-                top_cargas,
-                x="Nombre de jugador",
-                y="Veces que cargó",
-                text="Veces que cargó",
-                title="Top 10 jugadores con más cargas realizadas",
-                labels={"Veces que cargó": "Cantidad de cargas"},
-            )
+            fig_top_cargas = px.bar(top_cargas, x="Nombre de jugador", y="Veces que cargó", text="Veces que cargó",
+                                    title="Top 10 jugadores con más cargas realizadas", labels={"Veces que cargó": "Cantidad de cargas"})
             fig_top_cargas.update_traces(texttemplate='%{text}', textposition='outside')
-            fig_top_cargas.update_layout(yaxis_title="Cantidad de cargas", xaxis_title="Jugador")
             st.plotly_chart(fig_top_cargas, use_container_width=True)
-            
+
             # Evolución diaria de cargas, retiros y neto
             st.subheader("📈 Evolución diaria de cargas, retiros y neto")
             df_diario = df.groupby(df["Fecha"].dt.date).agg({
@@ -233,96 +235,49 @@ elif seccion == "📋 Registro de actividad de jugadores":
                 "Retiro": "sum",
                 "Jugador": "count"
             }).reset_index().rename(columns={"Jugador": "Cantidad de operaciones"})
-            
             df_diario["Neto diario"] = df_diario["Monto"] - df_diario["Retiro"]
-            
-            # Gráfico de cargas
-            fig_cargas = px.line(
-                df_diario,
-                x="Fecha",
-                y="Monto",
-                markers=True,
-                title="Cargas diarias",
-                labels={"Monto": "Total Cargado"}
-            )
-            fig_cargas.update_traces(textposition="top center")
+
+            fig_cargas = px.line(df_diario, x="Fecha", y="Monto", markers=True, title="Cargas diarias")
             st.plotly_chart(fig_cargas, use_container_width=True)
-            
-            # Gráfico de retiros
-            fig_retiros = px.line(
-                df_diario,
-                x="Fecha",
-                y="Retiro",
-                markers=True,
-                title="Retiros diarios",
-                labels={"Retiro": "Total Retirado"}
-            )
+
+            fig_retiros = px.line(df_diario, x="Fecha", y="Retiro", markers=True, title="Retiros diarios")
             st.plotly_chart(fig_retiros, use_container_width=True)
-            
-            # Gráfico de neto
-            fig_neto = px.line(
-                df_diario,
-                x="Fecha",
-                y="Neto diario",
-                markers=True,
-                title="Balance Neto Diario (Cargas - Retiros)",
-                labels={"Neto diario": "Balance Neto"}
-            )
+
+            fig_neto = px.line(df_diario, x="Fecha", y="Neto diario", markers=True, title="Balance Neto Diario (Cargas - Retiros)")
             st.plotly_chart(fig_neto, use_container_width=True)
-            
-            # Análisis de actividad por hora
+
+            # Actividad por hora
             st.subheader("🕐 Actividad de jugadores por hora")
             df["Hora"] = df["Fecha"].dt.hour
             df_hora = df.groupby(["Hora", "Tipo"]).size().reset_index(name="Cantidad")
-            
-            fig_hora = px.bar(
-                df_hora,
-                x="Hora",
-                y="Cantidad",
-                color="Tipo",
-                barmode="group",
-                title="Cantidad de cargas y retiros por hora del día",
-                labels={"Hora": "Hora del día", "Cantidad": "Número de movimientos"}
-            )
+
+            fig_hora = px.bar(df_hora, x="Hora", y="Cantidad", color="Tipo", barmode="group",
+                              title="Cantidad de cargas y retiros por hora del día")
             st.plotly_chart(fig_hora, use_container_width=True)
-            
+
             # Detección de anomalías
             st.subheader("🚨 Detección de anomalías en cargas diarias")
             promedio_cargas = df_diario["Monto"].mean()
             df_diario["Anomalía grave"] = df_diario["Monto"] < (promedio_cargas * 0.5)
-            df_diario["Anomalía leve"] = (df_diario["Monto"] >= (promedio_cargas * 0.5)) & (df_diario["Monto"] < (promedio_cargas * 0.7))
-            
-            fig_anomalias = px.scatter(
-                df_diario,
-                x="Fecha",
-                y="Monto",
-                color=df_diario["Anomalía grave"].map({True: "Grave", False: "Normal"}),
-                title="Detección de días de baja actividad (anomalías)",
-                labels={"Monto": "Total de cargas diarias"},
-                hover_data=["Monto"]
-            )
-            st.plotly_chart(fig_anomalias, use_container_width=True)
-            
+
+            if df_diario["Anomalía grave"].any():
+                fig_anomalias = px.scatter(df_diario, x="Fecha", y="Monto",
+                                           color=df_diario["Anomalía grave"].map({True: "Grave", False: "Normal"}),
+                                           title="Detección de días de baja actividad", hover_data=["Monto"])
+                st.plotly_chart(fig_anomalias, use_container_width=True)
+            else:
+                st.info("✅ No se detectaron anomalías graves en las cargas.")
+
             # Lifetime Value (LTV)
             st.subheader("💵 Valor de vida del jugador (LTV)")
-            fig_ltv = px.scatter(
-                df_registro,
-                x="Duración activa (días)",
-                y="LTV (Lifetime Value)",
-                hover_data=["Nombre de jugador", "Veces que cargó", "Cantidad de retiro"],
-                title="Relación entre duración activa y monto total generado (LTV)",
-                labels={
-                    "Duración activa (días)": "Días activos",
-                    "LTV (Lifetime Value)": "Monto total generado"
-                }
-            )
+            fig_ltv = px.scatter(df_registro, x="Duración activa (días)", y="LTV (Lifetime Value)",
+                                 hover_data=["Nombre de jugador", "Veces que cargó", "Cantidad de retiro"],
+                                 title="Relación entre duración activa y monto total generado (LTV)")
             fig_ltv.update_traces(marker=dict(size=10, color="blue"))
             st.plotly_chart(fig_ltv, use_container_width=True)
 
         else:
             st.error("❌ El archivo no tiene el formato esperado.")
-
-#SECCION 3 AGENDA INACTIVOS
 elif seccion == "📆 Seguimiento de jugadores inactivos":
     st.header("📆 Seguimiento de Jugadores Inactivos Mejorado")
     archivo_agenda = st.file_uploader("📁 Subí tu archivo con dos hojas (Nombres y Reporte General):", type=["xlsx", "xls"], key="agenda")
