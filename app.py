@@ -231,8 +231,6 @@ if df is not None:
         with open("registro_jugadores.xlsx", "rb") as f:
             st.download_button("📥 Descargar Excel", f, file_name="registro_jugadores.xlsx")
 
-    except Exception as e:
-        st.error(f"❌ Error al procesar el reporte: {e}")
 
             # 📈 Análisis avanzado - BI
 
