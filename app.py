@@ -283,7 +283,7 @@ elif "Registro de actividad de jugadores" in seccion:
             fig_ltv = px.scatter(df_registro, x="Duración activa (días)", y="LTV (Lifetime Value)", hover_data=["Nombre de jugador"], title="Relación entre Duración Activa y LTV")
             st.plotly_chart(fig_ltv, use_container_width=True)
 
-    except Exception as e:
+        except Exception as e:
         st.error(f"❌ Error al procesar el reporte: {e}")
 
 elif seccion == "📆 Seguimiento de jugadores inactivos":
