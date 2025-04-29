@@ -5,4 +5,5 @@ openpyxl
 xlsxwriter
 xlrd
 plotly
-pip install gspread oauth2client
+gspread 
+oauth2client
