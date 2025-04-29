@@ -5,7 +5,7 @@ import plotly.express as px
 from io import StringIO
 import os
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2 import service_account
 
 df = None
 
