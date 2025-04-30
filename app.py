@@ -219,10 +219,6 @@ elif "Registro de actividad de jugadores" in seccion:
     
             st.success("✅ Reporte agregado correctamente a las hojas Fenix y Eros")
 
-    except Exception as e:
-        st.error(f"❌ Error al procesar los datos pegados: {e}")
-
-
         except Exception as e:
             st.error(f"❌ Error al procesar los datos pegados: {e}")
 
