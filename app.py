@@ -170,6 +170,7 @@ elif "Registro de actividad de jugadores" in seccion:
     if texto_pegar:
         try:
             texto_pegar_preview = texto_pegar[:500]
+    
             if "\t" in texto_pegar_preview:
                 sep_detectado = "\t"
             elif ";" in texto_pegar_preview:
@@ -177,27 +178,43 @@ elif "Registro de actividad de jugadores" in seccion:
             else:
                 sep_detectado = ","
     
-            archivo_simulado = StringIO(texto_pegar)
-            df_nuevo = pd.read_csv(archivo_simulado, sep=sep_detectado, decimal=",")
+            # 🔍 Leer todas las líneas
+            lineas = texto_pegar.strip().splitlines()
+            encabezados = lineas[0].split(sep_detectado)
+            cantidad_columnas = len(encabezados)
+    
+            # 🛠️ Armar contenido limpio con líneas válidas
+            contenido_limpio = []
+            contenido_limpio.append(sep_detectado.join(encabezados))  # encabezado
+            for fila in lineas[1:]:
+                columnas = fila.split(sep_detectado)
+                if len(columnas) < cantidad_columnas:
+                    # completar con blancos
+                    columnas += [""] * (cantidad_columnas - len(columnas))
+                elif len(columnas) > cantidad_columnas:
+                    # recortar columnas sobrantes
+                    columnas = columnas[:cantidad_columnas]
+                contenido_limpio.append(sep_detectado.join(columnas))
+    
+            # Crear CSV limpio
+            archivo_limpio = StringIO("\n".join(contenido_limpio))
+            df_nuevo = pd.read_csv(archivo_limpio, sep=sep_detectado, decimal=",", dtype=str)
     
             df_nuevo["Responsable"] = responsable
             df_nuevo["Fecha_Subida"] = fecha_actual
     
-            # 🔄 Convertir los valores a string para evitar errores de formato
             df_nuevo = df_nuevo.fillna("").astype(str)
             df_historial = df_historial.fillna("").astype(str)
-    
-            # 📌 Concatenar sin perder registros previos
             df_historial = pd.concat([df_historial, df_nuevo], ignore_index=True)
     
-            # 🧼 Subida segura a Google Sheets
             worksheet.clear()
             worksheet.update([df_historial.columns.tolist()] + df_historial.values.tolist())
     
             st.success(f"✅ Reporte agregado y guardado correctamente (detectado separador '{sep_detectado}').")
-
+    
         except Exception as e:
             st.error(f"❌ Error al procesar los datos pegados: {e}")
+
     if not df_historial.empty:
         st.info(f"📊 Total de registros acumulados: {len(df_historial)}")
         if st.button("🗑️ Borrar todo el historial"):
