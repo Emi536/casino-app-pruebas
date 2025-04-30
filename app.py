@@ -21,7 +21,8 @@ credentials = service_account.Credentials.from_service_account_info(
 gc = gspread.authorize(credentials)
 SPREADSHEET_ID = "1HxbIBXBs8tlFtNy8RUQq8oANei1MHp_VleQmvCmLabY"
 sh = gc.open_by_key(SPREADSHEET_ID)
-worksheet = sh.sheet1
+worksheet_fenix = sh.worksheet("Fenix")
+worksheet_eros = sh.worksheet("Eros")
 
 # 🔵 Cargar historial si existe
 try:
@@ -157,7 +158,6 @@ if seccion == "🔝 Métricas de jugadores":
 elif "Registro de actividad de jugadores" in seccion:
     st.header("📋 Registro general de jugadores")
 
-    # Mostrar fecha última actualización
     argentina = pytz.timezone("America/Argentina/Buenos_Aires")
     ahora = datetime.datetime.now(argentina)
     fecha_actual = ahora.strftime("%d/%m/%Y - %H:%M hs")
@@ -184,13 +184,34 @@ elif "Registro de actividad de jugadores" in seccion:
             df_nuevo["Responsable"] = responsable
             df_nuevo["Fecha_Subida"] = fecha_actual
 
-            df_historial = pd.concat([df_historial, df_nuevo], ignore_index=True)
-            df_historial = df_historial.fillna("")
+            # Detectar el casino
+            df_nuevo["Casino"] = df_nuevo["Del usuario"].apply(
+                lambda x: "Fenix" if "fenix" in str(x).lower() else ("Eros" if "eros" in str(x).lower() else "Desconocido")
+            )
 
-            worksheet.clear()
-            worksheet.update([df_historial.columns.values.tolist()] + df_historial.values.tolist())
+            df_nuevo_fenix = df_nuevo[df_nuevo["Casino"] == "Fenix"]
+            df_nuevo_eros = df_nuevo[df_nuevo["Casino"] == "Eros"]
 
-            st.success(f"✅ Reporte agregado y guardado correctamente (detectado separador '{sep_detectado}').")
+            try:
+                df_historial_fenix = pd.DataFrame(worksheet_fenix.get_all_records())
+            except:
+                df_historial_fenix = pd.DataFrame()
+
+            try:
+                df_historial_eros = pd.DataFrame(worksheet_eros.get_all_records())
+            except:
+                df_historial_eros = pd.DataFrame()
+
+            df_historial_fenix = pd.concat([df_historial_fenix, df_nuevo_fenix], ignore_index=True).fillna("")
+            df_historial_eros = pd.concat([df_historial_eros, df_nuevo_eros], ignore_index=True).fillna("")
+
+            worksheet_fenix.clear()
+            worksheet_fenix.update([df_historial_fenix.columns.tolist()] + df_historial_fenix.values.tolist())
+
+            worksheet_eros.clear()
+            worksheet_eros.update([df_historial_eros.columns.tolist()] + df_historial_eros.values.tolist())
+
+            st.success("✅ Reporte agregado correctamente a las hojas 'Fenix' y 'Eros'")
 
         except Exception as e:
             st.error(f"❌ Error al procesar los datos pegados: {e}")
