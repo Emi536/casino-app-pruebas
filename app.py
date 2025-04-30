@@ -169,55 +169,55 @@ elif "Registro de actividad de jugadores" in seccion:
     df = None
 
     if texto_pegar:
-    try:
-        texto_pegar_preview = texto_pegar[:500]
-        if "\t" in texto_pegar_preview:
-            sep_detectado = "\t"
-        elif ";" in texto_pegar_preview:
-            sep_detectado = ";"
-        else:
-            sep_detectado = ","
-
-        archivo_simulado = StringIO(texto_pegar)
-        df_nuevo = pd.read_csv(archivo_simulado, sep=sep_detectado, decimal=",")
-
-        df_nuevo["Responsable"] = responsable
-        df_nuevo["Fecha_Subida"] = fecha_actual
-
-        # Detectar casino
-        df_nuevo["Casino"] = df_nuevo["Del usuario"].apply(
-            lambda x: "Fenix" if "fenix" in str(x).lower() else ("Eros" if "eros" in str(x).lower() else "Desconocido")
-        )
-
-        # Separar en dos DataFrames
-        df_fenix = df_nuevo[df_nuevo["Casino"] == "Fenix"]
-        df_eros = df_nuevo[df_nuevo["Casino"] == "Eros"]
-
-        # Conectarse a hojas individuales
-        worksheet_fenix = sh.worksheet("Fenix")
-        worksheet_eros = sh.worksheet("Eros")
-
         try:
-            df_hist_fenix = pd.DataFrame(worksheet_fenix.get_all_records())
-        except:
-            df_hist_fenix = pd.DataFrame()
-
-        try:
-            df_hist_eros = pd.DataFrame(worksheet_eros.get_all_records())
-        except:
-            df_hist_eros = pd.DataFrame()
-
-        # Actualizar con lo nuevo
-        df_hist_fenix = pd.concat([df_hist_fenix, df_fenix], ignore_index=True).fillna("")
-        df_hist_eros = pd.concat([df_hist_eros, df_eros], ignore_index=True).fillna("")
-
-        worksheet_fenix.clear()
-        worksheet_fenix.update([df_hist_fenix.columns.values.tolist()] + df_hist_fenix.values.tolist())
-
-        worksheet_eros.clear()
-        worksheet_eros.update([df_hist_eros.columns.values.tolist()] + df_hist_eros.values.tolist())
-
-        st.success("✅ Reporte agregado correctamente a las hojas Fenix y Eros")
+            texto_pegar_preview = texto_pegar[:500]
+            if "\t" in texto_pegar_preview:
+                sep_detectado = "\t"
+            elif ";" in texto_pegar_preview:
+                sep_detectado = ";"
+            else:
+                sep_detectado = ","
+    
+            archivo_simulado = StringIO(texto_pegar)
+            df_nuevo = pd.read_csv(archivo_simulado, sep=sep_detectado, decimal=",")
+    
+            df_nuevo["Responsable"] = responsable
+            df_nuevo["Fecha_Subida"] = fecha_actual
+    
+            # Detectar casino
+            df_nuevo["Casino"] = df_nuevo["Del usuario"].apply(
+                lambda x: "Fenix" if "fenix" in str(x).lower() else ("Eros" if "eros" in str(x).lower() else "Desconocido")
+            )
+    
+            # Separar en dos DataFrames
+            df_fenix = df_nuevo[df_nuevo["Casino"] == "Fenix"]
+            df_eros = df_nuevo[df_nuevo["Casino"] == "Eros"]
+    
+            # Conectarse a hojas individuales
+            worksheet_fenix = sh.worksheet("Fenix")
+            worksheet_eros = sh.worksheet("Eros")
+    
+            try:
+                df_hist_fenix = pd.DataFrame(worksheet_fenix.get_all_records())
+            except:
+                df_hist_fenix = pd.DataFrame()
+    
+            try:
+                df_hist_eros = pd.DataFrame(worksheet_eros.get_all_records())
+            except:
+                df_hist_eros = pd.DataFrame()
+    
+            # Actualizar con lo nuevo
+            df_hist_fenix = pd.concat([df_hist_fenix, df_fenix], ignore_index=True).fillna("")
+            df_hist_eros = pd.concat([df_hist_eros, df_eros], ignore_index=True).fillna("")
+    
+            worksheet_fenix.clear()
+            worksheet_fenix.update([df_hist_fenix.columns.values.tolist()] + df_hist_fenix.values.tolist())
+    
+            worksheet_eros.clear()
+            worksheet_eros.update([df_hist_eros.columns.values.tolist()] + df_hist_eros.values.tolist())
+    
+            st.success("✅ Reporte agregado correctamente a las hojas Fenix y Eros")
 
     except Exception as e:
         st.error(f"❌ Error al procesar los datos pegados: {e}")
