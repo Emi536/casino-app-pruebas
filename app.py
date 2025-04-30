@@ -218,6 +218,10 @@ elif "Registro de actividad de jugadores" in seccion:
             worksheet_eros.update([df_hist_eros.columns.values.tolist()] + df_hist_eros.values.tolist())
     
             st.success("✅ Reporte agregado correctamente a las hojas Fenix y Eros")
+            # 🔄 Volver a leer ambos historiales para análisis completo
+            df_historial_fenix = pd.DataFrame(worksheet_fenix.get_all_records())
+            df_historial_eros = pd.DataFrame(worksheet_eros.get_all_records())
+            df_historial = pd.concat([df_historial_fenix, df_historial_eros], ignore_index=True).fillna("")
 
         except Exception as e:
             st.error(f"❌ Error al procesar los datos pegados: {e}")
