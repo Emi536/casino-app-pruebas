@@ -166,7 +166,7 @@ elif "Registro de actividad de jugadores" in seccion:
 
     texto_pegar = st.text_area("📋 Pegá aquí el reporte copiado (incluí encabezados)", height=300)
     df = None
-
+    
     if texto_pegar:
         try:
             texto_pegar_preview = texto_pegar[:500]
@@ -176,24 +176,28 @@ elif "Registro de actividad de jugadores" in seccion:
                 sep_detectado = ";"
             else:
                 sep_detectado = ","
-
+    
             archivo_simulado = StringIO(texto_pegar)
             df_nuevo = pd.read_csv(archivo_simulado, sep=sep_detectado, decimal=",")
-
+    
             df_nuevo["Responsable"] = responsable
             df_nuevo["Fecha_Subida"] = fecha_actual
-
+    
+            # 🔄 Convertir los valores a string para evitar errores de formato
+            df_nuevo = df_nuevo.fillna("").astype(str)
+            df_historial = df_historial.fillna("").astype(str)
+    
+            # 📌 Concatenar sin perder registros previos
             df_historial = pd.concat([df_historial, df_nuevo], ignore_index=True)
-            df_historial = df_historial.fillna("")
-
+    
+            # 🧼 Subida segura a Google Sheets
             worksheet.clear()
-            worksheet.update([df_historial.columns.values.tolist()] + df_historial.values.tolist())
-
+            worksheet.update([df_historial.columns.tolist()] + df_historial.values.tolist())
+    
             st.success(f"✅ Reporte agregado y guardado correctamente (detectado separador '{sep_detectado}').")
 
         except Exception as e:
             st.error(f"❌ Error al procesar los datos pegados: {e}")
-
     if not df_historial.empty:
         st.info(f"📊 Total de registros acumulados: {len(df_historial)}")
         if st.button("🗑️ Borrar todo el historial"):
