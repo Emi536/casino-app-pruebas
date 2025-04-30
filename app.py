@@ -169,49 +169,59 @@ elif "Registro de actividad de jugadores" in seccion:
     df = None
 
     if texto_pegar:
+    try:
+        texto_pegar_preview = texto_pegar[:500]
+        if "\t" in texto_pegar_preview:
+            sep_detectado = "\t"
+        elif ";" in texto_pegar_preview:
+            sep_detectado = ";"
+        else:
+            sep_detectado = ","
+
+        archivo_simulado = StringIO(texto_pegar)
+        df_nuevo = pd.read_csv(archivo_simulado, sep=sep_detectado, decimal=",")
+
+        df_nuevo["Responsable"] = responsable
+        df_nuevo["Fecha_Subida"] = fecha_actual
+
+        # Detectar casino
+        df_nuevo["Casino"] = df_nuevo["Del usuario"].apply(
+            lambda x: "Fenix" if "fenix" in str(x).lower() else ("Eros" if "eros" in str(x).lower() else "Desconocido")
+        )
+
+        # Separar en dos DataFrames
+        df_fenix = df_nuevo[df_nuevo["Casino"] == "Fenix"]
+        df_eros = df_nuevo[df_nuevo["Casino"] == "Eros"]
+
+        # Conectarse a hojas individuales
+        worksheet_fenix = sh.worksheet("Fenix")
+        worksheet_eros = sh.worksheet("Eros")
+
         try:
-            texto_pegar_preview = texto_pegar[:500]
-            if "\t" in texto_pegar_preview:
-                sep_detectado = "\t"
-            elif ";" in texto_pegar_preview:
-                sep_detectado = ";"
-            else:
-                sep_detectado = ","
+            df_hist_fenix = pd.DataFrame(worksheet_fenix.get_all_records())
+        except:
+            df_hist_fenix = pd.DataFrame()
 
-            archivo_simulado = StringIO(texto_pegar)
-            df_nuevo = pd.read_csv(archivo_simulado, sep=sep_detectado, decimal=",")
+        try:
+            df_hist_eros = pd.DataFrame(worksheet_eros.get_all_records())
+        except:
+            df_hist_eros = pd.DataFrame()
 
-            df_nuevo["Responsable"] = responsable
-            df_nuevo["Fecha_Subida"] = fecha_actual
+        # Actualizar con lo nuevo
+        df_hist_fenix = pd.concat([df_hist_fenix, df_fenix], ignore_index=True).fillna("")
+        df_hist_eros = pd.concat([df_hist_eros, df_eros], ignore_index=True).fillna("")
 
-            # Detectar el casino
-            df_nuevo["Casino"] = df_nuevo["Del usuario"].apply(
-                lambda x: "Fenix" if "fenix" in str(x).lower() else ("Eros" if "eros" in str(x).lower() else "Desconocido")
-            )
+        worksheet_fenix.clear()
+        worksheet_fenix.update([df_hist_fenix.columns.values.tolist()] + df_hist_fenix.values.tolist())
 
-            df_nuevo_fenix = df_nuevo[df_nuevo["Casino"] == "Fenix"]
-            df_nuevo_eros = df_nuevo[df_nuevo["Casino"] == "Eros"]
+        worksheet_eros.clear()
+        worksheet_eros.update([df_hist_eros.columns.values.tolist()] + df_hist_eros.values.tolist())
 
-            try:
-                df_historial_fenix = pd.DataFrame(worksheet_fenix.get_all_records())
-            except:
-                df_historial_fenix = pd.DataFrame()
+        st.success("✅ Reporte agregado correctamente a las hojas Fenix y Eros")
 
-            try:
-                df_historial_eros = pd.DataFrame(worksheet_eros.get_all_records())
-            except:
-                df_historial_eros = pd.DataFrame()
+    except Exception as e:
+        st.error(f"❌ Error al procesar los datos pegados: {e}")
 
-            df_historial_fenix = pd.concat([df_historial_fenix, df_nuevo_fenix], ignore_index=True).fillna("")
-            df_historial_eros = pd.concat([df_historial_eros, df_nuevo_eros], ignore_index=True).fillna("")
-
-            worksheet_fenix.clear()
-            worksheet_fenix.update([df_historial_fenix.columns.tolist()] + df_historial_fenix.values.tolist())
-
-            worksheet_eros.clear()
-            worksheet_eros.update([df_historial_eros.columns.tolist()] + df_historial_eros.values.tolist())
-
-            st.success("✅ Reporte agregado correctamente a las hojas 'Fenix' y 'Eros'")
 
         except Exception as e:
             st.error(f"❌ Error al procesar los datos pegados: {e}")
