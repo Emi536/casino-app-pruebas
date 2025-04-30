@@ -392,10 +392,13 @@ elif "Registro de actividad de jugadores" in seccion:
 if not df_historial.empty:
     st.info(f"📊 Total de registros acumulados: {len(df_historial)}")
     if st.button("🗑️ Borrar todo el historial"):
-        worksheet_fenix.clear()
-        worksheet_eros.clear()
-        df_historial = pd.DataFrame()
-        st.success("✅ Historial borrado correctamente. Recargá la app.")
+       worksheet_fenix.clear()
+       worksheet_fenix.update([df_fenix_actualizado.columns.values.tolist()] + df_fenix_actualizado.values.tolist())
+        
+       worksheet_eros.clear()
+       worksheet_eros.update([df_eros_actualizado.columns.values.tolist()] + df_eros_actualizado.values.tolist())
+       df_historial = pd.DataFrame()
+       st.success("✅ Historial borrado correctamente. Recargá la app.")
     df = df_historial.copy()
 
 
