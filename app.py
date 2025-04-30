@@ -389,13 +389,15 @@ elif "Registro de actividad de jugadores" in seccion:
         except Exception as e:
             st.error(f"❌ Error al procesar los datos pegados: {e}")
 
-    if not df_historial.empty:
-        st.info(f"📊 Total de registros acumulados: {len(df_historial)}")
-        if st.button("🗑️ Borrar todo el historial"):
-            worksheet.clear()
-            df_historial = pd.DataFrame()
-            st.success("✅ Historial borrado correctamente. Recargá la app.")
-        df = df_historial.copy()
+if not df_historial.empty:
+    st.info(f"📊 Total de registros acumulados: {len(df_historial)}")
+    if st.button("🗑️ Borrar todo el historial"):
+        worksheet_fenix.clear()
+        worksheet_eros.clear()
+        df_historial = pd.DataFrame()
+        st.success("✅ Historial borrado correctamente. Recargá la app.")
+    df = df_historial.copy()
+
 
     if df is not None:
         try:
