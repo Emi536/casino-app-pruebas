@@ -330,7 +330,6 @@ elif "📋 Registro Eros" in seccion:
     st.info(f"⏰ Última actualización: {fecha_actual}")
 
     responsable = st.text_input("👤 Ingresá tu nombre para registrar quién sube el reporte", value="Anónimo")
-
     texto_pegar = st.text_area("📋 Pegá aquí el reporte copiado (incluí encabezados)", height=300)
     df = None
 
@@ -365,9 +364,6 @@ elif "📋 Registro Eros" in seccion:
             if not all(col in df_nuevo.columns for col in columnas_requeridas):
                 st.error("❌ El reporte pegado no contiene los encabezados necesarios o está mal formateado.")
                 st.stop()
-
-            st.subheader("🧾 Vista previa del reporte pegado")
-            st.dataframe(df_nuevo.head())
 
             df_nuevo = df_nuevo.rename(columns={
                 "operación": "Tipo",
@@ -416,130 +412,92 @@ elif "📋 Registro Eros" in seccion:
                 df_nuevo["Del usuario"] = df_nuevo["Del usuario"].astype(str).str.strip()
                 df_nuevo = df_nuevo[df_nuevo["Del usuario"].isin(valores_eros)]
 
-            if df_nuevo.empty:
-                st.warning("⚠️ No se encontraron registros válidos para Eros en este reporte.")
-                st.stop()
-
             try:
                 hoja_eros = sh.worksheet("registro_eros")
-            except gspread.exceptions.WorksheetNotFound:
+                data_eros = hoja_eros.get_all_records()
+                df_historial = pd.DataFrame(data_eros)
+            except:
                 hoja_eros = sh.add_worksheet(title="registro_eros", rows="1000", cols="20")
+                df_historial = pd.DataFrame()
+
+            df_historial = limpiar_dataframe(df_historial)
+
+            if "ID" in df_nuevo.columns and "ID" in df_historial.columns:
+                ids_existentes = df_historial["ID"].astype(str).tolist()
+                df_nuevo = df_nuevo[~df_nuevo["ID"].astype(str).isin(ids_existentes)]
+
+            if df_nuevo.empty:
+                st.warning("⚠️ Todos los registros pegados ya existían en el historial (mismo ID). No se agregó nada.")
+                st.stop()
+
+            df_historial = pd.concat([df_historial, df_nuevo], ignore_index=True)
+            df_historial.drop_duplicates(subset=["ID"], inplace=True)
 
             hoja_eros.clear()
-            hoja_eros.update([df_nuevo.columns.tolist()] + df_nuevo.astype(str).values.tolist())
+            hoja_eros.update([df_historial.columns.tolist()] + df_historial.astype(str).values.tolist())
 
-            st.success("✅ Registros de Eros actualizados correctamente en la hoja 'registro_eros'.")
+            st.success(f"✅ Registros de Eros actualizados correctamente en la hoja 'registro_eros'.")
 
-        except Exception as e:
-            st.error(f"❌ Error al procesar los datos pegados: {e}")
+            st.info(f"📊 Total de registros acumulados: {len(df_historial)}")
+            if st.button("🗑️ Borrar todo el historial Eros"):
+                hoja_eros.clear()
+                st.success("✅ Historial Eros borrado correctamente. Recargá la app.")
+                st.stop()
 
-    if df is not None:
-        try:
+            df = df_historial.copy()
+
             jugadores = df["Jugador"].dropna().unique()
             resumen = []
             jugadores_resumen = []
-    
+
             for jugador in jugadores:
                 historial = df[df["Jugador"] == jugador].sort_values("Fecha")
-                cargas = historial[historial["Tipo"].str.lower() == "in"]
+                cargas_hl = historial[(historial["Tipo"].str.lower() == "in") & (historial["Del usuario"] == "hl_Erosonline")]
+                cargas_wagger = historial[(historial["Tipo"].str.lower() == "in") & (historial["Del usuario"].str.startswith("Eros_wagger"))]
                 retiros = historial[historial["Tipo"].str.lower() == "out"]
-    
-                if not cargas.empty:
-                    fecha_ingreso = cargas["Fecha"].min()
-                    ultima_carga = cargas["Fecha"].max()
-                    veces_que_cargo = len(cargas)
-                    suma_de_cargas = cargas["Monto"].sum()
+
+                if not cargas_hl.empty or not cargas_wagger.empty:
+                    fecha_ingreso = historial["Fecha"].min()
+                    ultima_carga = historial["Fecha"].max()
+                    veces_que_cargo = len(cargas_hl) + len(cargas_wagger)
+                    hl = cargas_hl["Monto"].sum()
+                    wagger = cargas_wagger["Monto"].sum()
+                    total = hl + wagger
                     cantidad_retiro = retiros["Retiro"].sum()
                     dias_inactivo = (pd.to_datetime(datetime.date.today()) - ultima_carga).days
-    
+
                     resumen.append({
                         "Nombre de jugador": jugador,
                         "Fecha que ingresó": fecha_ingreso,
                         "Veces que cargó": veces_que_cargo,
-                        "Suma de las cargas": suma_de_cargas,
+                        "Hl": hl,
+                        "Wagger": wagger,
+                        "Monto total": total,
                         "Última vez que cargó": ultima_carga,
                         "Días inactivo": dias_inactivo,
                         "Cantidad de retiro": cantidad_retiro,
-                        "LTV (Lifetime Value)": suma_de_cargas,
+                        "LTV (Lifetime Value)": total,
                         "Duración activa (días)": (ultima_carga - fecha_ingreso).days
                     })
                     jugadores_resumen.append(jugador)
-    
-            jugadores_faltantes = list(set(jugadores) - set(jugadores_resumen))
-            if jugadores_faltantes:
-                st.warning(f"⚠️ Jugadores descartados del resumen por no tener cargas: {jugadores_faltantes}")
-    
+
             df_registro = pd.DataFrame(resumen).sort_values("Días inactivo", ascending=False)
-    
+
             st.subheader("📄 Registro completo de jugadores")
             st.dataframe(df_registro)
-    
-            df_registro.to_excel("registro_jugadores.xlsx", index=False)
-            with open("registro_jugadores.xlsx", "rb") as f:
-                st.download_button("📅 Descargar Excel", f, file_name="registro_jugadores.xlsx")
-    
-            # KPIs
-            total_cargado = df["Monto"].sum()
-            total_retirado = df["Retiro"].sum()
-            neto = total_cargado - total_retirado
-            cantidad_jugadores = df["Jugador"].nunique()
-    
+
+            df_registro.to_excel("registro_jugadores_eros.xlsx", index=False)
+            with open("registro_jugadores_eros.xlsx", "rb") as f:
+                st.download_button("📅 Descargar Excel", f, file_name="registro_jugadores_eros.xlsx")
+
             col1, col2, col3, col4 = st.columns(4)
-            col1.metric("💰 Total Cargado", f"${total_cargado:,.0f}")
-            col2.metric("📤 Total Retirado", f"${total_retirado:,.0f}")
-            col3.metric("💸 Neto", f"${neto:,.0f}")
-            col4.metric("👥 Jugadores únicos", cantidad_jugadores)
-
-            st.markdown("---")
-
-            # 📆 Evolución diaria
-            df_evolucion = df.groupby(df["Fecha"].dt.date).agg({
-                "Monto": "sum",
-                "Retiro": "sum"
-            }).reset_index()
-            df_evolucion["Neto"] = df_evolucion["Monto"] - df_evolucion["Retiro"]
-
-            fig_linea = px.line(
-                df_evolucion,
-                x="Fecha",
-                y=["Monto", "Retiro", "Neto"],
-                markers=True,
-                title="Evolución diaria de cargas, retiros y neto",
-                labels={"value": "Monto ($)", "variable": "Tipo"}
-            )
-            st.plotly_chart(fig_linea, use_container_width=True)
-
-            # 📊 Ranking por Jugador
-            ranking_monto = df.groupby("Jugador")["Monto"].sum().reset_index().sort_values(by="Monto", ascending=False).head(10)
-            ranking_monto["Monto"] = ranking_monto["Monto"].round(0)
-            fig_ranking = px.bar(
-                ranking_monto,
-                x="Monto",
-                y="Jugador",
-                orientation="h",
-                title="Top 10 jugadores por monto cargado",
-                text="Monto"
-            )
-            fig_ranking.update_layout(yaxis={"categoryorder": "total ascending"})
-            st.plotly_chart(fig_ranking, use_container_width=True)
-
-            # 🧭 Detección de anomalías
-            promedio_diario = df_evolucion["Monto"].mean()
-            df_evolucion["Anomalía"] = df_evolucion["Monto"] < (promedio_diario * 0.7)
-
-            fig_anomalias = px.scatter(
-                df_evolucion,
-                x="Fecha",
-                y="Monto",
-                color="Anomalía",
-                title="Detección de anomalías de carga",
-                labels={"Monto": "Monto cargado ($)"}
-            )
-            st.plotly_chart(fig_anomalias, use_container_width=True)
+            col1.metric("💰 Total Cargado", f"${df["Monto"].sum():,.0f}")
+            col2.metric("📤 Total Retirado", f"${df["Retiro"].sum():,.0f}")
+            col3.metric("💸 Neto", f"${df["Monto"].sum() - df["Retiro"].sum():,.0f}")
+            col4.metric("👥 Jugadores únicos", df["Jugador"].nunique())
 
         except Exception as e:
             st.error(f"❌ Error al procesar el reporte: {e}")
-
 
 
 elif seccion == "📆 Seguimiento de jugadores inactivos":
