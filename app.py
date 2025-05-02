@@ -229,16 +229,41 @@ elif "Registro de actividad de jugadores" in seccion:
                 "Al usuario": "Jugador"
             })
                 
-            # Limpieza de tipos
             def limpiar_dataframe(df_temp):
                 df_temp = df_temp.copy()
-                df_temp["Jugador"] = df_temp["Jugador"].astype(str).apply(lambda x: x.strip().lower())
-                df_temp["Monto"] = df_temp["Monto"].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
-                df_temp["Monto"] = pd.to_numeric(df_temp["Monto"], errors="coerce").fillna(0)
-                df_temp["Retiro"] = df_temp["Retiro"].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
-                df_temp["Retiro"] = pd.to_numeric(df_temp["Retiro"], errors="coerce").fillna(0)
-                df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"], errors="coerce")
+            
+                # Asegurar columna "Jugador"
+                if "Jugador" not in df_temp.columns:
+                    posibles = [col for col in df_temp.columns if col.lower().strip() == "al usuario"]
+                    if posibles:
+                        df_temp["Jugador"] = df_temp[posibles[0]]
+                    else:
+                        df_temp["Jugador"] = ""
+            
+                df_temp["Jugador"] = df_temp["Jugador"].astype(str).apply(lambda x: x.strip().lower() if isinstance(x, str) else "")
+            
+                # Asegurar columna "Monto"
+                if "Monto" in df_temp.columns:
+                    df_temp["Monto"] = df_temp["Monto"].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
+                    df_temp["Monto"] = pd.to_numeric(df_temp["Monto"], errors="coerce").fillna(0)
+                else:
+                    df_temp["Monto"] = 0.0
+            
+                # Asegurar columna "Retiro"
+                if "Retiro" in df_temp.columns:
+                    df_temp["Retiro"] = df_temp["Retiro"].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
+                    df_temp["Retiro"] = pd.to_numeric(df_temp["Retiro"], errors="coerce").fillna(0)
+                else:
+                    df_temp["Retiro"] = 0.0
+            
+                # Asegurar columna "Fecha"
+                if "Fecha" in df_temp.columns:
+                    df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"], errors="coerce")
+                else:
+                    df_temp["Fecha"] = pd.NaT
+            
                 return df_temp
+
     
             df_nuevo = limpiar_dataframe(df_nuevo)
             df_historial = limpiar_dataframe(df_historial)
