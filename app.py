@@ -232,20 +232,33 @@ elif "Registro de actividad de jugadores" in seccion:
                 "Fecha": "Fecha",
                 "Al usuario": "Jugador"
             })
-
+    
+            columnas_necesarias = ["Tipo", "Fecha", "Monto", "Retiro", "Jugador"]
+            if not all(col in df.columns for col in columnas_necesarias):
+                st.error(f"❌ Faltan columnas necesarias en el archivo: {set(columnas_necesarias) - set(df.columns)}")
+                st.stop()
+    
             df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
+    
             df["Monto"] = df["Monto"].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
             df["Monto"] = pd.to_numeric(df["Monto"], errors="coerce").fillna(0)
+    
             df["Retiro"] = df["Retiro"].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
             df["Retiro"] = pd.to_numeric(df["Retiro"], errors="coerce").fillna(0)
-
-            jugadores = df["Jugador"].dropna().unique()
+    
+            # 🔍 Limpieza de campo "Jugador"
+            df["Jugador"] = df["Jugador"].astype(str).str.strip().str.lower()
+            df = df[df["Jugador"].notna() & (df["Jugador"] != "")]
+    
+            jugadores = df["Jugador"].unique()
             resumen = []
+            jugadores_omitidos = []
+    
             for jugador in jugadores:
                 historial = df[df["Jugador"] == jugador].sort_values("Fecha")
                 cargas = historial[historial["Tipo"].str.lower() == "in"]
                 retiros = historial[historial["Tipo"].str.lower() == "out"]
-
+    
                 if not cargas.empty:
                     fecha_ingreso = cargas["Fecha"].min()
                     ultima_carga = cargas["Fecha"].max()
@@ -253,7 +266,7 @@ elif "Registro de actividad de jugadores" in seccion:
                     suma_de_cargas = cargas["Monto"].sum()
                     cantidad_retiro = retiros["Retiro"].sum()
                     dias_inactivo = (pd.to_datetime(datetime.date.today()) - ultima_carga).days
-
+    
                     resumen.append({
                         "Nombre de jugador": jugador,
                         "Fecha que ingresó": fecha_ingreso,
@@ -265,27 +278,33 @@ elif "Registro de actividad de jugadores" in seccion:
                         "LTV (Lifetime Value)": suma_de_cargas,
                         "Duración activa (días)": (ultima_carga - fecha_ingreso).days
                     })
-
+                else:
+                    jugadores_omitidos.append(jugador)
+    
+            if jugadores_omitidos:
+                st.warning(f"⚠️ Jugadores omitidos por no tener cargas válidas: {', '.join(jugadores_omitidos)}")
+    
             df_registro = pd.DataFrame(resumen).sort_values("Días inactivo", ascending=False)
-
+    
             st.subheader("📄 Registro completo de jugadores")
             st.dataframe(df_registro)
-
+    
             df_registro.to_excel("registro_jugadores.xlsx", index=False)
             with open("registro_jugadores.xlsx", "rb") as f:
                 st.download_button("📅 Descargar Excel", f, file_name="registro_jugadores.xlsx")
-
+    
             # 🎯 KPI Totales
             total_cargado = df["Monto"].sum()
             total_retirado = df["Retiro"].sum()
             neto = total_cargado - total_retirado
             cantidad_jugadores = df["Jugador"].nunique()
-
+    
             col1, col2, col3, col4 = st.columns(4)
             col1.metric("💰 Total Cargado", f"${total_cargado:,.0f}")
             col2.metric("📤 Total Retirado", f"${total_retirado:,.0f}")
             col3.metric("💸 Neto", f"${neto:,.0f}")
             col4.metric("👥 Jugadores únicos", cantidad_jugadores)
+
 
             st.markdown("---")
 
