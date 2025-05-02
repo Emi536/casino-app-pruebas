@@ -220,7 +220,15 @@ elif "Registro de actividad de jugadores" in seccion:
     
             df_nuevo["Responsable"] = responsable
             df_nuevo["Fecha_Subida"] = fecha_actual
-    
+
+            df_historial = df_historial.rename(columns={
+                "operación": "Tipo",
+                "Depositar": "Monto",
+                "Retirar": "Retiro",
+                "Fecha": "Fecha",
+                "Al usuario": "Jugador"
+            })
+                
             # Limpieza de tipos
             def limpiar_dataframe(df_temp):
                 df_temp = df_temp.copy()
