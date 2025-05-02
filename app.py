@@ -201,26 +201,29 @@ elif "Registro de actividad de jugadores" in seccion:
             # --- LIMPIEZA DE CAMPOS CRÍTICOS ---
             def limpiar_dataframe(df_temp):
                 df_temp = df_temp.fillna("").astype(str)
-                if "Jugador" in df_temp.columns or "Al usuario" in df_temp.columns:
-                    col_jugador = "Jugador" if "Jugador" in df_temp.columns else "Al usuario"
-                    df_temp["Jugador"] = df_temp[col_jugador].astype(str).str.strip().str.lower()
-                else:
+            
+                # Renombrar o crear columna "Jugador"
+                if "Al usuario" in df_temp.columns:
+                    df_temp["Jugador"] = df_temp["Al usuario"]
+                elif "Jugador" not in df_temp.columns:
                     df_temp["Jugador"] = ""
+            
+                df_temp["Jugador"] = df_temp["Jugador"].astype(str).str.strip().str.lower()
+            
                 for campo in ["Monto", "Retiro"]:
                     if campo in df_temp.columns:
                         df_temp[campo] = df_temp[campo].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
                         df_temp[campo] = pd.to_numeric(df_temp[campo], errors="coerce").fillna(0)
                     else:
                         df_temp[campo] = 0
+            
                 if "Fecha" in df_temp.columns:
                     df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"], errors="coerce")
                 else:
                     df_temp["Fecha"] = pd.NaT
+            
                 return df_temp
-    
-            df_nuevo = limpiar_dataframe(df_nuevo)
-            df_historial = limpiar_dataframe(df_historial)
-    
+
             # Unir ambos
             df_historial = pd.concat([df_historial, df_nuevo], ignore_index=True)
             df_historial.drop_duplicates(inplace=True)
