@@ -321,6 +321,7 @@ elif "📋 Registro Fénix" in seccion:
             st.error(f"❌ Error al generar el resumen: {e}")
 
 #SECCION EROS
+# SECCIÓN EROS (Actualizada con funcionalidades de Fénix)
 elif "📋 Registro Eros" in seccion:
     st.header("📋 Registro general de jugadores - Eros")
 
@@ -330,6 +331,7 @@ elif "📋 Registro Eros" in seccion:
     st.info(f"⏰ Última actualización: {fecha_actual}")
 
     responsable = st.text_input("👤 Ingresá tu nombre para registrar quién sube el reporte", value="Anónimo")
+
     texto_pegar = st.text_area("📋 Pegá aquí el reporte copiado (incluí encabezados)", height=300)
     df = None
 
@@ -390,6 +392,8 @@ elif "📋 Registro Eros" in seccion:
 
             def limpiar_dataframe(df_temp):
                 df_temp = df_temp.copy()
+                if "Jugador" not in df_temp.columns:
+                    df_temp["Jugador"] = ""
                 df_temp["Jugador"] = df_temp["Jugador"].astype(str).apply(lambda x: x.strip().lower())
                 df_temp["Monto"] = df_temp["Monto"].apply(convertir_monto) if "Monto" in df_temp.columns else 0.0
                 df_temp["Retiro"] = df_temp["Retiro"].apply(convertir_monto) if "Retiro" in df_temp.columns else 0.0
@@ -445,10 +449,6 @@ elif "📋 Registro Eros" in seccion:
                 st.stop()
 
             df = df_historial.copy()
-
-            jugadores = df["Jugador"].dropna().unique()
-            resumen = []
-            jugadores_resumen = []
 
             for jugador in jugadores:
                 historial = df[df["Jugador"] == jugador].sort_values("Fecha")
