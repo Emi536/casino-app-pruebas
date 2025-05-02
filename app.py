@@ -183,38 +183,57 @@ elif "Registro de actividad de jugadores" in seccion:
             encabezados = lineas[0].split(sep_detectado)
             cantidad_columnas = len(encabezados)
     
-            # 🛠️ Armar contenido limpio con líneas válidas
-            contenido_limpio = []
-            contenido_limpio.append(sep_detectado.join(encabezados))  # encabezado
+            contenido_limpio = [sep_detectado.join(encabezados)]
             for fila in lineas[1:]:
                 columnas = fila.split(sep_detectado)
                 if len(columnas) < cantidad_columnas:
-                    # completar con blancos
                     columnas += [""] * (cantidad_columnas - len(columnas))
                 elif len(columnas) > cantidad_columnas:
-                    # recortar columnas sobrantes
                     columnas = columnas[:cantidad_columnas]
                 contenido_limpio.append(sep_detectado.join(columnas))
     
-            # Crear CSV limpio
             archivo_limpio = StringIO("\n".join(contenido_limpio))
             df_nuevo = pd.read_csv(archivo_limpio, sep=sep_detectado, decimal=",", dtype=str)
     
             df_nuevo["Responsable"] = responsable
             df_nuevo["Fecha_Subida"] = fecha_actual
     
-            df_nuevo = df_nuevo.fillna("").astype(str)
-            df_historial = df_historial.fillna("").astype(str)
-            df_historial = pd.concat([df_historial, df_nuevo], ignore_index=True)
+            # --- LIMPIEZA DE CAMPOS CRÍTICOS ---
+            def limpiar_dataframe(df_temp):
+                df_temp = df_temp.fillna("").astype(str)
+                if "Jugador" in df_temp.columns or "Al usuario" in df_temp.columns:
+                    col_jugador = "Jugador" if "Jugador" in df_temp.columns else "Al usuario"
+                    df_temp["Jugador"] = df_temp[col_jugador].astype(str).str.strip().str.lower()
+                else:
+                    df_temp["Jugador"] = ""
+                for campo in ["Monto", "Retiro"]:
+                    if campo in df_temp.columns:
+                        df_temp[campo] = df_temp[campo].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
+                        df_temp[campo] = pd.to_numeric(df_temp[campo], errors="coerce").fillna(0)
+                    else:
+                        df_temp[campo] = 0
+                if "Fecha" in df_temp.columns:
+                    df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"], errors="coerce")
+                else:
+                    df_temp["Fecha"] = pd.NaT
+                return df_temp
     
+            df_nuevo = limpiar_dataframe(df_nuevo)
+            df_historial = limpiar_dataframe(df_historial)
+    
+            # Unir ambos
+            df_historial = pd.concat([df_historial, df_nuevo], ignore_index=True)
+            df_historial.drop_duplicates(inplace=True)
+    
+            # Guardar en Google Sheets
             worksheet.clear()
-            worksheet.update([df_historial.columns.tolist()] + df_historial.values.tolist())
+            worksheet.update([df_historial.columns.tolist()] + df_historial.astype(str).values.tolist())
     
             st.success(f"✅ Reporte agregado y guardado correctamente (detectado separador '{sep_detectado}').")
     
         except Exception as e:
             st.error(f"❌ Error al procesar los datos pegados: {e}")
-
+    
     if not df_historial.empty:
         st.info(f"📊 Total de registros acumulados: {len(df_historial)}")
         if st.button("🗑️ Borrar todo el historial"):
@@ -222,6 +241,7 @@ elif "Registro de actividad de jugadores" in seccion:
             df_historial = pd.DataFrame()
             st.success("✅ Historial borrado correctamente. Recargá la app.")
         df = df_historial.copy()
+
 
     if df is not None:
         try:
