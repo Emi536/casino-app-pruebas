@@ -229,6 +229,18 @@ elif "Registro de actividad de jugadores" in seccion:
                 "Al usuario": "Jugador"
             })
                 
+            # Función auxiliar para convertir montos correctamente desde texto tipo '5.000,00'
+            def convertir_monto(valor):
+                if pd.isna(valor):
+                    return 0.0
+                valor = str(valor).strip()
+                # Reemplazar solo si es formato europeo
+                valor = valor.replace(".", "").replace(",", ".")
+                try:
+                    return float(valor)
+                except:
+                    return 0.0
+
             def limpiar_dataframe(df_temp):
                 df_temp = df_temp.copy()
             
