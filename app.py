@@ -328,17 +328,18 @@ elif "📋 Registro Fénix" in seccion:
 #SECCIÓN EROS
 elif "📋 Registro Eros" in seccion:
     st.header("📋 Registro general de jugadores - Eros")
-    
+
     argentina = pytz.timezone("America/Argentina/Buenos_Aires")
     ahora = datetime.datetime.now(argentina)
     fecha_actual = ahora.strftime("%d/%m/%Y - %H:%M hs")
+    fecha_actual_date = ahora.date()
     st.info(f"⏰ Última actualización: {fecha_actual}")
-    
+
     responsable = st.text_input("👤 Ingresá tu nombre para registrar quién sube el reporte", value="Anónimo")
-    
+
     texto_pegar = st.text_area("📋 Pegá aquí el reporte copiado (incluí encabezados)", height=300)
     df_historial = pd.DataFrame()
-    
+
     try:
         hoja_eros = sh.worksheet("registro_eros")
         data_eros = hoja_eros.get_all_records()
@@ -346,7 +347,7 @@ elif "📋 Registro Eros" in seccion:
     except:
         hoja_eros = sh.add_worksheet(title="registro_eros", rows="1000", cols="20")
         df_historial = pd.DataFrame()
-    
+
     def convertir_monto(valor):
         if pd.isna(valor): return 0.0
         valor = str(valor).strip()
@@ -358,7 +359,7 @@ elif "📋 Registro Eros" in seccion:
             return float(valor)
         except:
             return 0.0
-    
+
     def limpiar_dataframe(df_temp):
         df_temp = df_temp.copy()
         if "Jugador" in df_temp.columns:
@@ -370,16 +371,23 @@ elif "📋 Registro Eros" in seccion:
         if "Fecha" in df_temp.columns:
             df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"], errors="coerce")
         return df_temp
-    
+
     df_historial = limpiar_dataframe(df_historial)
-    
+
+    # 🔁 BORRAR REGISTROS ANTIGUOS MAYORES A 10 DÍAS
+    if "Fecha" in df_historial.columns:
+        df_historial["Fecha"] = pd.to_datetime(df_historial["Fecha"], errors="coerce")
+        df_historial = df_historial[df_historial["Fecha"].notna()]
+        limite = fecha_actual_date - datetime.timedelta(days=9)
+        df_historial = df_historial[df_historial["Fecha"].dt.date >= limite]
+
     if texto_pegar:
         try:
             sep_detectado = "\t" if "\t" in texto_pegar else ";" if ";" in texto_pegar else ","
             lineas = texto_pegar.strip().splitlines()
             encabezados = lineas[0].split(sep_detectado)
             cantidad_columnas = len(encabezados)
-    
+
             contenido_limpio = [sep_detectado.join(encabezados)]
             for fila in lineas[1:]:
                 columnas = fila.split(sep_detectado)
@@ -388,16 +396,16 @@ elif "📋 Registro Eros" in seccion:
                 elif len(columnas) > cantidad_columnas:
                     columnas = columnas[:cantidad_columnas]
                 contenido_limpio.append(sep_detectado.join(columnas))
-    
+
             archivo_limpio = StringIO("\n".join(contenido_limpio))
             df_nuevo = pd.read_csv(archivo_limpio, sep=sep_detectado, decimal=",", dtype=str)
             df_nuevo = df_nuevo.loc[:, ~df_nuevo.columns.str.contains("^Unnamed")]
-    
+
             columnas_requeridas = ["operación", "Depositar", "Retirar", "Fecha", "Al usuario"]
             if not all(col in df_nuevo.columns for col in columnas_requeridas):
                 st.error("❌ El reporte pegado no contiene los encabezados necesarios o está mal formateado.")
                 st.stop()
-    
+
             df_nuevo = df_nuevo.rename(columns={
                 "operación": "Tipo",
                 "Depositar": "Monto",
@@ -405,10 +413,10 @@ elif "📋 Registro Eros" in seccion:
                 "Fecha": "Fecha",
                 "Al usuario": "Jugador"
             })
-    
+
             df_nuevo["Responsable"] = responsable
             df_nuevo["Fecha_Subida"] = fecha_actual
-    
+
             valores_eros = [
                 "hl_Erosonline",
                 "Eros_wagger30%", "Eros_wagger40%", "Eros_wagger50%",
@@ -417,56 +425,51 @@ elif "📋 Registro Eros" in seccion:
             if "Del usuario" in df_nuevo.columns:
                 df_nuevo["Del usuario"] = df_nuevo["Del usuario"].astype(str).str.strip()
                 df_nuevo = df_nuevo[df_nuevo["Del usuario"].isin(valores_eros)]
-    
+
             df_nuevo = limpiar_dataframe(df_nuevo)
-    
+
             if "ID" in df_nuevo.columns and "ID" in df_historial.columns:
                 ids_existentes = df_historial["ID"].astype(str).tolist()
                 df_nuevo = df_nuevo[~df_nuevo["ID"].astype(str).isin(ids_existentes)]
-    
+
             if df_nuevo.empty:
                 st.warning("⚠️ Todos los registros pegados ya existían en el historial (mismo ID). No se agregó nada.")
                 st.stop()
-    
+
             df_historial = pd.concat([df_historial, df_nuevo], ignore_index=True)
             df_historial.drop_duplicates(subset=["ID"], inplace=True)
-    
+
             hoja_eros.clear()
             hoja_eros.update([df_historial.columns.tolist()] + df_historial.astype(str).values.tolist())
-    
+
             st.success(f"✅ Registros de Eros actualizados correctamente. Total acumulado: {len(df_historial)}")
-    
+
         except Exception as e:
             st.error(f"❌ Error al procesar los datos pegados: {e}")
-    
+
     if not df_historial.empty:
         st.info(f"📊 Total de registros acumulados: {len(df_historial)}")
-        if st.button("🗑️ Borrar todo el historial Eros"):
-            hoja_eros.clear()
-            st.success("✅ Historial Eros borrado correctamente. Recargá la app.")
-            st.stop()
-    
         df = df_historial.copy()
-    
+
         try:
             valores_hl = ["hl_Erosonline"]
             valores_wagger = ["Eros_wagger30%", "Eros_wagger40%", "Eros_wagger50%", "Eros_wagger100%", "Eros_wagger150%", "Eros_wagger200%"]
-    
+
             resumen = []
             jugadores = df["Jugador"].dropna().unique()
-    
+
             for jugador in jugadores:
                 historial = df[df["Jugador"] == jugador].sort_values("Fecha")
                 cargas = historial[historial["Tipo"].str.lower() == "in"]
                 retiros = historial[historial["Tipo"].str.lower() == "out"]
-    
+
                 cargas_hl = cargas[cargas["Del usuario"].isin(valores_hl)]
                 cargas_wagger = cargas[cargas["Del usuario"].isin(valores_wagger)]
-    
+
                 hl = cargas_hl["Monto"].sum()
                 wagger = cargas_wagger["Monto"].sum()
                 total_monto = hl + wagger
-    
+
                 if not cargas.empty:
                     resumen.append({
                         "Nombre de jugador": jugador,
@@ -481,18 +484,19 @@ elif "📋 Registro Eros" in seccion:
                         "LTV (Lifetime Value)": total_monto,
                         "Duración activa (días)": (cargas["Fecha"].max() - cargas["Fecha"].min()).days
                     })
-    
+
             df_registro = pd.DataFrame(resumen).sort_values("Días inactivo", ascending=False)
-    
+
             st.subheader("📄 Registro completo de jugadores")
             st.dataframe(df_registro)
-    
-            df_registro.to_excel("registro_jugadores_eros.xlsx", index=False)
-            with open("registro_jugadores_eros.xlsx", "rb") as f:
-                st.download_button("📅 Descargar Excel", f, file_name="registro_jugadores_eros.xlsx")
-    
+
+            df_registro.to_excel("registro_jugadores.xlsx", index=False)
+            with open("registro_jugadores.xlsx", "rb") as f:
+                st.download_button("📅 Descargar Excel", f, file_name="registro_jugadores.xlsx")
+
         except Exception as e:
             st.error(f"❌ Error al generar el resumen: {e}")
+
 
 
 elif seccion == "📆 Seguimiento de jugadores inactivos":
