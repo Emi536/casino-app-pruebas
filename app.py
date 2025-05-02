@@ -344,7 +344,7 @@ elif "📋 Registro Eros" in seccion:
     
     def convertir_monto(valor):
         if pd.isna(valor): return 0.0
-            valor = str(valor).strip()
+        valor = str(valor).strip()
         if "," in valor and "." in valor:
             valor = valor.replace(".", "").replace(",", ".")
         elif "," in valor:
