@@ -200,23 +200,31 @@ elif "Registro de actividad de jugadores" in seccion:
     
             # --- LIMPIEZA DE CAMPOS CRÍTICOS ---
             def limpiar_dataframe(df_temp):
-                df_temp = df_temp.fillna("").astype(str)
+                df_temp = df_temp.copy()
             
-                # Renombrar o crear columna "Jugador"
+                # Asegurar que todo sea string primero
+                for col in df_temp.columns:
+                    df_temp[col] = df_temp[col].astype(str)
+            
+                # Crear o limpiar columna 'Jugador'
                 if "Al usuario" in df_temp.columns:
                     df_temp["Jugador"] = df_temp["Al usuario"]
                 elif "Jugador" not in df_temp.columns:
                     df_temp["Jugador"] = ""
             
-                df_temp["Jugador"] = df_temp["Jugador"].astype(str).str.strip().str.lower()
+                # Limpiar valores de 'Jugador'
+                if "Jugador" in df_temp.columns:
+                    df_temp["Jugador"] = df_temp["Jugador"].astype(str).apply(lambda x: x.strip().lower() if isinstance(x, str) else "")
             
+                # Convertir columnas de monto y retiro
                 for campo in ["Monto", "Retiro"]:
                     if campo in df_temp.columns:
                         df_temp[campo] = df_temp[campo].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
                         df_temp[campo] = pd.to_numeric(df_temp[campo], errors="coerce").fillna(0)
                     else:
-                        df_temp[campo] = 0
+                        df_temp[campo] = 0.0
             
+                # Convertir fecha
                 if "Fecha" in df_temp.columns:
                     df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"], errors="coerce")
                 else:
