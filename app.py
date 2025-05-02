@@ -225,6 +225,7 @@ elif "Registro de actividad de jugadores" in seccion:
 
     if df is not None:
         try:
+            # Renombrar columnas clave
             df = df.rename(columns={
                 "operación": "Tipo",
                 "Depositar": "Monto",
@@ -233,11 +234,13 @@ elif "Registro de actividad de jugadores" in seccion:
                 "Al usuario": "Jugador"
             })
     
+            # Validar columnas necesarias
             columnas_necesarias = ["Tipo", "Fecha", "Monto", "Retiro", "Jugador"]
             if not all(col in df.columns for col in columnas_necesarias):
                 st.error(f"❌ Faltan columnas necesarias en el archivo: {set(columnas_necesarias) - set(df.columns)}")
                 st.stop()
     
+            # Normalizar columnas
             df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
     
             df["Monto"] = df["Monto"].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
@@ -246,13 +249,17 @@ elif "Registro de actividad de jugadores" in seccion:
             df["Retiro"] = df["Retiro"].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
             df["Retiro"] = pd.to_numeric(df["Retiro"], errors="coerce").fillna(0)
     
-            # 🔍 Limpieza de campo "Jugador"
+            # 🔍 Limpieza estricta del campo Jugador
             df["Jugador"] = df["Jugador"].astype(str).str.strip().str.lower()
             df = df[df["Jugador"].notna() & (df["Jugador"] != "")]
     
+            # Mostrar jugadores únicos para depuración
+            st.write("👀 Jugadores únicos detectados:", df["Jugador"].unique())
+            st.write("📊 Total jugadores únicos:", df["Jugador"].nunique())
+    
             jugadores = df["Jugador"].unique()
             resumen = []
-            jugadores_omitidos = []
+            jugadores_resumen = []
     
             for jugador in jugadores:
                 historial = df[df["Jugador"] == jugador].sort_values("Fecha")
@@ -278,11 +285,12 @@ elif "Registro de actividad de jugadores" in seccion:
                         "LTV (Lifetime Value)": suma_de_cargas,
                         "Duración activa (días)": (ultima_carga - fecha_ingreso).days
                     })
-                else:
-                    jugadores_omitidos.append(jugador)
+                    jugadores_resumen.append(jugador)
     
-            if jugadores_omitidos:
-                st.warning(f"⚠️ Jugadores omitidos por no tener cargas válidas: {', '.join(jugadores_omitidos)}")
+            # ⚠️ Detectar jugadores omitidos
+            jugadores_faltantes = list(set(jugadores) - set(jugadores_resumen))
+            if jugadores_faltantes:
+                st.warning(f"⚠️ Jugadores que fueron descartados del resumen: {jugadores_faltantes}")
     
             df_registro = pd.DataFrame(resumen).sort_values("Días inactivo", ascending=False)
     
@@ -304,6 +312,7 @@ elif "Registro de actividad de jugadores" in seccion:
             col2.metric("📤 Total Retirado", f"${total_retirado:,.0f}")
             col3.metric("💸 Neto", f"${neto:,.0f}")
             col4.metric("👥 Jugadores únicos", cantidad_jugadores)
+
 
 
             st.markdown("---")
