@@ -320,184 +320,174 @@ elif "📋 Registro Fénix" in seccion:
         except Exception as e:
             st.error(f"❌ Error al generar el resumen: {e}")
 
-#SECCION EROS
-# SECCIÓN EROS (Actualizada con funcionalidades de Fénix)
+#SECCIÓN EROS
 elif "📋 Registro Eros" in seccion:
-    st.header("📋 Registro general de jugadores - Eros")
-
-    argentina = pytz.timezone("America/Argentina/Buenos_Aires")
-    ahora = datetime.datetime.now(argentina)
-    fecha_actual = ahora.strftime("%d/%m/%Y - %H:%M hs")
-    st.info(f"⏰ Última actualización: {fecha_actual}")
-
-    responsable = st.text_input("👤 Ingresá tu nombre para registrar quién sube el reporte", value="Anónimo")
-
-    texto_pegar = st.text_area("📋 Pegá aquí el reporte copiado (incluí encabezados)", height=300)
-    df = None
-
-    if texto_pegar:
+     st.header("📋 Registro general de jugadores - Eros")
+    
+        argentina = pytz.timezone("America/Argentina/Buenos_Aires")
+        ahora = datetime.datetime.now(argentina)
+        fecha_actual = ahora.strftime("%d/%m/%Y - %H:%M hs")
+        st.info(f"⏰ Última actualización: {fecha_actual}")
+    
+        responsable = st.text_input("👤 Ingresá tu nombre para registrar quién sube el reporte", value="Anónimo")
+    
+        texto_pegar = st.text_area("📋 Pegá aquí el reporte copiado (incluí encabezados)", height=300)
+        df_historial = pd.DataFrame()
+    
         try:
-            texto_pegar_preview = texto_pegar[:500]
-            if "\t" in texto_pegar_preview:
-                sep_detectado = "\t"
-            elif ";" in texto_pegar_preview:
-                sep_detectado = ";"
-            else:
-                sep_detectado = ","
-
-            lineas = texto_pegar.strip().splitlines()
-            encabezados = lineas[0].split(sep_detectado)
-            cantidad_columnas = len(encabezados)
-
-            contenido_limpio = [sep_detectado.join(encabezados)]
-            for fila in lineas[1:]:
-                columnas = fila.split(sep_detectado)
-                if len(columnas) < cantidad_columnas:
-                    columnas += [""] * (cantidad_columnas - len(columnas))
-                elif len(columnas) > cantidad_columnas:
-                    columnas = columnas[:cantidad_columnas]
-                contenido_limpio.append(sep_detectado.join(columnas))
-
-            archivo_limpio = StringIO("\n".join(contenido_limpio))
-            df_nuevo = pd.read_csv(archivo_limpio, sep=sep_detectado, decimal=",", dtype=str)
-            df_nuevo = df_nuevo.loc[:, ~df_nuevo.columns.str.contains("^Unnamed")]
-
-            columnas_requeridas = ["operación", "Depositar", "Retirar", "Fecha", "Al usuario"]
-            if not all(col in df_nuevo.columns for col in columnas_requeridas):
-                st.error("❌ El reporte pegado no contiene los encabezados necesarios o está mal formateado.")
-                st.stop()
-
-            df_nuevo = df_nuevo.rename(columns={
-                "operación": "Tipo",
-                "Depositar": "Monto",
-                "Retirar": "Retiro",
-                "Fecha": "Fecha",
-                "Al usuario": "Jugador"
-            })
-
-            df_nuevo["Responsable"] = responsable
-            df_nuevo["Fecha_Subida"] = fecha_actual
-
-            def convertir_monto(valor):
-                if pd.isna(valor): return 0.0
-                valor = str(valor).strip()
-                if "," in valor and "." in valor:
-                    valor = valor.replace(".", "").replace(",", ".")
-                elif "," in valor:
-                    valor = valor.replace(",", ".")
-                try:
-                    return float(valor)
-                except:
-                    return 0.0
-
-            def limpiar_dataframe(df_temp):
-                df_temp = df_temp.copy()
-                if "Jugador" not in df_temp.columns:
-                    df_temp["Jugador"] = ""
-                df_temp["Jugador"] = df_temp["Jugador"].astype(str).apply(lambda x: x.strip().lower())
-                df_temp["Monto"] = df_temp["Monto"].apply(convertir_monto) if "Monto" in df_temp.columns else 0.0
-                df_temp["Retiro"] = df_temp["Retiro"].apply(convertir_monto) if "Retiro" in df_temp.columns else 0.0
-                df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"], errors="coerce") if "Fecha" in df_temp.columns else pd.NaT
-                return df_temp
-
-            df_nuevo = limpiar_dataframe(df_nuevo)
-
-            valores_eros = [
-                "hl_Erosonline",
-                "Eros_wagger30%",
-                "Eros_wagger40%",
-                "Eros_wagger50%",
-                "Eros_wagger100%",
-                "Eros_wagger150%",
-                "Eros_wagger200%"
-            ]
-
-            if "Del usuario" in df_nuevo.columns:
-                df_nuevo["Del usuario"] = df_nuevo["Del usuario"].astype(str).str.strip()
-                df_nuevo = df_nuevo[df_nuevo["Del usuario"].isin(valores_eros)]
-
+            hoja_eros = sh.worksheet("registro_eros")
+            data_eros = hoja_eros.get_all_records()
+            df_historial = pd.DataFrame(data_eros)
+        except:
+            hoja_eros = sh.add_worksheet(title="registro_eros", rows="1000", cols="20")
+            df_historial = pd.DataFrame()
+    
+        def convertir_monto(valor):
+            if pd.isna(valor): return 0.0
+            valor = str(valor).strip()
+            if "," in valor and "." in valor:
+                valor = valor.replace(".", "").replace(",", ".")
+            elif "," in valor:
+                valor = valor.replace(",", ".")
             try:
-                hoja_eros = sh.worksheet("registro_eros")
-                data_eros = hoja_eros.get_all_records()
-                df_historial = pd.DataFrame(data_eros)
+                return float(valor)
             except:
-                hoja_eros = sh.add_worksheet(title="registro_eros", rows="1000", cols="20")
-                df_historial = pd.DataFrame()
-
-            df_historial = limpiar_dataframe(df_historial)
-
-            if "ID" in df_nuevo.columns and "ID" in df_historial.columns:
-                ids_existentes = df_historial["ID"].astype(str).tolist()
-                df_nuevo = df_nuevo[~df_nuevo["ID"].astype(str).isin(ids_existentes)]
-
-            if df_nuevo.empty:
-                st.warning("⚠️ Todos los registros pegados ya existían en el historial (mismo ID). No se agregó nada.")
-                st.stop()
-
-            df_historial = pd.concat([df_historial, df_nuevo], ignore_index=True)
-            df_historial.drop_duplicates(subset=["ID"], inplace=True)
-
-            hoja_eros.clear()
-            hoja_eros.update([df_historial.columns.tolist()] + df_historial.astype(str).values.tolist())
-
-            st.success(f"✅ Registros de Eros actualizados correctamente en la hoja 'registro_eros'.")
-
+                return 0.0
+    
+        def limpiar_dataframe(df_temp):
+            df_temp = df_temp.copy()
+            if "Jugador" in df_temp.columns:
+                df_temp["Jugador"] = df_temp["Jugador"].astype(str).apply(lambda x: x.strip().lower())
+            if "Monto" in df_temp.columns:
+                df_temp["Monto"] = df_temp["Monto"].apply(convertir_monto)
+            if "Retiro" in df_temp.columns:
+                df_temp["Retiro"] = df_temp["Retiro"].apply(convertir_monto)
+            if "Fecha" in df_temp.columns:
+                df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"], errors="coerce")
+            return df_temp
+    
+        df_historial = limpiar_dataframe(df_historial)
+    
+        if texto_pegar:
+            try:
+                sep_detectado = "\t" if "\t" in texto_pegar else ";" if ";" in texto_pegar else ","
+                lineas = texto_pegar.strip().splitlines()
+                encabezados = lineas[0].split(sep_detectado)
+                cantidad_columnas = len(encabezados)
+    
+                contenido_limpio = [sep_detectado.join(encabezados)]
+                for fila in lineas[1:]:
+                    columnas = fila.split(sep_detectado)
+                    if len(columnas) < cantidad_columnas:
+                        columnas += [""] * (cantidad_columnas - len(columnas))
+                    elif len(columnas) > cantidad_columnas:
+                        columnas = columnas[:cantidad_columnas]
+                    contenido_limpio.append(sep_detectado.join(columnas))
+    
+                archivo_limpio = StringIO("\n".join(contenido_limpio))
+                df_nuevo = pd.read_csv(archivo_limpio, sep=sep_detectado, decimal=",", dtype=str)
+                df_nuevo = df_nuevo.loc[:, ~df_nuevo.columns.str.contains("^Unnamed")]
+    
+                columnas_requeridas = ["operación", "Depositar", "Retirar", "Fecha", "Al usuario"]
+                if not all(col in df_nuevo.columns for col in columnas_requeridas):
+                    st.error("❌ El reporte pegado no contiene los encabezados necesarios o está mal formateado.")
+                    st.stop()
+    
+                df_nuevo = df_nuevo.rename(columns={
+                    "operación": "Tipo",
+                    "Depositar": "Monto",
+                    "Retirar": "Retiro",
+                    "Fecha": "Fecha",
+                    "Al usuario": "Jugador"
+                })
+    
+                df_nuevo["Responsable"] = responsable
+                df_nuevo["Fecha_Subida"] = fecha_actual
+    
+                valores_eros = [
+                    "hl_Erosonline",
+                    "Eros_wagger30%", "Eros_wagger40%", "Eros_wagger50%",
+                    "Eros_wagger100%", "Eros_wagger150%", "Eros_wagger200%"
+                ]
+                if "Del usuario" in df_nuevo.columns:
+                    df_nuevo["Del usuario"] = df_nuevo["Del usuario"].astype(str).str.strip()
+                    df_nuevo = df_nuevo[df_nuevo["Del usuario"].isin(valores_eros)]
+    
+                df_nuevo = limpiar_dataframe(df_nuevo)
+    
+                if "ID" in df_nuevo.columns and "ID" in df_historial.columns:
+                    ids_existentes = df_historial["ID"].astype(str).tolist()
+                    df_nuevo = df_nuevo[~df_nuevo["ID"].astype(str).isin(ids_existentes)]
+    
+                if df_nuevo.empty:
+                    st.warning("⚠️ Todos los registros pegados ya existían en el historial (mismo ID). No se agregó nada.")
+                    st.stop()
+    
+                df_historial = pd.concat([df_historial, df_nuevo], ignore_index=True)
+                df_historial.drop_duplicates(subset=["ID"], inplace=True)
+    
+                hoja_eros.clear()
+                hoja_eros.update([df_historial.columns.tolist()] + df_historial.astype(str).values.tolist())
+    
+                st.success(f"✅ Registros de Eros actualizados correctamente. Total acumulado: {len(df_historial)}")
+    
+            except Exception as e:
+                st.error(f"❌ Error al procesar los datos pegados: {e}")
+    
+        if not df_historial.empty:
             st.info(f"📊 Total de registros acumulados: {len(df_historial)}")
             if st.button("🗑️ Borrar todo el historial Eros"):
                 hoja_eros.clear()
                 st.success("✅ Historial Eros borrado correctamente. Recargá la app.")
                 st.stop()
-
+    
             df = df_historial.copy()
-
-            for jugador in jugadores:
-                historial = df[df["Jugador"] == jugador].sort_values("Fecha")
-                cargas_hl = historial[(historial["Tipo"].str.lower() == "in") & (historial["Del usuario"] == "hl_Erosonline")]
-                cargas_wagger = historial[(historial["Tipo"].str.lower() == "in") & (historial["Del usuario"].str.startswith("Eros_wagger"))]
-                retiros = historial[historial["Tipo"].str.lower() == "out"]
-
-                if not cargas_hl.empty or not cargas_wagger.empty:
-                    fecha_ingreso = historial["Fecha"].min()
-                    ultima_carga = historial["Fecha"].max()
-                    veces_que_cargo = len(cargas_hl) + len(cargas_wagger)
+    
+            try:
+                valores_hl = ["hl_Erosonline"]
+                valores_wagger = ["Eros_wagger30%", "Eros_wagger40%", "Eros_wagger50%", "Eros_wagger100%", "Eros_wagger150%", "Eros_wagger200%"]
+    
+                resumen = []
+                jugadores = df["Jugador"].dropna().unique()
+    
+                for jugador in jugadores:
+                    historial = df[df["Jugador"] == jugador].sort_values("Fecha")
+                    cargas = historial[historial["Tipo"].str.lower() == "in"]
+                    retiros = historial[historial["Tipo"].str.lower() == "out"]
+    
+                    cargas_hl = cargas[cargas["Del usuario"].isin(valores_hl)]
+                    cargas_wagger = cargas[cargas["Del usuario"].isin(valores_wagger)]
+    
                     hl = cargas_hl["Monto"].sum()
                     wagger = cargas_wagger["Monto"].sum()
-                    total = hl + wagger
-                    cantidad_retiro = retiros["Retiro"].sum()
-                    dias_inactivo = (pd.to_datetime(datetime.date.today()) - ultima_carga).days
-
-                    resumen.append({
-                        "Nombre de jugador": jugador,
-                        "Fecha que ingresó": fecha_ingreso,
-                        "Veces que cargó": veces_que_cargo,
-                        "Hl": hl,
-                        "Wagger": wagger,
-                        "Monto total": total,
-                        "Última vez que cargó": ultima_carga,
-                        "Días inactivo": dias_inactivo,
-                        "Cantidad de retiro": cantidad_retiro,
-                        "LTV (Lifetime Value)": total,
-                        "Duración activa (días)": (ultima_carga - fecha_ingreso).days
-                    })
-                    jugadores_resumen.append(jugador)
-
-            df_registro = pd.DataFrame(resumen).sort_values("Días inactivo", ascending=False)
-
-            st.subheader("📄 Registro completo de jugadores")
-            st.dataframe(df_registro)
-
-            df_registro.to_excel("registro_jugadores_eros.xlsx", index=False)
-            with open("registro_jugadores_eros.xlsx", "rb") as f:
-                st.download_button("📅 Descargar Excel", f, file_name="registro_jugadores_eros.xlsx")
-
-            col1, col2, col3, col4 = st.columns(4)
-            col1.metric("💰 Total Cargado", f"${df["Monto"].sum():,.0f}")
-            col2.metric("📤 Total Retirado", f"${df["Retiro"].sum():,.0f}")
-            col3.metric("💸 Neto", f"${df["Monto"].sum() - df["Retiro"].sum():,.0f}")
-            col4.metric("👥 Jugadores únicos", df["Jugador"].nunique())
-
-        except Exception as e:
-            st.error(f"❌ Error al procesar el reporte: {e}")
+                    total_monto = hl + wagger
+    
+                    if not cargas.empty:
+                        resumen.append({
+                            "Nombre de jugador": jugador,
+                            "Fecha que ingresó": cargas["Fecha"].min(),
+                            "Veces que cargó": len(cargas),
+                            "Hl": hl,
+                            "Wagger": wagger,
+                            "Monto total": total_monto,
+                            "Última vez que cargó": cargas["Fecha"].max(),
+                            "Días inactivo": (pd.to_datetime(datetime.date.today()) - cargas["Fecha"].max()).days,
+                            "Cantidad de retiro": retiros["Retiro"].sum(),
+                            "LTV (Lifetime Value)": total_monto,
+                            "Duración activa (días)": (cargas["Fecha"].max() - cargas["Fecha"].min()).days
+                        })
+    
+                df_registro = pd.DataFrame(resumen).sort_values("Días inactivo", ascending=False)
+    
+                st.subheader("📄 Registro completo de jugadores")
+                st.dataframe(df_registro)
+    
+                df_registro.to_excel("registro_jugadores_eros.xlsx", index=False)
+                with open("registro_jugadores_eros.xlsx", "rb") as f:
+                    st.download_button("📅 Descargar Excel", f, file_name="registro_jugadores_eros.xlsx")
+    
+            except Exception as e:
+                st.error(f"❌ Error al generar el resumen: {e}")
 
 
 elif seccion == "📆 Seguimiento de jugadores inactivos":
