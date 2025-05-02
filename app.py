@@ -158,6 +158,7 @@ elif "📋 Registro Fénix" in seccion:
     argentina = pytz.timezone("America/Argentina/Buenos_Aires")
     ahora = datetime.datetime.now(argentina)
     fecha_actual = ahora.strftime("%d/%m/%Y - %H:%M hs")
+    fecha_actual_date = ahora.date()
     st.info(f"⏰ Última actualización: {fecha_actual}")
 
     responsable = st.text_input("👤 Ingresá tu nombre para registrar quién sube el reporte", value="Anónimo")
@@ -198,6 +199,11 @@ elif "📋 Registro Fénix" in seccion:
         return df_temp
 
     df_historial = limpiar_dataframe(df_historial)
+
+    # 🔁 BORRAR REGISTROS ANTIGUOS MAYORES A 10 DÍAS
+    if "Fecha" in df_historial.columns:
+        limite = fecha_actual_date - datetime.timedelta(days=9)
+        df_historial = df_historial[df_historial["Fecha"].dt.date >= limite]
 
     if texto_pegar:
         try:
@@ -267,11 +273,6 @@ elif "📋 Registro Fénix" in seccion:
 
     if not df_historial.empty:
         st.info(f"📊 Total de registros acumulados: {len(df_historial)}")
-        if st.button("🗑️ Borrar todo el historial Fénix"):
-            hoja_fenix.clear()
-            st.success("✅ Historial Fénix borrado correctamente. Recargá la app.")
-            st.stop()
-
         df = df_historial.copy()
 
         try:
@@ -319,6 +320,7 @@ elif "📋 Registro Fénix" in seccion:
 
         except Exception as e:
             st.error(f"❌ Error al generar el resumen: {e}")
+
 
 #SECCIÓN EROS
 elif "📋 Registro Eros" in seccion:
