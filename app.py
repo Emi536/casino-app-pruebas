@@ -374,7 +374,6 @@ elif "📋 Registro Eros" in seccion:
 
     df_historial = limpiar_dataframe(df_historial)
 
-    # 🔁 BORRAR REGISTROS ANTIGUOS MAYORES A 10 DÍAS
     if "Fecha" in df_historial.columns:
         df_historial["Fecha"] = pd.to_datetime(df_historial["Fecha"], errors="coerce")
         df_historial = df_historial[df_historial["Fecha"].notna()]
@@ -496,7 +495,6 @@ elif "📋 Registro Eros" in seccion:
 
         except Exception as e:
             st.error(f"❌ Error al generar el resumen: {e}")
-
 
 
 elif seccion == "📆 Seguimiento de jugadores inactivos":
