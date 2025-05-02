@@ -241,6 +241,7 @@ elif "Registro de actividad de jugadores" in seccion:
                 except:
                     return 0.0
 
+            # FUNCIÓN FINAL PARA LIMPIAR EL DATAFRAME
             def limpiar_dataframe(df_temp):
                 df_temp = df_temp.copy()
             
@@ -252,30 +253,16 @@ elif "Registro de actividad de jugadores" in seccion:
                     else:
                         df_temp["Jugador"] = ""
             
-                df_temp["Jugador"] = df_temp["Jugador"].astype(str).apply(lambda x: x.strip().lower() if isinstance(x, str) else "")
+                df_temp["Jugador"] = df_temp["Jugador"].astype(str).apply(lambda x: x.strip().lower())
             
-                # Asegurar columna "Monto"
-                if "Monto" in df_temp.columns:
-                    df_temp["Monto"] = df_temp["Monto"].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
-                    df_temp["Monto"] = pd.to_numeric(df_temp["Monto"], errors="coerce").fillna(0)
-                else:
-                    df_temp["Monto"] = 0.0
+                # Limpiar montos con función segura
+                df_temp["Monto"] = df_temp["Monto"].apply(convertir_monto) if "Monto" in df_temp.columns else 0.0
+                df_temp["Retiro"] = df_temp["Retiro"].apply(convertir_monto) if "Retiro" in df_temp.columns else 0.0
             
-                # Asegurar columna "Retiro"
-                if "Retiro" in df_temp.columns:
-                    df_temp["Retiro"] = df_temp["Retiro"].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
-                    df_temp["Retiro"] = pd.to_numeric(df_temp["Retiro"], errors="coerce").fillna(0)
-                else:
-                    df_temp["Retiro"] = 0.0
-            
-                # Asegurar columna "Fecha"
-                if "Fecha" in df_temp.columns:
-                    df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"], errors="coerce")
-                else:
-                    df_temp["Fecha"] = pd.NaT
+                # Convertir Fecha
+                df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"], errors="coerce") if "Fecha" in df_temp.columns else pd.NaT
             
                 return df_temp
-
     
             df_nuevo = limpiar_dataframe(df_nuevo)
             df_historial = limpiar_dataframe(df_historial)
