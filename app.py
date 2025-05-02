@@ -8,6 +8,11 @@ import gspread
 from google.oauth2 import service_account
 import pytz
 
+st.set_page_config(page_title="PlayerMetrics - Análisis de Cargas", layout="wide")
+st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>", unsafe_allow_html=True)
+
+df = None
+
 def login():
     st.sidebar.title("🔐 Iniciar sesión")
 
@@ -30,10 +35,6 @@ st.title("🔐 Acceso autorizado - PlayerMetrics")
 
 st.success("Bienvenido. Acceso concedido.")
 
-df = None
-
-st.set_page_config(page_title="PlayerMetrics - Análisis de Cargas", layout="wide")
-st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>", unsafe_allow_html=True)
 
 # --- Conexión a Google Sheets ---
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
