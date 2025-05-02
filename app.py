@@ -234,8 +234,14 @@ elif "Registro de actividad de jugadores" in seccion:
                 if pd.isna(valor):
                     return 0.0
                 valor = str(valor).strip()
-                # Reemplazar solo si es formato europeo
-                valor = valor.replace(".", "").replace(",", ".")
+                if "," in valor and "." in valor:
+                    # Si tiene punto y coma, asumimos formato europeo
+                    valor = valor.replace(".", "").replace(",", ".")
+                elif "," in valor and "." not in valor:
+                    # Si solo tiene coma, puede ser decimal
+                    valor = valor.replace(",", ".")
+                elif "." in valor and "," not in valor:
+                    pass  # ya está bien
                 try:
                     return float(valor)
                 except:
