@@ -178,7 +178,7 @@ elif "Registro de actividad de jugadores" in seccion:
             else:
                 sep_detectado = ","
     
-            # 🔍 Leer todas las líneas
+            # Leer líneas
             lineas = texto_pegar.strip().splitlines()
             encabezados = lineas[0].split(sep_detectado)
             cantidad_columnas = len(encabezados)
@@ -198,45 +198,48 @@ elif "Registro de actividad de jugadores" in seccion:
             df_nuevo["Responsable"] = responsable
             df_nuevo["Fecha_Subida"] = fecha_actual
     
-            # --- LIMPIEZA DE CAMPOS CRÍTICOS ---
+            # Renombrar columnas para análisis
+            df_nuevo = df_nuevo.rename(columns={
+                "operación": "Tipo",
+                "Depositar": "Monto",
+                "Retirar": "Retiro",
+                "Fecha": "Fecha",
+                "Al usuario": "Jugador"
+            })
+    
+            df_historial = df_historial.rename(columns={
+                "operación": "Tipo",
+                "Depositar": "Monto",
+                "Retirar": "Retiro",
+                "Fecha": "Fecha",
+                "Al usuario": "Jugador"
+            })
+    
+            # Validación de columnas necesarias
+            columnas_necesarias = ["Tipo", "Fecha", "Monto", "Retiro", "Jugador"]
+            for df_check in [df_nuevo, df_historial]:
+                for col in columnas_necesarias:
+                    if col not in df_check.columns:
+                        df_check[col] = ""
+    
+            # Función de limpieza
             def limpiar_dataframe(df_temp):
                 df_temp = df_temp.copy()
-            
-                # Asegurar que todo sea string primero
-                for col in df_temp.columns:
-                    df_temp[col] = df_temp[col].astype(str)
-            
-                # Crear o limpiar columna 'Jugador'
-                if "Al usuario" in df_temp.columns:
-                    df_temp["Jugador"] = df_temp["Al usuario"]
-                elif "Jugador" not in df_temp.columns:
-                    df_temp["Jugador"] = ""
-            
-                # Limpiar valores de 'Jugador'
-                if "Jugador" in df_temp.columns:
-                    df_temp["Jugador"] = df_temp["Jugador"].astype(str).apply(lambda x: x.strip().lower() if isinstance(x, str) else "")
-            
-                # Convertir columnas de monto y retiro
-                for campo in ["Monto", "Retiro"]:
-                    if campo in df_temp.columns:
-                        df_temp[campo] = df_temp[campo].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
-                        df_temp[campo] = pd.to_numeric(df_temp[campo], errors="coerce").fillna(0)
-                    else:
-                        df_temp[campo] = 0.0
-            
-                # Convertir fecha
-                if "Fecha" in df_temp.columns:
-                    df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"], errors="coerce")
-                else:
-                    df_temp["Fecha"] = pd.NaT
-            
+                df_temp["Jugador"] = df_temp["Jugador"].astype(str).apply(lambda x: x.strip().lower() if isinstance(x, str) else "")
+                df_temp["Monto"] = df_temp["Monto"].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
+                df_temp["Monto"] = pd.to_numeric(df_temp["Monto"], errors="coerce").fillna(0)
+                df_temp["Retiro"] = df_temp["Retiro"].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
+                df_temp["Retiro"] = pd.to_numeric(df_temp["Retiro"], errors="coerce").fillna(0)
+                df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"], errors="coerce")
                 return df_temp
-
-            # Unir ambos
+    
+            # Limpieza unificada
+            df_nuevo = limpiar_dataframe(df_nuevo)
+            df_historial = limpiar_dataframe(df_historial)
+    
             df_historial = pd.concat([df_historial, df_nuevo], ignore_index=True)
             df_historial.drop_duplicates(inplace=True)
     
-            # Guardar en Google Sheets
             worksheet.clear()
             worksheet.update([df_historial.columns.tolist()] + df_historial.astype(str).values.tolist())
     
@@ -252,43 +255,10 @@ elif "Registro de actividad de jugadores" in seccion:
             df_historial = pd.DataFrame()
             st.success("✅ Historial borrado correctamente. Recargá la app.")
         df = df_historial.copy()
-
-
+    
     if df is not None:
         try:
-            # Renombrar columnas clave
-            df = df.rename(columns={
-                "operación": "Tipo",
-                "Depositar": "Monto",
-                "Retirar": "Retiro",
-                "Fecha": "Fecha",
-                "Al usuario": "Jugador"
-            })
-    
-            # Validar columnas necesarias
-            columnas_necesarias = ["Tipo", "Fecha", "Monto", "Retiro", "Jugador"]
-            if not all(col in df.columns for col in columnas_necesarias):
-                st.error(f"❌ Faltan columnas necesarias en el archivo: {set(columnas_necesarias) - set(df.columns)}")
-                st.stop()
-    
-            # Normalizar columnas
-            df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
-    
-            df["Monto"] = df["Monto"].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
-            df["Monto"] = pd.to_numeric(df["Monto"], errors="coerce").fillna(0)
-    
-            df["Retiro"] = df["Retiro"].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
-            df["Retiro"] = pd.to_numeric(df["Retiro"], errors="coerce").fillna(0)
-    
-            # 🔍 Limpieza estricta del campo Jugador
-            df["Jugador"] = df["Jugador"].astype(str).str.strip().str.lower()
-            df = df[df["Jugador"].notna() & (df["Jugador"] != "")]
-    
-            # Mostrar jugadores únicos para depuración
-            st.write("👀 Jugadores únicos detectados:", df["Jugador"].unique())
-            st.write("📊 Total jugadores únicos:", df["Jugador"].nunique())
-    
-            jugadores = df["Jugador"].unique()
+            jugadores = df["Jugador"].dropna().unique()
             resumen = []
             jugadores_resumen = []
     
@@ -318,10 +288,9 @@ elif "Registro de actividad de jugadores" in seccion:
                     })
                     jugadores_resumen.append(jugador)
     
-            # ⚠️ Detectar jugadores omitidos
             jugadores_faltantes = list(set(jugadores) - set(jugadores_resumen))
             if jugadores_faltantes:
-                st.warning(f"⚠️ Jugadores que fueron descartados del resumen: {jugadores_faltantes}")
+                st.warning(f"⚠️ Jugadores descartados del resumen por no tener cargas: {jugadores_faltantes}")
     
             df_registro = pd.DataFrame(resumen).sort_values("Días inactivo", ascending=False)
     
@@ -332,7 +301,7 @@ elif "Registro de actividad de jugadores" in seccion:
             with open("registro_jugadores.xlsx", "rb") as f:
                 st.download_button("📅 Descargar Excel", f, file_name="registro_jugadores.xlsx")
     
-            # 🎯 KPI Totales
+            # KPIs
             total_cargado = df["Monto"].sum()
             total_retirado = df["Retiro"].sum()
             neto = total_cargado - total_retirado
@@ -343,8 +312,6 @@ elif "Registro de actividad de jugadores" in seccion:
             col2.metric("📤 Total Retirado", f"${total_retirado:,.0f}")
             col3.metric("💸 Neto", f"${neto:,.0f}")
             col4.metric("👥 Jugadores únicos", cantidad_jugadores)
-
-
 
             st.markdown("---")
 
