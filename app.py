@@ -202,8 +202,11 @@ elif "📋 Registro Fénix" in seccion:
 
     # 🔁 BORRAR REGISTROS ANTIGUOS MAYORES A 10 DÍAS
     if "Fecha" in df_historial.columns:
+        df_historial["Fecha"] = pd.to_datetime(df_historial["Fecha"], errors="coerce")
+        df_historial = df_historial[df_historial["Fecha"].notna()]
         limite = fecha_actual_date - datetime.timedelta(days=9)
         df_historial = df_historial[df_historial["Fecha"].dt.date >= limite]
+
 
     if texto_pegar:
         try:
