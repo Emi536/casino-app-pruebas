@@ -163,18 +163,46 @@ elif "📋 Registro Fénix" in seccion:
     responsable = st.text_input("👤 Ingresá tu nombre para registrar quién sube el reporte", value="Anónimo")
 
     texto_pegar = st.text_area("📋 Pegá aquí el reporte copiado (incluí encabezados)", height=300)
-    df = None
+    df_historial = pd.DataFrame()
+
+    # Intentar leer historial anterior desde hoja
+    try:
+        hoja_fenix = sh.worksheet("registro_fenix")
+        data_fenix = hoja_fenix.get_all_records()
+        df_historial = pd.DataFrame(data_fenix)
+    except:
+        hoja_fenix = sh.add_worksheet(title="registro_fenix", rows="1000", cols="20")
+        df_historial = pd.DataFrame()
+
+    def convertir_monto(valor):
+        if pd.isna(valor): return 0.0
+        valor = str(valor).strip()
+        if "," in valor and "." in valor:
+            valor = valor.replace(".", "").replace(",", ".")
+        elif "," in valor:
+            valor = valor.replace(",", ".")
+        try:
+            return float(valor)
+        except:
+            return 0.0
+
+    def limpiar_dataframe(df_temp):
+        df_temp = df_temp.copy()
+        if "Jugador" in df_temp.columns:
+            df_temp["Jugador"] = df_temp["Jugador"].astype(str).apply(lambda x: x.strip().lower())
+        if "Monto" in df_temp.columns:
+            df_temp["Monto"] = df_temp["Monto"].apply(convertir_monto)
+        if "Retiro" in df_temp.columns:
+            df_temp["Retiro"] = df_temp["Retiro"].apply(convertir_monto)
+        if "Fecha" in df_temp.columns:
+            df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"], errors="coerce")
+        return df_temp
+
+    df_historial = limpiar_dataframe(df_historial)
 
     if texto_pegar:
         try:
-            texto_pegar_preview = texto_pegar[:500]
-            if "\t" in texto_pegar_preview:
-                sep_detectado = "\t"
-            elif ";" in texto_pegar_preview:
-                sep_detectado = ";"
-            else:
-                sep_detectado = ","
-
+            sep_detectado = "\t" if "\t" in texto_pegar else ";" if ";" in texto_pegar else ","
             lineas = texto_pegar.strip().splitlines()
             encabezados = lineas[0].split(sep_detectado)
             cantidad_columnas = len(encabezados)
@@ -208,51 +236,16 @@ elif "📋 Registro Fénix" in seccion:
             df_nuevo["Responsable"] = responsable
             df_nuevo["Fecha_Subida"] = fecha_actual
 
-            def convertir_monto(valor):
-                if pd.isna(valor): return 0.0
-                valor = str(valor).strip()
-                if "," in valor and "." in valor:
-                    valor = valor.replace(".", "").replace(",", ".")
-                elif "," in valor:
-                    valor = valor.replace(",", ".")
-                try:
-                    return float(valor)
-                except:
-                    return 0.0
-
-            def limpiar_dataframe(df_temp):
-                df_temp = df_temp.copy()
-                df_temp["Jugador"] = df_temp["Jugador"].astype(str).apply(lambda x: x.strip().lower())
-                df_temp["Monto"] = df_temp["Monto"].apply(convertir_monto) if "Monto" in df_temp.columns else 0.0
-                df_temp["Retiro"] = df_temp["Retiro"].apply(convertir_monto) if "Retiro" in df_temp.columns else 0.0
-                df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"], errors="coerce") if "Fecha" in df_temp.columns else pd.NaT
-                return df_temp
-
-            df_nuevo = limpiar_dataframe(df_nuevo)
-
             valores_fenix = [
                 "hl_casinofenix",
-                "Fenix_Wagger100",
-                "Fenix_Wagger40",
-                "Fenix_Wagger30",
-                "Fenix_Wagger50",
-                "Fenix_Wagger150",
-                "Fenix_Wagger200"
+                "Fenix_Wagger100", "Fenix_Wagger40", "Fenix_Wagger30",
+                "Fenix_Wagger50", "Fenix_Wagger150", "Fenix_Wagger200"
             ]
-
             if "Del usuario" in df_nuevo.columns:
                 df_nuevo["Del usuario"] = df_nuevo["Del usuario"].astype(str).str.strip()
                 df_nuevo = df_nuevo[df_nuevo["Del usuario"].isin(valores_fenix)]
 
-            try:
-                hoja_fenix = sh.worksheet("registro_fenix")
-                data_fenix = hoja_fenix.get_all_records()
-                df_historial = pd.DataFrame(data_fenix)
-            except:
-                hoja_fenix = sh.add_worksheet(title="registro_fenix", rows="1000", cols="20")
-                df_historial = pd.DataFrame()
-
-            df_historial = limpiar_dataframe(df_historial)
+            df_nuevo = limpiar_dataframe(df_nuevo)
 
             if "ID" in df_nuevo.columns and "ID" in df_historial.columns:
                 ids_existentes = df_historial["ID"].astype(str).tolist()
@@ -268,92 +261,115 @@ elif "📋 Registro Fénix" in seccion:
             hoja_fenix.clear()
             hoja_fenix.update([df_historial.columns.tolist()] + df_historial.astype(str).values.tolist())
 
-            st.success(f"✅ Registros de Fénix actualizados correctamente en la hoja 'registro_fenix'.")
-
-            st.info(f"📊 Total de registros acumulados: {len(df_historial)}")
-            if st.button("🗑️ Borrar todo el historial Fénix"):
-                hoja_fenix.clear()
-                st.success("✅ Historial Fénix borrado correctamente. Recargá la app.")
-                st.stop()
-
-            df = df_historial.copy()
-
-            if not df.empty:
-                jugadores = df["Jugador"].dropna().unique()
-                resumen = []
-
-                for jugador in jugadores:
-                    historial = df[df["Jugador"] == jugador].sort_values("Fecha")
-                    cargas = historial[historial["Tipo"].str.lower() == "in"]
-                    retiros = historial[historial["Tipo"].str.lower() == "out"]
-
-                    if not cargas.empty:
-                        fecha_ingreso = cargas["Fecha"].min()
-                        ultima_carga = cargas["Fecha"].max()
-                        veces_que_cargo = len(cargas)
-                        suma_de_cargas = cargas["Monto"].sum()
-                        cantidad_retiro = retiros["Retiro"].sum()
-                        dias_inactivo = (pd.to_datetime(datetime.date.today()) - ultima_carga).days
-
-                        resumen.append({
-                            "Nombre de jugador": jugador,
-                            "Fecha que ingresó": fecha_ingreso,
-                            "Veces que cargó": veces_que_cargo,
-                            "Suma de las cargas": suma_de_cargas,
-                            "Última vez que cargó": ultima_carga,
-                            "Días inactivo": dias_inactivo,
-                            "Cantidad de retiro": cantidad_retiro,
-                            "LTV (Lifetime Value)": suma_de_cargas,
-                            "Duración activa (días)": (ultima_carga - fecha_ingreso).days
-                        })
-
-                df_registro = pd.DataFrame(resumen).sort_values("Días inactivo", ascending=False)
-
-                st.subheader("📄 Registro completo de jugadores")
-                st.dataframe(df_registro)
-
-                df_registro.to_excel("registro_jugadores_fenix.xlsx", index=False)
-                with open("registro_jugadores_fenix.xlsx", "rb") as f:
-                    st.download_button("📅 Descargar Excel", f, file_name="registro_jugadores_fenix.xlsx")
-
-                # KPIs
-                total_cargado = df["Monto"].sum()
-                total_retirado = df["Retiro"].sum()
-                neto = total_cargado - total_retirado
-                cantidad_jugadores = df["Jugador"].nunique()
-
-                col1, col2, col3, col4 = st.columns(4)
-                col1.metric("💰 Total Cargado", f"${total_cargado:,.0f}")
-                col2.metric("📤 Total Retirado", f"${total_retirado:,.0f}")
-                col3.metric("💸 Neto", f"${neto:,.0f}")
-                col4.metric("👥 Jugadores únicos", cantidad_jugadores)
-
-                # Gráfico de evolución
-                df_evolucion = df.groupby(df["Fecha"].dt.date).agg({"Monto": "sum", "Retiro": "sum"}).reset_index()
-                df_evolucion["Neto"] = df_evolucion["Monto"] - df_evolucion["Retiro"]
-                fig_linea = px.line(df_evolucion, x="Fecha", y=["Monto", "Retiro", "Neto"], markers=True,
-                                    title="Evolución diaria de cargas, retiros y neto",
-                                    labels={"value": "Monto ($)", "variable": "Tipo"})
-                st.plotly_chart(fig_linea, use_container_width=True)
-
-                # Ranking
-                ranking_monto = df.groupby("Jugador")["Monto"].sum().reset_index().sort_values(by="Monto", ascending=False).head(10)
-                ranking_monto["Monto"] = ranking_monto["Monto"].round(0)
-                fig_ranking = px.bar(ranking_monto, x="Monto", y="Jugador", orientation="h",
-                                     title="Top 10 jugadores por monto cargado", text="Monto")
-                fig_ranking.update_layout(yaxis={"categoryorder": "total ascending"})
-                st.plotly_chart(fig_ranking, use_container_width=True)
-
-                # Anomalías
-                promedio_diario = df_evolucion["Monto"].mean()
-                df_evolucion["Anomalía"] = df_evolucion["Monto"] < (promedio_diario * 0.7)
-                fig_anomalias = px.scatter(df_evolucion, x="Fecha", y="Monto", color="Anomalía",
-                                           title="Detección de anomalías de carga",
-                                           labels={"Monto": "Monto cargado ($)"})
-                st.plotly_chart(fig_anomalias, use_container_width=True)
+            st.success(f"✅ Registros de Fénix actualizados correctamente. Total acumulado: {len(df_historial)}")
 
         except Exception as e:
-            st.error(f"❌ Error al procesar el reporte: {e}")
+            st.error(f"❌ Error al procesar los datos pegados: {e}")
+
+    if not df_historial.empty:
+        st.info(f"📊 Total de registros acumulados: {len(df_historial)}")
+        if st.button("🗑️ Borrar todo el historial Fénix"):
+            hoja_fenix.clear()
+            st.success("✅ Historial Fénix borrado correctamente. Recargá la app.")
+            st.stop()
+
+        df = df_historial.copy()
+
+        try:
+            jugadores = df["Jugador"].dropna().unique()
+            resumen = []
+
+            for jugador in jugadores:
+                historial = df[df["Jugador"] == jugador].sort_values("Fecha")
+                cargas = historial[historial["Tipo"].str.lower() == "in"]
+                retiros = historial[historial["Tipo"].str.lower() == "out"]
+
+                if not cargas.empty:
+                    fecha_ingreso = cargas["Fecha"].min()
+                    ultima_carga = cargas["Fecha"].max()
+                    veces_que_cargo = len(cargas)
+                    suma_de_cargas = cargas["Monto"].sum()
+                    cantidad_retiro = retiros["Retiro"].sum()
+                    dias_inactivo = (pd.to_datetime(datetime.date.today()) - ultima_carga).days
+
+                    resumen.append({
+                        "Nombre de jugador": jugador,
+                        "Fecha que ingresó": fecha_ingreso,
+                        "Veces que cargó": veces_que_cargo,
+                        "Suma de las cargas": suma_de_cargas,
+                        "Última vez que cargó": ultima_carga,
+                        "Días inactivo": dias_inactivo,
+                        "Cantidad de retiro": cantidad_retiro,
+                        "LTV (Lifetime Value)": suma_de_cargas,
+                        "Duración activa (días)": (ultima_carga - fecha_ingreso).days
+                    })
+
+            df_registro = pd.DataFrame(resumen).sort_values("Días inactivo", ascending=False)
+
+            st.subheader("📄 Registro completo de jugadores")
+            st.dataframe(df_registro)
+
+            df_registro.to_excel("registro_jugadores.xlsx", index=False)
+            with open("registro_jugadores.xlsx", "rb") as f:
+                st.download_button("📅 Descargar Excel", f, file_name="registro_jugadores.xlsx")
+
+            # KPIs
+            total_cargado = df["Monto"].sum()
+            total_retirado = df["Retiro"].sum()
+            neto = total_cargado - total_retirado
+            cantidad_jugadores = df["Jugador"].nunique()
+
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric("💰 Total Cargado", f"${total_cargado:,.0f}")
+            col2.metric("📤 Total Retirado", f"${total_retirado:,.0f}")
+            col3.metric("💸 Neto", f"${neto:,.0f}")
+            col4.metric("👥 Jugadores únicos", cantidad_jugadores)
+
+            st.markdown("---")
+
+            df_evolucion = df.groupby(df["Fecha"].dt.date).agg({
+                "Monto": "sum",
+                "Retiro": "sum"
+            }).reset_index()
+            df_evolucion["Neto"] = df_evolucion["Monto"] - df_evolucion["Retiro"]
+
+            fig_linea = px.line(
+                df_evolucion,
+                x="Fecha",
+                y=["Monto", "Retiro", "Neto"],
+                markers=True,
+                title="Evolución diaria de cargas, retiros y neto",
+                labels={"value": "Monto ($)", "variable": "Tipo"}
+            )
+            st.plotly_chart(fig_linea, use_container_width=True)
+
+            ranking_monto = df.groupby("Jugador")["Monto"].sum().reset_index().sort_values(by="Monto", ascending=False).head(10)
+            fig_ranking = px.bar(
+                ranking_monto,
+                x="Monto",
+                y="Jugador",
+                orientation="h",
+                title="Top 10 jugadores por monto cargado",
+                text="Monto"
+            )
+            fig_ranking.update_layout(yaxis={"categoryorder": "total ascending"})
+            st.plotly_chart(fig_ranking, use_container_width=True)
+
+            promedio_diario = df_evolucion["Monto"].mean()
+            df_evolucion["Anomalía"] = df_evolucion["Monto"] < (promedio_diario * 0.7)
+            fig_anomalias = px.scatter(
+                df_evolucion,
+                x="Fecha",
+                y="Monto",
+                color="Anomalía",
+                title="Detección de anomalías de carga",
+                labels={"Monto": "Monto cargado ($)"}
+            )
+            st.plotly_chart(fig_anomalias, use_container_width=True)
+
+        except Exception as e:
+            st.error(f"❌ Error al generar resumen de actividad: {e}")
+
 
 #SECCION EROS
 elif "📋 Registro Eros" in seccion:
