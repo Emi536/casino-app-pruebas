@@ -36,7 +36,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-seccion = st.sidebar.radio("Seleccioná una sección:", ["🔝 Métricas de jugadores", "📋 Registro de actividad de jugadores", "📆 Seguimiento de jugadores inactivos"])
+seccion = st.sidebar.radio("Seleccioná una sección:", ["🔝 Métricas de jugadores", "📋 Registro Fénix","📋 Registro Eros", "📆 Seguimiento de jugadores inactivos"])
 
 # --- FUNCIONES ---
 def preparar_dataframe(df):
@@ -152,11 +152,10 @@ if seccion == "🔝 Métricas de jugadores":
             st.error("❌ El archivo no tiene el formato esperado.")
 
 
-# ---SECCIÓN 2: REGISTRO
-elif "Registro de actividad de jugadores" in seccion:
-    st.header("📋 Registro general de jugadores")
+# ---SECCIÓN 2: REGISTRO FENIX
+elif "📋 Registro Fénix" in seccion:
+    st.header("📋 Registro general de jugadores - Fénix")
 
-    # Mostrar fecha última actualización
     argentina = pytz.timezone("America/Argentina/Buenos_Aires")
     ahora = datetime.datetime.now(argentina)
     fecha_actual = ahora.strftime("%d/%m/%Y - %H:%M hs")
@@ -166,23 +165,21 @@ elif "Registro de actividad de jugadores" in seccion:
 
     texto_pegar = st.text_area("📋 Pegá aquí el reporte copiado (incluí encabezados)", height=300)
     df = None
-    
+
     if texto_pegar:
         try:
             texto_pegar_preview = texto_pegar[:500]
-    
             if "\t" in texto_pegar_preview:
                 sep_detectado = "\t"
             elif ";" in texto_pegar_preview:
                 sep_detectado = ";"
             else:
                 sep_detectado = ","
-    
-            # Leer líneas y limpiar filas incompletas
+
             lineas = texto_pegar.strip().splitlines()
             encabezados = lineas[0].split(sep_detectado)
             cantidad_columnas = len(encabezados)
-    
+
             contenido_limpio = [sep_detectado.join(encabezados)]
             for fila in lineas[1:]:
                 columnas = fila.split(sep_detectado)
@@ -191,25 +188,19 @@ elif "Registro de actividad de jugadores" in seccion:
                 elif len(columnas) > cantidad_columnas:
                     columnas = columnas[:cantidad_columnas]
                 contenido_limpio.append(sep_detectado.join(columnas))
-    
-            # Crear DataFrame desde contenido pegado
+
             archivo_limpio = StringIO("\n".join(contenido_limpio))
             df_nuevo = pd.read_csv(archivo_limpio, sep=sep_detectado, decimal=",", dtype=str)
-    
-            # Eliminar columnas sobrantes tipo "Unnamed"
             df_nuevo = df_nuevo.loc[:, ~df_nuevo.columns.str.contains("^Unnamed")]
-    
-            # Validar encabezados esenciales
+
             columnas_requeridas = ["operación", "Depositar", "Retirar", "Fecha", "Al usuario"]
             if not all(col in df_nuevo.columns for col in columnas_requeridas):
                 st.error("❌ El reporte pegado no contiene los encabezados necesarios o está mal formateado.")
                 st.stop()
-    
-            # Mostrar vista previa
+
             st.subheader("🧾 Vista previa del reporte pegado")
             st.dataframe(df_nuevo.head())
-    
-            # Renombrar columnas clave
+
             df_nuevo = df_nuevo.rename(columns={
                 "operación": "Tipo",
                 "Depositar": "Monto",
@@ -217,90 +208,64 @@ elif "Registro de actividad de jugadores" in seccion:
                 "Fecha": "Fecha",
                 "Al usuario": "Jugador"
             })
-    
+
             df_nuevo["Responsable"] = responsable
             df_nuevo["Fecha_Subida"] = fecha_actual
 
-            df_historial = df_historial.rename(columns={
-                "operación": "Tipo",
-                "Depositar": "Monto",
-                "Retirar": "Retiro",
-                "Fecha": "Fecha",
-                "Al usuario": "Jugador"
-            })
-                
-            # Función auxiliar para convertir montos correctamente desde texto tipo '5.000,00'
             def convertir_monto(valor):
-                if pd.isna(valor):
-                    return 0.0
+                if pd.isna(valor): return 0.0
                 valor = str(valor).strip()
                 if "," in valor and "." in valor:
-                    # Si tiene punto y coma, asumimos formato europeo
                     valor = valor.replace(".", "").replace(",", ".")
-                elif "," in valor and "." not in valor:
-                    # Si solo tiene coma, puede ser decimal
+                elif "," in valor:
                     valor = valor.replace(",", ".")
-                elif "." in valor and "," not in valor:
-                    pass  # ya está bien
                 try:
                     return float(valor)
                 except:
                     return 0.0
 
-            # FUNCIÓN FINAL PARA LIMPIAR EL DATAFRAME
             def limpiar_dataframe(df_temp):
                 df_temp = df_temp.copy()
-            
-                # Asegurar columna "Jugador"
-                if "Jugador" not in df_temp.columns:
-                    posibles = [col for col in df_temp.columns if col.lower().strip() == "al usuario"]
-                    if posibles:
-                        df_temp["Jugador"] = df_temp[posibles[0]]
-                    else:
-                        df_temp["Jugador"] = ""
-            
                 df_temp["Jugador"] = df_temp["Jugador"].astype(str).apply(lambda x: x.strip().lower())
-            
-                # Limpiar montos con función segura
                 df_temp["Monto"] = df_temp["Monto"].apply(convertir_monto) if "Monto" in df_temp.columns else 0.0
                 df_temp["Retiro"] = df_temp["Retiro"].apply(convertir_monto) if "Retiro" in df_temp.columns else 0.0
-            
-                # Convertir Fecha
                 df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"], errors="coerce") if "Fecha" in df_temp.columns else pd.NaT
-            
                 return df_temp
-    
+
             df_nuevo = limpiar_dataframe(df_nuevo)
-            df_historial = limpiar_dataframe(df_historial)
-    
-            # Validación de duplicados por ID
-            if "ID" in df_nuevo.columns and "ID" in df_historial.columns:
-                ids_existentes = df_historial["ID"].astype(str).tolist()
-                df_nuevo = df_nuevo[~df_nuevo["ID"].astype(str).isin(ids_existentes)]
-    
+
+            # 🔍 Filtrar solo registros de Fénix
+            valores_fenix = [
+                "hl_casinofenix",
+                "Fenix_Wagger100",
+                "Fenix_Wagger40",
+                "Fenix_Wagger30",
+                "Fenix_Wagger50",
+                "Fenix_Wagger150",
+                "Fenix_Wagger200"
+            ]
+
+            if "Del usuario" in df_nuevo.columns:
+                df_nuevo["Del usuario"] = df_nuevo["Del usuario"].astype(str).str.strip()
+                df_nuevo = df_nuevo[df_nuevo["Del usuario"].isin(valores_fenix)]
+
             if df_nuevo.empty:
-                st.warning("⚠️ Todos los registros pegados ya existían en el historial (mismo ID). No se agregó nada.")
+                st.warning("⚠️ No se encontraron registros válidos para Fénix en este reporte.")
                 st.stop()
-    
-            # Concatenar y guardar
-            df_historial = pd.concat([df_historial, df_nuevo], ignore_index=True)
-            df_historial.drop_duplicates(subset=["ID"], inplace=True)
-    
-            worksheet.clear()
-            worksheet.update([df_historial.columns.tolist()] + df_historial.astype(str).values.tolist())
-    
-            st.success(f"✅ Reporte agregado correctamente. Registros nuevos: {len(df_nuevo)}")
-    
+
+            # ✅ GUARDAR EN HOJA 'registro_fenix'
+            try:
+                hoja_fenix = sh.worksheet("registro_fenix")
+            except gspread.exceptions.WorksheetNotFound:
+                hoja_fenix = sh.add_worksheet(title="registro_fenix", rows="1000", cols="20")
+
+            hoja_fenix.clear()
+            hoja_fenix.update([df_nuevo.columns.tolist()] + df_nuevo.astype(str).values.tolist())
+
+            st.success(f"✅ Registros de Fénix actualizados correctamente en la hoja 'registro_fenix'.")
+
         except Exception as e:
             st.error(f"❌ Error al procesar los datos pegados: {e}")
-    
-    if not df_historial.empty:
-        st.info(f"📊 Total de registros acumulados: {len(df_historial)}")
-        if st.button("🗑️ Borrar todo el historial"):
-            worksheet.clear()
-            df_historial = pd.DataFrame()
-            st.success("✅ Historial borrado correctamente. Recargá la app.")
-        df = df_historial.copy()
     
     if df is not None:
         try:
@@ -408,6 +373,227 @@ elif "Registro de actividad de jugadores" in seccion:
 
         except Exception as e:
             st.error(f"❌ Error al procesar el reporte: {e}")
+#SECCION EROS
+elif "📋 Registro Eros" in seccion:
+    st.header("📋 Registro general de jugadores - Eros")
+
+    argentina = pytz.timezone("America/Argentina/Buenos_Aires")
+    ahora = datetime.datetime.now(argentina)
+    fecha_actual = ahora.strftime("%d/%m/%Y - %H:%M hs")
+    st.info(f"⏰ Última actualización: {fecha_actual}")
+
+    responsable = st.text_input("👤 Ingresá tu nombre para registrar quién sube el reporte", value="Anónimo")
+
+    texto_pegar = st.text_area("📋 Pegá aquí el reporte copiado (incluí encabezados)", height=300)
+    df = None
+
+    if texto_pegar:
+        try:
+            texto_pegar_preview = texto_pegar[:500]
+            if "\t" in texto_pegar_preview:
+                sep_detectado = "\t"
+            elif ";" in texto_pegar_preview:
+                sep_detectado = ";"
+            else:
+                sep_detectado = ","
+
+            lineas = texto_pegar.strip().splitlines()
+            encabezados = lineas[0].split(sep_detectado)
+            cantidad_columnas = len(encabezados)
+
+            contenido_limpio = [sep_detectado.join(encabezados)]
+            for fila in lineas[1:]:
+                columnas = fila.split(sep_detectado)
+                if len(columnas) < cantidad_columnas:
+                    columnas += [""] * (cantidad_columnas - len(columnas))
+                elif len(columnas) > cantidad_columnas:
+                    columnas = columnas[:cantidad_columnas]
+                contenido_limpio.append(sep_detectado.join(columnas))
+
+            archivo_limpio = StringIO("\n".join(contenido_limpio))
+            df_nuevo = pd.read_csv(archivo_limpio, sep=sep_detectado, decimal=",", dtype=str)
+            df_nuevo = df_nuevo.loc[:, ~df_nuevo.columns.str.contains("^Unnamed")]
+
+            columnas_requeridas = ["operación", "Depositar", "Retirar", "Fecha", "Al usuario"]
+            if not all(col in df_nuevo.columns for col in columnas_requeridas):
+                st.error("❌ El reporte pegado no contiene los encabezados necesarios o está mal formateado.")
+                st.stop()
+
+            st.subheader("🧾 Vista previa del reporte pegado")
+            st.dataframe(df_nuevo.head())
+
+            df_nuevo = df_nuevo.rename(columns={
+                "operación": "Tipo",
+                "Depositar": "Monto",
+                "Retirar": "Retiro",
+                "Fecha": "Fecha",
+                "Al usuario": "Jugador"
+            })
+
+            df_nuevo["Responsable"] = responsable
+            df_nuevo["Fecha_Subida"] = fecha_actual
+
+            def convertir_monto(valor):
+                if pd.isna(valor): return 0.0
+                valor = str(valor).strip()
+                if "," in valor and "." in valor:
+                    valor = valor.replace(".", "").replace(",", ".")
+                elif "," in valor:
+                    valor = valor.replace(",", ".")
+                try:
+                    return float(valor)
+                except:
+                    return 0.0
+
+            def limpiar_dataframe(df_temp):
+                df_temp = df_temp.copy()
+                df_temp["Jugador"] = df_temp["Jugador"].astype(str).apply(lambda x: x.strip().lower())
+                df_temp["Monto"] = df_temp["Monto"].apply(convertir_monto) if "Monto" in df_temp.columns else 0.0
+                df_temp["Retiro"] = df_temp["Retiro"].apply(convertir_monto) if "Retiro" in df_temp.columns else 0.0
+                df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"], errors="coerce") if "Fecha" in df_temp.columns else pd.NaT
+                return df_temp
+
+            df_nuevo = limpiar_dataframe(df_nuevo)
+
+            valores_eros = [
+                "hl_Erosonline",
+                "Eros_wagger30%",
+                "Eros_wagger40%",
+                "Eros_wagger50%",
+                "Eros_wagger100%",
+                "Eros_wagger150%",
+                "Eros_wagger200%"
+            ]
+
+            if "Del usuario" in df_nuevo.columns:
+                df_nuevo["Del usuario"] = df_nuevo["Del usuario"].astype(str).str.strip()
+                df_nuevo = df_nuevo[df_nuevo["Del usuario"].isin(valores_eros)]
+
+            if df_nuevo.empty:
+                st.warning("⚠️ No se encontraron registros válidos para Eros en este reporte.")
+                st.stop()
+
+            try:
+                hoja_eros = sh.worksheet("registro_eros")
+            except gspread.exceptions.WorksheetNotFound:
+                hoja_eros = sh.add_worksheet(title="registro_eros", rows="1000", cols="20")
+
+            hoja_eros.clear()
+            hoja_eros.update([df_nuevo.columns.tolist()] + df_nuevo.astype(str).values.tolist())
+
+            st.success("✅ Registros de Eros actualizados correctamente en la hoja 'registro_eros'.")
+
+        except Exception as e:
+            st.error(f"❌ Error al procesar los datos pegados: {e}")
+
+     if df is not None:
+            try:
+                jugadores = df["Jugador"].dropna().unique()
+                resumen = []
+                jugadores_resumen = []
+        
+                for jugador in jugadores:
+                    historial = df[df["Jugador"] == jugador].sort_values("Fecha")
+                    cargas = historial[historial["Tipo"].str.lower() == "in"]
+                    retiros = historial[historial["Tipo"].str.lower() == "out"]
+        
+                    if not cargas.empty:
+                        fecha_ingreso = cargas["Fecha"].min()
+                        ultima_carga = cargas["Fecha"].max()
+                        veces_que_cargo = len(cargas)
+                        suma_de_cargas = cargas["Monto"].sum()
+                        cantidad_retiro = retiros["Retiro"].sum()
+                        dias_inactivo = (pd.to_datetime(datetime.date.today()) - ultima_carga).days
+        
+                        resumen.append({
+                            "Nombre de jugador": jugador,
+                            "Fecha que ingresó": fecha_ingreso,
+                            "Veces que cargó": veces_que_cargo,
+                            "Suma de las cargas": suma_de_cargas,
+                            "Última vez que cargó": ultima_carga,
+                            "Días inactivo": dias_inactivo,
+                            "Cantidad de retiro": cantidad_retiro,
+                            "LTV (Lifetime Value)": suma_de_cargas,
+                            "Duración activa (días)": (ultima_carga - fecha_ingreso).days
+                        })
+                        jugadores_resumen.append(jugador)
+        
+                jugadores_faltantes = list(set(jugadores) - set(jugadores_resumen))
+                if jugadores_faltantes:
+                    st.warning(f"⚠️ Jugadores descartados del resumen por no tener cargas: {jugadores_faltantes}")
+        
+                df_registro = pd.DataFrame(resumen).sort_values("Días inactivo", ascending=False)
+        
+                st.subheader("📄 Registro completo de jugadores")
+                st.dataframe(df_registro)
+        
+                df_registro.to_excel("registro_jugadores.xlsx", index=False)
+                with open("registro_jugadores.xlsx", "rb") as f:
+                    st.download_button("📅 Descargar Excel", f, file_name="registro_jugadores.xlsx")
+        
+                # KPIs
+                total_cargado = df["Monto"].sum()
+                total_retirado = df["Retiro"].sum()
+                neto = total_cargado - total_retirado
+                cantidad_jugadores = df["Jugador"].nunique()
+        
+                col1, col2, col3, col4 = st.columns(4)
+                col1.metric("💰 Total Cargado", f"${total_cargado:,.0f}")
+                col2.metric("📤 Total Retirado", f"${total_retirado:,.0f}")
+                col3.metric("💸 Neto", f"${neto:,.0f}")
+                col4.metric("👥 Jugadores únicos", cantidad_jugadores)
+    
+                st.markdown("---")
+    
+                # 📆 Evolución diaria
+                df_evolucion = df.groupby(df["Fecha"].dt.date).agg({
+                    "Monto": "sum",
+                    "Retiro": "sum"
+                }).reset_index()
+                df_evolucion["Neto"] = df_evolucion["Monto"] - df_evolucion["Retiro"]
+    
+                fig_linea = px.line(
+                    df_evolucion,
+                    x="Fecha",
+                    y=["Monto", "Retiro", "Neto"],
+                    markers=True,
+                    title="Evolución diaria de cargas, retiros y neto",
+                    labels={"value": "Monto ($)", "variable": "Tipo"}
+                )
+                st.plotly_chart(fig_linea, use_container_width=True)
+    
+                # 📊 Ranking por Jugador
+                ranking_monto = df.groupby("Jugador")["Monto"].sum().reset_index().sort_values(by="Monto", ascending=False).head(10)
+                ranking_monto["Monto"] = ranking_monto["Monto"].round(0)
+                fig_ranking = px.bar(
+                    ranking_monto,
+                    x="Monto",
+                    y="Jugador",
+                    orientation="h",
+                    title="Top 10 jugadores por monto cargado",
+                    text="Monto"
+                )
+                fig_ranking.update_layout(yaxis={"categoryorder": "total ascending"})
+                st.plotly_chart(fig_ranking, use_container_width=True)
+    
+                # 🧭 Detección de anomalías
+                promedio_diario = df_evolucion["Monto"].mean()
+                df_evolucion["Anomalía"] = df_evolucion["Monto"] < (promedio_diario * 0.7)
+    
+                fig_anomalias = px.scatter(
+                    df_evolucion,
+                    x="Fecha",
+                    y="Monto",
+                    color="Anomalía",
+                    title="Detección de anomalías de carga",
+                    labels={"Monto": "Monto cargado ($)"}
+                )
+                st.plotly_chart(fig_anomalias, use_container_width=True)
+    
+            except Exception as e:
+                st.error(f"❌ Error al procesar el reporte: {e}")
+
+
 
 elif seccion == "📆 Seguimiento de jugadores inactivos":
     st.header("📆 Seguimiento de Jugadores Inactivos Mejorado")
