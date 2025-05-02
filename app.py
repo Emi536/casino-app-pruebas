@@ -486,112 +486,112 @@ elif "📋 Registro Eros" in seccion:
         except Exception as e:
             st.error(f"❌ Error al procesar los datos pegados: {e}")
 
-     if df is not None:
-            try:
-                jugadores = df["Jugador"].dropna().unique()
-                resumen = []
-                jugadores_resumen = []
+         if df is not None:
+                try:
+                    jugadores = df["Jugador"].dropna().unique()
+                    resumen = []
+                    jugadores_resumen = []
+            
+                    for jugador in jugadores:
+                        historial = df[df["Jugador"] == jugador].sort_values("Fecha")
+                        cargas = historial[historial["Tipo"].str.lower() == "in"]
+                        retiros = historial[historial["Tipo"].str.lower() == "out"]
+            
+                        if not cargas.empty:
+                            fecha_ingreso = cargas["Fecha"].min()
+                            ultima_carga = cargas["Fecha"].max()
+                            veces_que_cargo = len(cargas)
+                            suma_de_cargas = cargas["Monto"].sum()
+                            cantidad_retiro = retiros["Retiro"].sum()
+                            dias_inactivo = (pd.to_datetime(datetime.date.today()) - ultima_carga).days
+            
+                            resumen.append({
+                                "Nombre de jugador": jugador,
+                                "Fecha que ingresó": fecha_ingreso,
+                                "Veces que cargó": veces_que_cargo,
+                                "Suma de las cargas": suma_de_cargas,
+                                "Última vez que cargó": ultima_carga,
+                                "Días inactivo": dias_inactivo,
+                                "Cantidad de retiro": cantidad_retiro,
+                                "LTV (Lifetime Value)": suma_de_cargas,
+                                "Duración activa (días)": (ultima_carga - fecha_ingreso).days
+                            })
+                            jugadores_resumen.append(jugador)
+            
+                    jugadores_faltantes = list(set(jugadores) - set(jugadores_resumen))
+                    if jugadores_faltantes:
+                        st.warning(f"⚠️ Jugadores descartados del resumen por no tener cargas: {jugadores_faltantes}")
+            
+                    df_registro = pd.DataFrame(resumen).sort_values("Días inactivo", ascending=False)
+            
+                    st.subheader("📄 Registro completo de jugadores")
+                    st.dataframe(df_registro)
+            
+                    df_registro.to_excel("registro_jugadores.xlsx", index=False)
+                    with open("registro_jugadores.xlsx", "rb") as f:
+                        st.download_button("📅 Descargar Excel", f, file_name="registro_jugadores.xlsx")
+            
+                    # KPIs
+                    total_cargado = df["Monto"].sum()
+                    total_retirado = df["Retiro"].sum()
+                    neto = total_cargado - total_retirado
+                    cantidad_jugadores = df["Jugador"].nunique()
+            
+                    col1, col2, col3, col4 = st.columns(4)
+                    col1.metric("💰 Total Cargado", f"${total_cargado:,.0f}")
+                    col2.metric("📤 Total Retirado", f"${total_retirado:,.0f}")
+                    col3.metric("💸 Neto", f"${neto:,.0f}")
+                    col4.metric("👥 Jugadores únicos", cantidad_jugadores)
         
-                for jugador in jugadores:
-                    historial = df[df["Jugador"] == jugador].sort_values("Fecha")
-                    cargas = historial[historial["Tipo"].str.lower() == "in"]
-                    retiros = historial[historial["Tipo"].str.lower() == "out"]
+                    st.markdown("---")
         
-                    if not cargas.empty:
-                        fecha_ingreso = cargas["Fecha"].min()
-                        ultima_carga = cargas["Fecha"].max()
-                        veces_que_cargo = len(cargas)
-                        suma_de_cargas = cargas["Monto"].sum()
-                        cantidad_retiro = retiros["Retiro"].sum()
-                        dias_inactivo = (pd.to_datetime(datetime.date.today()) - ultima_carga).days
+                    # 📆 Evolución diaria
+                    df_evolucion = df.groupby(df["Fecha"].dt.date).agg({
+                        "Monto": "sum",
+                        "Retiro": "sum"
+                    }).reset_index()
+                    df_evolucion["Neto"] = df_evolucion["Monto"] - df_evolucion["Retiro"]
         
-                        resumen.append({
-                            "Nombre de jugador": jugador,
-                            "Fecha que ingresó": fecha_ingreso,
-                            "Veces que cargó": veces_que_cargo,
-                            "Suma de las cargas": suma_de_cargas,
-                            "Última vez que cargó": ultima_carga,
-                            "Días inactivo": dias_inactivo,
-                            "Cantidad de retiro": cantidad_retiro,
-                            "LTV (Lifetime Value)": suma_de_cargas,
-                            "Duración activa (días)": (ultima_carga - fecha_ingreso).days
-                        })
-                        jugadores_resumen.append(jugador)
+                    fig_linea = px.line(
+                        df_evolucion,
+                        x="Fecha",
+                        y=["Monto", "Retiro", "Neto"],
+                        markers=True,
+                        title="Evolución diaria de cargas, retiros y neto",
+                        labels={"value": "Monto ($)", "variable": "Tipo"}
+                    )
+                    st.plotly_chart(fig_linea, use_container_width=True)
         
-                jugadores_faltantes = list(set(jugadores) - set(jugadores_resumen))
-                if jugadores_faltantes:
-                    st.warning(f"⚠️ Jugadores descartados del resumen por no tener cargas: {jugadores_faltantes}")
+                    # 📊 Ranking por Jugador
+                    ranking_monto = df.groupby("Jugador")["Monto"].sum().reset_index().sort_values(by="Monto", ascending=False).head(10)
+                    ranking_monto["Monto"] = ranking_monto["Monto"].round(0)
+                    fig_ranking = px.bar(
+                        ranking_monto,
+                        x="Monto",
+                        y="Jugador",
+                        orientation="h",
+                        title="Top 10 jugadores por monto cargado",
+                        text="Monto"
+                    )
+                    fig_ranking.update_layout(yaxis={"categoryorder": "total ascending"})
+                    st.plotly_chart(fig_ranking, use_container_width=True)
         
-                df_registro = pd.DataFrame(resumen).sort_values("Días inactivo", ascending=False)
+                    # 🧭 Detección de anomalías
+                    promedio_diario = df_evolucion["Monto"].mean()
+                    df_evolucion["Anomalía"] = df_evolucion["Monto"] < (promedio_diario * 0.7)
         
-                st.subheader("📄 Registro completo de jugadores")
-                st.dataframe(df_registro)
+                    fig_anomalias = px.scatter(
+                        df_evolucion,
+                        x="Fecha",
+                        y="Monto",
+                        color="Anomalía",
+                        title="Detección de anomalías de carga",
+                        labels={"Monto": "Monto cargado ($)"}
+                    )
+                    st.plotly_chart(fig_anomalias, use_container_width=True)
         
-                df_registro.to_excel("registro_jugadores.xlsx", index=False)
-                with open("registro_jugadores.xlsx", "rb") as f:
-                    st.download_button("📅 Descargar Excel", f, file_name="registro_jugadores.xlsx")
-        
-                # KPIs
-                total_cargado = df["Monto"].sum()
-                total_retirado = df["Retiro"].sum()
-                neto = total_cargado - total_retirado
-                cantidad_jugadores = df["Jugador"].nunique()
-        
-                col1, col2, col3, col4 = st.columns(4)
-                col1.metric("💰 Total Cargado", f"${total_cargado:,.0f}")
-                col2.metric("📤 Total Retirado", f"${total_retirado:,.0f}")
-                col3.metric("💸 Neto", f"${neto:,.0f}")
-                col4.metric("👥 Jugadores únicos", cantidad_jugadores)
-    
-                st.markdown("---")
-    
-                # 📆 Evolución diaria
-                df_evolucion = df.groupby(df["Fecha"].dt.date).agg({
-                    "Monto": "sum",
-                    "Retiro": "sum"
-                }).reset_index()
-                df_evolucion["Neto"] = df_evolucion["Monto"] - df_evolucion["Retiro"]
-    
-                fig_linea = px.line(
-                    df_evolucion,
-                    x="Fecha",
-                    y=["Monto", "Retiro", "Neto"],
-                    markers=True,
-                    title="Evolución diaria de cargas, retiros y neto",
-                    labels={"value": "Monto ($)", "variable": "Tipo"}
-                )
-                st.plotly_chart(fig_linea, use_container_width=True)
-    
-                # 📊 Ranking por Jugador
-                ranking_monto = df.groupby("Jugador")["Monto"].sum().reset_index().sort_values(by="Monto", ascending=False).head(10)
-                ranking_monto["Monto"] = ranking_monto["Monto"].round(0)
-                fig_ranking = px.bar(
-                    ranking_monto,
-                    x="Monto",
-                    y="Jugador",
-                    orientation="h",
-                    title="Top 10 jugadores por monto cargado",
-                    text="Monto"
-                )
-                fig_ranking.update_layout(yaxis={"categoryorder": "total ascending"})
-                st.plotly_chart(fig_ranking, use_container_width=True)
-    
-                # 🧭 Detección de anomalías
-                promedio_diario = df_evolucion["Monto"].mean()
-                df_evolucion["Anomalía"] = df_evolucion["Monto"] < (promedio_diario * 0.7)
-    
-                fig_anomalias = px.scatter(
-                    df_evolucion,
-                    x="Fecha",
-                    y="Monto",
-                    color="Anomalía",
-                    title="Detección de anomalías de carga",
-                    labels={"Monto": "Monto cargado ($)"}
-                )
-                st.plotly_chart(fig_anomalias, use_container_width=True)
-    
-            except Exception as e:
-                st.error(f"❌ Error al procesar el reporte: {e}")
+                except Exception as e:
+                    st.error(f"❌ Error al procesar el reporte: {e}")
 
 
 
