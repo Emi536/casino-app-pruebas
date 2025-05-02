@@ -8,6 +8,24 @@ import gspread
 from google.oauth2 import service_account
 import pytz
 
+def login():
+    st.sidebar.title("🔐 Iniciar sesión")
+
+    usuario_ingresado = st.sidebar.text_input("Usuario")
+    clave_ingresada = st.sidebar.text_input("Contraseña", type="password")
+
+    usuario_valido = st.secrets["auth"]["usuario"]
+    clave_valida = st.secrets["auth"]["clave"]
+
+    if usuario_ingresado == usuario_valido and clave_ingresada == clave_valida:
+        st.session_state["logueado"] = True
+    else:
+        st.sidebar.warning("Ingresá tus credenciales")
+
+if "logueado" not in st.session_state or not st.session_state["logueado"]:
+    login()
+    st.stop()
+
 df = None
 
 st.set_page_config(page_title="PlayerMetrics - Análisis de Cargas", layout="wide")
