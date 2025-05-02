@@ -20,11 +20,15 @@ def login():
     if usuario_ingresado == usuario_valido and clave_ingresada == clave_valida:
         st.session_state["logueado"] = True
     else:
-        st.sidebar.warning("Ingresá tus credenciales")
+        st.sidebar.error("Credenciales incorrectas")
 
 if "logueado" not in st.session_state or not st.session_state["logueado"]:
     login()
     st.stop()
+
+st.title("🔐 Acceso autorizado - PlayerMetrics")
+
+st.success("Bienvenido. Acceso concedido.")
 
 df = None
 
