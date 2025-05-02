@@ -178,7 +178,7 @@ elif "Registro de actividad de jugadores" in seccion:
             else:
                 sep_detectado = ","
     
-            # Leer líneas
+            # Leer líneas y limpiar filas incompletas
             lineas = texto_pegar.strip().splitlines()
             encabezados = lineas[0].split(sep_detectado)
             cantidad_columnas = len(encabezados)
@@ -192,13 +192,24 @@ elif "Registro de actividad de jugadores" in seccion:
                     columnas = columnas[:cantidad_columnas]
                 contenido_limpio.append(sep_detectado.join(columnas))
     
+            # Crear DataFrame desde contenido pegado
             archivo_limpio = StringIO("\n".join(contenido_limpio))
             df_nuevo = pd.read_csv(archivo_limpio, sep=sep_detectado, decimal=",", dtype=str)
     
-            df_nuevo["Responsable"] = responsable
-            df_nuevo["Fecha_Subida"] = fecha_actual
+            # Eliminar columnas sobrantes tipo "Unnamed"
+            df_nuevo = df_nuevo.loc[:, ~df_nuevo.columns.str.contains("^Unnamed")]
     
-            # Renombrar columnas para análisis
+            # Validar encabezados esenciales
+            columnas_requeridas = ["operación", "Depositar", "Retirar", "Fecha", "Al usuario"]
+            if not all(col in df_nuevo.columns for col in columnas_requeridas):
+                st.error("❌ El reporte pegado no contiene los encabezados necesarios o está mal formateado.")
+                st.stop()
+    
+            # Mostrar vista previa
+            st.subheader("🧾 Vista previa del reporte pegado")
+            st.dataframe(df_nuevo.head())
+    
+            # Renombrar columnas clave
             df_nuevo = df_nuevo.rename(columns={
                 "operación": "Tipo",
                 "Depositar": "Monto",
@@ -207,25 +218,13 @@ elif "Registro de actividad de jugadores" in seccion:
                 "Al usuario": "Jugador"
             })
     
-            df_historial = df_historial.rename(columns={
-                "operación": "Tipo",
-                "Depositar": "Monto",
-                "Retirar": "Retiro",
-                "Fecha": "Fecha",
-                "Al usuario": "Jugador"
-            })
+            df_nuevo["Responsable"] = responsable
+            df_nuevo["Fecha_Subida"] = fecha_actual
     
-            # Validación de columnas necesarias
-            columnas_necesarias = ["Tipo", "Fecha", "Monto", "Retiro", "Jugador"]
-            for df_check in [df_nuevo, df_historial]:
-                for col in columnas_necesarias:
-                    if col not in df_check.columns:
-                        df_check[col] = ""
-    
-            # Función de limpieza
+            # Limpieza de tipos
             def limpiar_dataframe(df_temp):
                 df_temp = df_temp.copy()
-                df_temp["Jugador"] = df_temp["Jugador"].astype(str).apply(lambda x: x.strip().lower() if isinstance(x, str) else "")
+                df_temp["Jugador"] = df_temp["Jugador"].astype(str).apply(lambda x: x.strip().lower())
                 df_temp["Monto"] = df_temp["Monto"].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
                 df_temp["Monto"] = pd.to_numeric(df_temp["Monto"], errors="coerce").fillna(0)
                 df_temp["Retiro"] = df_temp["Retiro"].astype(str).str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
@@ -233,17 +232,26 @@ elif "Registro de actividad de jugadores" in seccion:
                 df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"], errors="coerce")
                 return df_temp
     
-            # Limpieza unificada
             df_nuevo = limpiar_dataframe(df_nuevo)
             df_historial = limpiar_dataframe(df_historial)
     
+            # Validación de duplicados por ID
+            if "ID" in df_nuevo.columns and "ID" in df_historial.columns:
+                ids_existentes = df_historial["ID"].astype(str).tolist()
+                df_nuevo = df_nuevo[~df_nuevo["ID"].astype(str).isin(ids_existentes)]
+    
+            if df_nuevo.empty:
+                st.warning("⚠️ Todos los registros pegados ya existían en el historial (mismo ID). No se agregó nada.")
+                st.stop()
+    
+            # Concatenar y guardar
             df_historial = pd.concat([df_historial, df_nuevo], ignore_index=True)
-            df_historial.drop_duplicates(inplace=True)
+            df_historial.drop_duplicates(subset=["ID"], inplace=True)
     
             worksheet.clear()
             worksheet.update([df_historial.columns.tolist()] + df_historial.astype(str).values.tolist())
     
-            st.success(f"✅ Reporte agregado y guardado correctamente (detectado separador '{sep_detectado}').")
+            st.success(f"✅ Reporte agregado correctamente. Registros nuevos: {len(df_nuevo)}")
     
         except Exception as e:
             st.error(f"❌ Error al procesar los datos pegados: {e}")
