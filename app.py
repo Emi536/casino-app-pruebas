@@ -7,36 +7,41 @@ import os
 import gspread
 from google.oauth2 import service_account
 import pytz
+import hashlib
 
 st.set_page_config(page_title="PlayerMetrics - Análisis de Cargas", layout="wide")
 st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>", unsafe_allow_html=True)
 
 df = None
 
+
+USER = st.secrets["auth"]["usuario"]
+PASSWORD = st.secrets["auth"]["clave"]
+
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+
 if "logueado" not in st.session_state:
     st.session_state["logueado"] = False
 
-def login():
-    st.sidebar.title("🔐 Iniciar sesión")
-    usuario = st.sidebar.text_input("Usuario")
-    clave = st.sidebar.text_input("Contraseña", type="password")
-
-    usuario_valido = st.secrets["auth"]["usuario"]
-    clave_valida = st.secrets["auth"]["clave"]
-
-    if st.sidebar.button("Iniciar sesión"):
-        if usuario == usuario_valido and clave == clave_valida:
-            st.session_state["logueado"] = True
-        else:
-            st.sidebar.error("❌ Usuario o contraseña incorrectos")
-
-
 if not st.session_state["logueado"]:
-    login()
+    st.title("🔐 Iniciar sesión")
+    usuario_input = st.text_input("Usuario")
+    clave_input = st.text_input("Contraseña", type="password")
+
+    if st.button("Iniciar sesión"):
+        if usuario_input == USER and hash_password(clave_input) == hash_password(PASSWORD):
+            st.session_state["logueado"] = True
+            st.experimental_rerun()
+        else:
+            st.error("❌ Usuario o contraseña incorrectos")
     st.stop()
 
-st.success("✅ Bienvenido a PlayerMetrics.")
-
+st.sidebar.success(f"Bienvenido, {USER}")
+if st.sidebar.button("Cerrar sesión"):
+    st.session_state.clear()
+    st.experimental_rerun()
 
 # --- Conexión a Google Sheets ---
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
