@@ -16,7 +16,6 @@ df = None
 if "logueado" not in st.session_state:
     st.session_state["logueado"] = False
 
-# --- FUNCIÓN DE LOGIN ---
 def login():
     st.sidebar.title("🔐 Iniciar sesión")
     usuario = st.sidebar.text_input("Usuario")
@@ -31,12 +30,11 @@ def login():
         else:
             st.sidebar.error("❌ Usuario o contraseña incorrectos")
 
-# --- PROTECCIÓN DE PÁGINA ---
+
 if not st.session_state["logueado"]:
     login()
     st.stop()
 
-# --- CONTENIDO AUTORIZADO ---
 st.success("✅ Bienvenido a PlayerMetrics.")
 
 
