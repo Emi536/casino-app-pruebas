@@ -16,25 +16,32 @@ st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>"
 
 df = None
 
-config = yaml.load(st.secrets["config_yaml"], Loader=SafeLoader)
+# --- LOGIN SEGURIDAD ---
+# Cargar configuración desde secrets
+config = st.secrets["auth_config"]
 
+# Crear autenticador
 authenticator = stauth.Authenticate(
-    config["credentials"],
-    config["cookie"]["name"],
-    config["cookie"]["key"],
-    config["cookie"]["expiry_days"]
+    config['credentials'],
+    config['cookie']['name'],
+    config['cookie']['key'],
+    config['cookie']['expiry_days']
 )
 
+# Mostrar formulario de login
 name, authentication_status, username = authenticator.login("🔐 Iniciar sesión", location="main")
 
+# Validar estado de login
 if authentication_status is False:
     st.error("❌ Usuario o contraseña incorrectos.")
-elif authentication_status is None:
-    st.warning("⏳ Ingresá tus credenciales.")
-else:
-    authenticator.logout("🔓 Cerrar sesión", "sidebar")
-    st.success(f"Bienvenido, {name} 👋")
+    st.stop()
 
+elif authentication_status is None:
+    st.warning("🕓 Por favor, ingresá tus credenciales para continuar.")
+    st.stop()
+
+# --- USUARIO AUTENTICADO ---
+st.sidebar.success(f"Sesión iniciada como: {name}")
 
 # --- Conexión a Google Sheets ---
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
