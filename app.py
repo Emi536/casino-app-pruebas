@@ -1,4 +1,19 @@
 import streamlit as st
+st.set_page_config(page_title="PlayerMetrics - Análisis de Cargas", layout="wide")
+
+import pandas as pd
+import datetime
+import plotly.express as px
+from io import StringIO
+import os
+import gspread
+from google.oauth2 import service_account
+import pytz
+import streamlit_authenticator as stauth
+import copy
+
+st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>", unsafe_allow_html=True)
+
 import pandas as pd
 import datetime
 import plotly.express as px
