@@ -13,27 +13,31 @@ st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>"
 
 df = None
 
+if "logueado" not in st.session_state:
+    st.session_state["logueado"] = False
+
+# --- FUNCIÓN DE LOGIN ---
 def login():
     st.sidebar.title("🔐 Iniciar sesión")
-
-    usuario_ingresado = st.sidebar.text_input("Usuario")
-    clave_ingresada = st.sidebar.text_input("Contraseña", type="password")
+    usuario = st.sidebar.text_input("Usuario")
+    clave = st.sidebar.text_input("Contraseña", type="password")
 
     usuario_valido = st.secrets["auth"]["usuario"]
     clave_valida = st.secrets["auth"]["clave"]
 
-    if usuario_ingresado == usuario_valido and clave_ingresada == clave_valida:
-        st.session_state["logueado"] = True
-    else:
-        st.sidebar.error("Credenciales incorrectas")
+    if st.sidebar.button("Iniciar sesión"):
+        if usuario == usuario_valido and clave == clave_valida:
+            st.session_state["logueado"] = True
+        else:
+            st.sidebar.error("❌ Usuario o contraseña incorrectos")
 
-if "logueado" not in st.session_state or not st.session_state["logueado"]:
+# --- PROTECCIÓN DE PÁGINA ---
+if not st.session_state["logueado"]:
     login()
     st.stop()
 
-st.title("🔐 Acceso autorizado - PlayerMetrics")
-
-st.success("Bienvenido. Acceso concedido.")
+# --- CONTENIDO AUTORIZADO ---
+st.success("✅ Bienvenido a PlayerMetrics.")
 
 
 # --- Conexión a Google Sheets ---
