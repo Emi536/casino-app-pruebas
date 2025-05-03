@@ -9,37 +9,46 @@ import os
 import gspread
 from google.oauth2 import service_account
 import pytz
-import streamlit_authenticator as stauth
-import copy
+import hashlib
 
 # --- Título principal ---
 st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>", unsafe_allow_html=True)
+import streamlit as st
+import hashlib
 
-# --- LOGIN SEGURIDAD ---
-# Cargar configuración desde secrets
-config = st.secrets["auth_config"]
+# --- Cargar desde secrets ---
+USER = st.secrets["auth"]["usuario"]
+PASSWORD = st.secrets["auth"]["clave"]
 
-# Crear autenticador
-authenticator = stauth.Authenticate(
-    config['credentials'],
-    config['cookie']['name'],
-    config['cookie']['key'],
-    config['cookie']['expiry_days']
-)
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
 
-# Mostrar formulario de login
-name, authentication_status, username = authenticator.login("\ud83d\udd10 Iniciar sesión", location="main")
+# --- Session state login persistente ---
+if "logueado" not in st.session_state:
+    st.session_state["logueado"] = False
 
-# Validar estado de login
-if authentication_status is False:
-    st.error("\u274c Usuario o contraseña incorrectos.")
+# --- Pantalla de login ---
+if not st.session_state["logueado"]:
+    st.title("🔐 Iniciar sesión")
+    usuario_input = st.text_input("Usuario")
+    clave_input = st.text_input("Contraseña", type="password")
+
+    login_btn = st.button("Iniciar sesión")
+    
+    if login_btn:
+        if usuario_input == USER and hash_password(clave_input) == hash_password(PASSWORD):
+            st.session_state["logueado"] = True
+            st.rerun()  # ✅ Ahora seguro
+        else:
+            st.error("❌ Usuario o contraseña incorrectos")
     st.stop()
-elif authentication_status is None:
-    st.warning("\ud83d\udd53 Por favor, ingresá tus credenciales para continuar.")
-    st.stop()
 
-# --- USUARIO AUTENTICADO ---
-st.sidebar.success(f"Sesión iniciada como: {name}")
+# --- CONTENIDO SEGURO DE LA APP ---
+st.sidebar.success(f"Bienvenido, {USER}")
+if st.sidebar.button("Cerrar sesión"):
+    st.session_state.clear()
+    st.rerun()
+
 
 # --- Conexión a Google Sheets ---
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
