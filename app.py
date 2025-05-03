@@ -15,33 +15,38 @@ st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>"
 df = None
 
 
+# --- Cargar desde secrets ---
 USER = st.secrets["auth"]["usuario"]
 PASSWORD = st.secrets["auth"]["clave"]
 
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-
+# --- Session state login persistente ---
 if "logueado" not in st.session_state:
     st.session_state["logueado"] = False
 
+# --- Pantalla de login ---
 if not st.session_state["logueado"]:
     st.title("🔐 Iniciar sesión")
     usuario_input = st.text_input("Usuario")
     clave_input = st.text_input("Contraseña", type="password")
 
-    if st.button("Iniciar sesión"):
+    login_btn = st.button("Iniciar sesión")
+    
+    if login_btn:
         if usuario_input == USER and hash_password(clave_input) == hash_password(PASSWORD):
             st.session_state["logueado"] = True
-            st.experimental_rerun()
+            st.rerun()  # ✅ Ahora seguro
         else:
             st.error("❌ Usuario o contraseña incorrectos")
     st.stop()
 
+# --- CONTENIDO SEGURO DE LA APP ---
 st.sidebar.success(f"Bienvenido, {USER}")
 if st.sidebar.button("Cerrar sesión"):
     st.session_state.clear()
-    st.experimental_rerun()
+    st.rerun()
 
 # --- Conexión a Google Sheets ---
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
