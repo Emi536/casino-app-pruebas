@@ -8,8 +8,12 @@ import gspread
 from google.oauth2 import service_account
 import pytz
 import streamlit_authenticator as stauth
-import yaml
-from yaml.loader import SafeLoader
+import copy
+
+st.set_page_config(page_title="PlayerMetrics - Análisis de Cargas", layout="wide")
+st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>", unsafe_allow_html=True)
+
+df = None
 
 st.set_page_config(page_title="PlayerMetrics - Análisis de Cargas", layout="wide")
 st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>", unsafe_allow_html=True)
@@ -17,8 +21,8 @@ st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>"
 df = None
 
 # --- LOGIN SEGURIDAD ---
-# Cargar configuración desde secrets
-config = st.secrets["auth_config"]
+# Copiar configuración desde secrets (para evitar error de modificación)
+config = copy.deepcopy(st.secrets["auth_config"])
 
 # Crear autenticador
 authenticator = stauth.Authenticate(
@@ -41,7 +45,8 @@ elif authentication_status is None:
     st.stop()
 
 # --- USUARIO AUTENTICADO ---
-st.sidebar.success(f"Sesión iniciada como: {name}")
+st.sidebar.success(f"🔐 Sesión iniciada como: {name}")
+authenticator.logout("🚪 Cerrar sesión", "sidebar")
 
 # --- Conexión a Google Sheets ---
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
