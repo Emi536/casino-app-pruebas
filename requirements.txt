@@ -8,3 +8,5 @@ plotly
 gspread 
 oauth2client
 pytz
+streamlit-authenticator
+PyYAML
