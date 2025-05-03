@@ -12,32 +12,12 @@ import pytz
 import streamlit_authenticator as stauth
 import copy
 
+# --- Título principal ---
 st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>", unsafe_allow_html=True)
-
-import pandas as pd
-import datetime
-import plotly.express as px
-from io import StringIO
-import os
-import gspread
-from google.oauth2 import service_account
-import pytz
-import streamlit_authenticator as stauth
-import copy
-
-st.set_page_config(page_title="PlayerMetrics - Análisis de Cargas", layout="wide")
-st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>", unsafe_allow_html=True)
-
-df = None
-
-st.set_page_config(page_title="PlayerMetrics - Análisis de Cargas", layout="wide")
-st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>", unsafe_allow_html=True)
-
-df = None
 
 # --- LOGIN SEGURIDAD ---
-# Copiar configuración desde secrets (para evitar error de modificación)
-config = copy.deepcopy(st.secrets["auth_config"])
+# Cargar configuración desde secrets
+config = st.secrets["auth_config"]
 
 # Crear autenticador
 authenticator = stauth.Authenticate(
@@ -48,20 +28,18 @@ authenticator = stauth.Authenticate(
 )
 
 # Mostrar formulario de login
-name, authentication_status, username = authenticator.login("🔐 Iniciar sesión", location="main")
+name, authentication_status, username = authenticator.login("\ud83d\udd10 Iniciar sesión", location="main")
 
 # Validar estado de login
 if authentication_status is False:
-    st.error("❌ Usuario o contraseña incorrectos.")
+    st.error("\u274c Usuario o contraseña incorrectos.")
     st.stop()
-
 elif authentication_status is None:
-    st.warning("🕓 Por favor, ingresá tus credenciales para continuar.")
+    st.warning("\ud83d\udd53 Por favor, ingresá tus credenciales para continuar.")
     st.stop()
 
 # --- USUARIO AUTENTICADO ---
-st.sidebar.success(f"🔐 Sesión iniciada como: {name}")
-authenticator.logout("🚪 Cerrar sesión", "sidebar")
+st.sidebar.success(f"Sesión iniciada como: {name}")
 
 # --- Conexión a Google Sheets ---
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
