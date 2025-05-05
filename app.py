@@ -368,37 +368,64 @@ elif "📋 Registro Fénix" in seccion:
             st.error(f"❌ Error al generar el resumen: {e}")
 
     # 🔵 Tabla Bono Fénix
-    try:
-        hoja_bonos_fenix = sh.worksheet("Exclusivos + recurrentes fenix")
-        datos_bonos = hoja_bonos_fenix.get_all_records()
-        df_bonos_fenix = pd.DataFrame(datos_bonos)
-    
-        # Limpieza y transformación
-        df_bonos_fenix["BONOS USADOS"] = pd.to_numeric(df_bonos_fenix["BONOS USADOS"], errors="coerce").fillna(0).astype(int)
-        df_bonos_fenix["% DE CONVERSION"] = df_bonos_fenix["% DE CONVERSION"].astype(str).str.replace('%', '', regex=False)
-        df_bonos_fenix["% DE CONVERSION"] = pd.to_numeric(df_bonos_fenix["% DE CONVERSION"], errors="coerce").fillna(0)
-    
-        df_bonos_fenix["CARGÓ CON BONO"] = df_bonos_fenix["% DE CONVERSION"].apply(lambda x: "Sí" if x > 0 else "No")
-    
-        df_bonos_fenix.rename(columns={
-            "USUARIO": "Usuario",
-            "FUNNEL": "Tipo de jugador",
-            "BONOS USADOS": "Veces que aceptó",
-            "% DE CONVERSION": "% Conversión",
-            "FECHA ULT. MSJ": "Fecha último mensaje"
-        }, inplace=True)
-    
-        tabla_bono_fenix = df_bonos_fenix[[
-            "Usuario", "Tipo de jugador", "CARGÓ CON BONO",
-            "% Conversión", "Veces que aceptó", "Fecha último mensaje"
-        ]]
-    
-        st.subheader("🎁 Tabla Bono - Fénix")
-        st.dataframe(tabla_bono_fenix)
-    
-    except Exception as e:
-        st.error(f"❌ Error al cargar la tabla bono Fénix: {e}")
-
+        try:
+            hoja_bonos_fenix = sh.worksheet("Exclusivos + recurrentes fenix")
+            datos_bonos = hoja_bonos_fenix.get_all_records()
+            df_bonos_fenix = pd.DataFrame(datos_bonos)
+        
+            # Limpieza y transformación
+            df_bonos_fenix["BONOS USADOS"] = pd.to_numeric(df_bonos_fenix["BONOS USADOS"], errors="coerce").fillna(0).astype(int)
+            df_bonos_fenix["% DE CONVERSION"] = df_bonos_fenix["% DE CONVERSION"].astype(str).str.replace('%', '', regex=False)
+            df_bonos_fenix["% DE CONVERSION"] = pd.to_numeric(df_bonos_fenix["% DE CONVERSION"], errors="coerce").fillna(0)
+            df_bonos_fenix["CARGÓ CON BONO"] = df_bonos_fenix["% DE CONVERSION"].apply(lambda x: "Sí" if x > 0 else "No")
+        
+            df_bonos_fenix.rename(columns={
+                "USUARIO": "Usuario",
+                "FUNNEL": "Tipo de jugador",
+                "BONOS USADOS": "Veces que aceptó",
+                "% DE CONVERSION": "% Conversión",
+                "FECHA ULT. MSJ": "Fecha último mensaje"
+            }, inplace=True)
+        
+            jugadores_contactados = df_bonos_fenix["Usuario"].str.lower().tolist()
+            df_historial["Jugador"] = df_historial["Jugador"].astype(str).str.lower()
+            jugadores_na = df_historial[~df_historial["Jugador"].isin(jugadores_contactados)]
+        
+            na_analisis = []
+            for jugador in jugadores_na["Jugador"].unique():
+                registros = jugadores_na[jugadores_na["Jugador"] == jugador]
+                total_monto = registros["Monto"].sum()
+                cargas_por_dia = registros.groupby(registros["Fecha"].dt.date).size()
+                max_cargas_en_dia = cargas_por_dia.max()
+        
+                if total_monto >= 10000:
+                    tipo_jugador = "Posible Exclusivo - NA"
+                elif max_cargas_en_dia >= 2:
+                    tipo_jugador = "Posible Recurrente - NA"
+                else:
+                    continue
+        
+                na_analisis.append({
+                    "Usuario": jugador,
+                    "Tipo de jugador": tipo_jugador,
+                    "CARGÓ CON BONO": "No",
+                    "% Conversión": 0,
+                    "Veces que aceptó": 0,
+                    "Fecha último mensaje": "NA"
+                })
+        
+            df_na = pd.DataFrame(na_analisis)
+        
+            tabla_bono_fenix = pd.concat([df_bonos_fenix[[
+                "Usuario", "Tipo de jugador", "CARGÓ CON BONO",
+                "% Conversión", "Veces que aceptó", "Fecha último mensaje"
+            ]], df_na], ignore_index=True)
+        
+            st.subheader("🎁 Tabla Bono - Fénix")
+            st.dataframe(tabla_bono_fenix)
+        
+        except Exception as e:
+            st.error(f"❌ Error al generar la tabla bono Fénix: {e}")
 
 
 #SECCIÓN EROS
