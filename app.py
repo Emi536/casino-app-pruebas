@@ -368,7 +368,7 @@ elif "📋 Registro Fénix" in seccion:
             st.error(f"❌ Error al generar el resumen: {e}")
 
     # 🔵 Tabla Bono Fénix
-        try:
+      try:
             hoja_bonos_fenix = sh.worksheet("Exclusivos + recurrentes fenix")
             datos_bonos = hoja_bonos_fenix.get_all_records()
             df_bonos_fenix = pd.DataFrame(datos_bonos)
