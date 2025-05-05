@@ -368,7 +368,6 @@ elif "📋 Registro Fénix" in seccion:
             st.error(f"❌ Error al generar el resumen: {e}")
 
     # 🔵 Tabla Bono Fénix
-    st.subheader("🎁 Tabla Bono - Fénix")
     try:
         hoja_bonos_fenix = sh.worksheet("Exclusivos + recurrentes fenix")
         datos_bonos = hoja_bonos_fenix.get_all_records()
