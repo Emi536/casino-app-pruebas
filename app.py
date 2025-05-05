@@ -245,13 +245,11 @@ elif "📋 Registro Fénix" in seccion:
 
     df_historial = limpiar_dataframe(df_historial)
 
-    # 🔁 BORRAR REGISTROS ANTIGUOS MAYORES A 10 DÍAS
     if "Fecha" in df_historial.columns:
         df_historial["Fecha"] = pd.to_datetime(df_historial["Fecha"], errors="coerce")
         df_historial = df_historial[df_historial["Fecha"].notna()]
         limite = fecha_actual_date - datetime.timedelta(days=9)
         df_historial = df_historial[df_historial["Fecha"].dt.date >= limite]
-
 
     if texto_pegar:
         try:
@@ -368,6 +366,45 @@ elif "📋 Registro Fénix" in seccion:
 
         except Exception as e:
             st.error(f"❌ Error al generar el resumen: {e}")
+
+    # NUEVA TABLA BONO
+    try:
+        hoja_bono_fenix = sh.worksheet("Exclusivos + recurrentes fenix")
+        datos_bono_fenix = hoja_bono_fenix.get_all_records()
+        df_bono_fenix = pd.DataFrame(datos_bono_fenix)
+
+        df_bono_fenix["% DE CONVERSION"] = df_bono_fenix["% DE CONVERSION"].str.replace("%", "").astype(float)
+        df_bono_fenix["Cargó con bono"] = df_bono_fenix["% DE CONVERSION"].apply(lambda x: "Sí" if x > 0 else "No")
+
+        def clasificar(fila):
+            if fila["FUNNEL"] == "RECURRENTE":
+                return "Recurrente"
+            elif fila["FUNNEL"] == "EXCLUSIVO":
+                return "Exclusivo"
+            elif fila["BONOS USADOS"] != "" and str(fila["BONOS USADOS"]).isdigit() and int(fila["BONOS USADOS"]) <= 3 and fila["FECHA ULT. MSJ"] in ["Sin registros", "30/12/1899", ""]:
+                return "Posible Exclusivo"
+            else:
+                return "NA"
+
+        df_bono_fenix["Tipo de jugador"] = df_bono_fenix.apply(clasificar, axis=1)
+
+        df_tabla_bono_fenix = df_bono_fenix.rename(columns={
+            "USUARIO": "Usuario",
+            "BONOS USADOS": "Veces que aceptó",
+            "FECHA ULT. MSJ": "Fecha último mensaje"
+        })[["Usuario", "Tipo de jugador", "Cargó con bono", "% DE CONVERSION", "Veces que aceptó", "Fecha último mensaje"]]
+        df_tabla_bono_fenix.rename(columns={"% DE CONVERSION": "% Conversión"}, inplace=True)
+
+        st.subheader("🎁 Tabla Bono - Fénix")
+        filtro_tipo = st.selectbox("Filtrar por tipo de jugador:", ["Todos", "Recurrente", "Exclusivo", "Posible Exclusivo", "NA"], key="filtro_bono_fenix")
+        if filtro_tipo != "Todos":
+            df_tabla_bono_fenix = df_tabla_bono_fenix[df_tabla_bono_fenix["Tipo de jugador"] == filtro_tipo]
+
+        st.dataframe(df_tabla_bono_fenix)
+
+    except Exception as e:
+        st.error(f"❌ Error al cargar la tabla bono Fénix: {e}")
+
 
 
 #SECCIÓN EROS
