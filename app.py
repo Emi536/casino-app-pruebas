@@ -73,7 +73,15 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# Guardar la selección anterior y actual
+if "seccion_actual" not in st.session_state:
+    st.session_state.seccion_actual = ""
+
 seccion = st.sidebar.radio("Seleccioná una sección:", ["🔝 Métricas de jugadores", "📋 Registro Fénix","📋 Registro Eros","📋 Registro Bet Argento", "📆 Seguimiento de jugadores inactivos"])
+
+if seccion != st.session_state.seccion_actual:
+    st.session_state.texto_pegar = ""
+    st.session_state.seccion_actual = seccion
 
 # --- FUNCIONES ---
 def preparar_dataframe(df):
@@ -200,7 +208,7 @@ elif "📋 Registro Fénix" in seccion:
 
     responsable = st.text_input("👤 Ingresá tu nombre para registrar quién sube el reporte", value="Anónimo")
 
-    texto_pegar = st.text_area("📋 Pegá aquí el reporte copiado (incluí encabezados)", height=300)
+    texto_pegar = st.text_area("📋 Pegá aquí el reporte copiado (incluí encabezados)", height=300, key="texto_pegar")
     df_historial = pd.DataFrame()
 
     try:
@@ -373,8 +381,7 @@ elif "📋 Registro Eros" in seccion:
     st.info(f"⏰ Última actualización: {fecha_actual}")
 
     responsable = st.text_input("👤 Ingresá tu nombre para registrar quién sube el reporte", value="Anónimo")
-
-    texto_pegar = st.text_area("📋 Pegá aquí el reporte copiado (incluí encabezados)", height=300)
+    texto_pegar = st.text_area("📋 Pegá aquí el reporte copiado (incluí encabezados)", height=300, key="texto_pegar")
     df_historial = pd.DataFrame()
 
     try:
@@ -544,7 +551,7 @@ elif "📋 Registro Bet Argento" in seccion:
     st.info(f"⏰ Última actualización: {fecha_actual}")
 
     responsable = st.text_input("👤 Ingresá tu nombre para registrar quién sube el reporte", value="Anónimo")
-    texto_pegar = st.text_area("📋 Pegá aquí el reporte copiado (incluí encabezados)", height=300)
+    texto_pegar = st.text_area("📋 Pegá aquí el reporte copiado (incluí encabezados)", height=300, key="texto_pegar")
 
     df_historial = pd.DataFrame()
     try:
