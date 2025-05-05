@@ -367,40 +367,30 @@ elif "📋 Registro Fénix" in seccion:
         except Exception as e:
             st.error(f"❌ Error al generar el resumen: {e}")
 
-    # NUEVA TABLA BONO
+    # 🔵 Tabla Bono Fénix
+    st.subheader("🎁 Tabla Bono - Fénix")
     try:
-        hoja_bono_fenix = sh.worksheet("Exclusivos + recurrentes fenix")
-        datos_bono_fenix = hoja_bono_fenix.get_all_records()
-        df_bono_fenix = pd.DataFrame(datos_bono_fenix)
+        hoja_bono = sh.worksheet("Exclusivos + recurrentes fenix")
+        expected_headers = ['USUARIO', 'FUNNEL', 'BONOS OFRECIDOS', 'BONOS USADOS', '% DE CONVERSION', 'VECES QUE CARGÓ CON BONO', 'FECHA ULT. MSJ']
+        data_bono = hoja_bono.get_all_records(expected_headers=expected_headers)
+        df_bono = pd.DataFrame(data_bono)
 
-        df_bono_fenix["% DE CONVERSION"] = df_bono_fenix["% DE CONVERSION"].str.replace("%", "").astype(float)
-        df_bono_fenix["Cargó con bono"] = df_bono_fenix["% DE CONVERSION"].apply(lambda x: "Sí" if x > 0 else "No")
-
-        def clasificar(fila):
-            if fila["FUNNEL"] == "RECURRENTE":
-                return "Recurrente"
-            elif fila["FUNNEL"] == "EXCLUSIVO":
-                return "Exclusivo"
-            elif fila["BONOS USADOS"] != "" and str(fila["BONOS USADOS"]).isdigit() and int(fila["BONOS USADOS"]) <= 3 and fila["FECHA ULT. MSJ"] in ["Sin registros", "30/12/1899", ""]:
-                return "Posible Exclusivo"
-            else:
-                return "NA"
-
-        df_bono_fenix["Tipo de jugador"] = df_bono_fenix.apply(clasificar, axis=1)
-
-        df_tabla_bono_fenix = df_bono_fenix.rename(columns={
+        df_bono = df_bono.rename(columns={
             "USUARIO": "Usuario",
+            "FUNNEL": "Tipo de jugador",
             "BONOS USADOS": "Veces que aceptó",
+            "% DE CONVERSION": "% Conversión",
             "FECHA ULT. MSJ": "Fecha último mensaje"
-        })[["Usuario", "Tipo de jugador", "Cargó con bono", "% DE CONVERSION", "Veces que aceptó", "Fecha último mensaje"]]
-        df_tabla_bono_fenix.rename(columns={"% DE CONVERSION": "% Conversión"}, inplace=True)
+        })
 
-        st.subheader("🎁 Tabla Bono - Fénix")
-        filtro_tipo = st.selectbox("Filtrar por tipo de jugador:", ["Todos", "Recurrente", "Exclusivo", "Posible Exclusivo", "NA"], key="filtro_bono_fenix")
-        if filtro_tipo != "Todos":
-            df_tabla_bono_fenix = df_tabla_bono_fenix[df_tabla_bono_fenix["Tipo de jugador"] == filtro_tipo]
+        df_bono["% Conversión"] = df_bono["% Conversión"].astype(str).str.replace("%", "").astype(float)
+        df_bono["Cargó con bono"] = df_bono["% Conversión"].apply(lambda x: "Sí" if x > 0 else "No")
 
-        st.dataframe(df_tabla_bono_fenix)
+        tipo_filtro = st.selectbox("🔎 Filtrar por tipo de jugador:", ["Todos", "Recurrente", "Exclusivo", "NA"])
+        if tipo_filtro != "Todos":
+            df_bono = df_bono[df_bono["Tipo de jugador"].str.upper() == tipo_filtro.upper()]
+
+        st.dataframe(df_bono[["Usuario", "Tipo de jugador", "Cargó con bono", "% Conversión", "Veces que aceptó", "Fecha último mensaje"]])
 
     except Exception as e:
         st.error(f"❌ Error al cargar la tabla bono Fénix: {e}")
