@@ -370,35 +370,35 @@ elif "📋 Registro Fénix" in seccion:
     # 🔵 Tabla Bono Fénix
     st.subheader("🎁 Tabla Bono - Fénix")
     try:
-    hoja_bonos_fenix = sh.worksheet("Exclusivos + recurrentes fenix")
-    datos_bonos = hoja_bonos_fenix.get_all_records()
-    df_bonos_fenix = pd.DataFrame(datos_bonos)
-
-    # Limpieza y transformación
-    df_bonos_fenix["BONOS USADOS"] = pd.to_numeric(df_bonos_fenix["BONOS USADOS"], errors="coerce").fillna(0).astype(int)
-    df_bonos_fenix["% DE CONVERSION"] = df_bonos_fenix["% DE CONVERSION"].astype(str).str.replace('%', '', regex=False)
-    df_bonos_fenix["% DE CONVERSION"] = pd.to_numeric(df_bonos_fenix["% DE CONVERSION"], errors="coerce").fillna(0)
-
-    df_bonos_fenix["CARGÓ CON BONO"] = df_bonos_fenix["% DE CONVERSION"].apply(lambda x: "Sí" if x > 0 else "No")
-
-    df_bonos_fenix.rename(columns={
-        "USUARIO": "Usuario",
-        "FUNNEL": "Tipo de jugador",
-        "BONOS USADOS": "Veces que aceptó",
-        "% DE CONVERSION": "% Conversión",
-        "FECHA ULT. MSJ": "Fecha último mensaje"
-    }, inplace=True)
-
-    tabla_bono_fenix = df_bonos_fenix[[
-        "Usuario", "Tipo de jugador", "CARGÓ CON BONO",
-        "% Conversión", "Veces que aceptó", "Fecha último mensaje"
-    ]]
-
-    st.subheader("🎁 Tabla Bono - Fénix")
-    st.dataframe(tabla_bono_fenix)
-
-except Exception as e:
-    st.error(f"❌ Error al cargar la tabla bono Fénix: {e}")
+        hoja_bonos_fenix = sh.worksheet("Exclusivos + recurrentes fenix")
+        datos_bonos = hoja_bonos_fenix.get_all_records()
+        df_bonos_fenix = pd.DataFrame(datos_bonos)
+    
+        # Limpieza y transformación
+        df_bonos_fenix["BONOS USADOS"] = pd.to_numeric(df_bonos_fenix["BONOS USADOS"], errors="coerce").fillna(0).astype(int)
+        df_bonos_fenix["% DE CONVERSION"] = df_bonos_fenix["% DE CONVERSION"].astype(str).str.replace('%', '', regex=False)
+        df_bonos_fenix["% DE CONVERSION"] = pd.to_numeric(df_bonos_fenix["% DE CONVERSION"], errors="coerce").fillna(0)
+    
+        df_bonos_fenix["CARGÓ CON BONO"] = df_bonos_fenix["% DE CONVERSION"].apply(lambda x: "Sí" if x > 0 else "No")
+    
+        df_bonos_fenix.rename(columns={
+            "USUARIO": "Usuario",
+            "FUNNEL": "Tipo de jugador",
+            "BONOS USADOS": "Veces que aceptó",
+            "% DE CONVERSION": "% Conversión",
+            "FECHA ULT. MSJ": "Fecha último mensaje"
+        }, inplace=True)
+    
+        tabla_bono_fenix = df_bonos_fenix[[
+            "Usuario", "Tipo de jugador", "CARGÓ CON BONO",
+            "% Conversión", "Veces que aceptó", "Fecha último mensaje"
+        ]]
+    
+        st.subheader("🎁 Tabla Bono - Fénix")
+        st.dataframe(tabla_bono_fenix)
+    
+    except Exception as e:
+        st.error(f"❌ Error al cargar la tabla bono Fénix: {e}")
 
 
 
