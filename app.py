@@ -197,7 +197,7 @@ if seccion == "🔝 Métricas de jugadores":
             st.error("❌ El archivo no tiene el formato esperado.")
 
 
-#SECCIÓN FÉNIX
+# SECCIÓN FÉNIX
 elif "📋 Registro Fénix" in seccion:
     st.header("📋 Registro general de jugadores - Fénix")
 
@@ -220,28 +220,28 @@ elif "📋 Registro Fénix" in seccion:
         hoja_fenix = sh.add_worksheet(title="registro_fenix", rows="1000", cols="20")
         df_historial = pd.DataFrame()
 
+    # 🔧 Conversión segura de montos numéricos
     def convertir_monto(valor):
         if pd.isna(valor): return 0.0
-        valor = str(valor).strip()
-        if "," in valor and "." in valor:
-            valor = valor.replace(".", "").replace(",", ".")
-        elif "," in valor:
-            valor = valor.replace(",", ".")
+        valor = str(valor).strip().replace(",", "").replace(" ", "")
         try:
             return float(valor)
         except:
             return 0.0
 
+    # 🧹 Limpieza completa del DataFrame
     def limpiar_dataframe(df_temp):
         df_temp = df_temp.copy()
         if "Jugador" in df_temp.columns:
-            df_temp["Jugador"] = df_temp["Jugador"].astype(str).apply(lambda x: x.strip().lower())
-        if "Monto" in df_temp.columns:
-            df_temp["Monto"] = df_temp["Monto"].apply(convertir_monto)
-        if "Retiro" in df_temp.columns:
-            df_temp["Retiro"] = df_temp["Retiro"].apply(convertir_monto)
+            df_temp["Jugador"] = df_temp["Jugador"].astype(str).str.strip().str.lower()
+
+        for col in ["Monto", "Retiro", "Balance antes de operación", "Wager"]:
+            if col in df_temp.columns:
+                df_temp[col] = df_temp[col].apply(convertir_monto)
+
         if "Fecha" in df_temp.columns:
             df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"], errors="coerce")
+
         return df_temp
 
     df_historial = limpiar_dataframe(df_historial)
@@ -269,7 +269,7 @@ elif "📋 Registro Fénix" in seccion:
                 contenido_limpio.append(sep_detectado.join(columnas))
 
             archivo_limpio = StringIO("\n".join(contenido_limpio))
-            df_nuevo = pd.read_csv(archivo_limpio, sep=sep_detectado, decimal=",", dtype=str)
+            df_nuevo = pd.read_csv(archivo_limpio, sep=sep_detectado, dtype=str, encoding="utf-8")
             df_nuevo = df_nuevo.loc[:, ~df_nuevo.columns.str.contains("^Unnamed")]
 
             columnas_requeridas = ["operación", "Depositar", "Retirar", "Fecha", "Al usuario"]
@@ -318,6 +318,7 @@ elif "📋 Registro Fénix" in seccion:
         except Exception as e:
             st.error(f"❌ Error al procesar los datos pegados: {e}")
 
+    # 📊 Mostrar resumen
     if not df_historial.empty:
         st.info(f"📊 Total de registros acumulados: {len(df_historial)}")
         df = df_historial.copy()
@@ -367,6 +368,7 @@ elif "📋 Registro Fénix" in seccion:
 
         except Exception as e:
             st.error(f"❌ Error al generar el resumen: {e}")
+
     
     # 🔵 Tabla Bono Fénix
         try:
