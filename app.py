@@ -225,14 +225,9 @@ elif "📋 Registro Fénix" in seccion:
         df_temp = df_temp.copy()
         if "Jugador" in df_temp.columns:
             df_temp["Jugador"] = df_temp["Jugador"].astype(str).apply(lambda x: x.strip().lower())
-        if "Monto" in df_temp.columns and df_temp["Monto"].dtype == object:
-            df_temp["Monto"] = df_temp["Monto"].apply(convertir_monto)
-        if "Retiro" in df_temp.columns and df_temp["Retiro"].dtype == object:
-            df_temp["Retiro"] = df_temp["Retiro"].apply(convertir_monto)
         if "Fecha" in df_temp.columns:
             df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"], errors="coerce")
         return df_temp
-
 
     df_historial = limpiar_dataframe(df_historial)
 
@@ -259,7 +254,7 @@ elif "📋 Registro Fénix" in seccion:
                 contenido_limpio.append(sep_detectado.join(columnas))
 
             archivo_limpio = StringIO("\n".join(contenido_limpio))
-            df_nuevo = pd.read_csv(archivo_limpio, sep=sep_detectado, decimal=".", thousands=",", dtype=str)
+            df_nuevo = pd.read_csv(archivo_limpio, sep=sep_detectado, decimal=".", thousands=",")
             df_nuevo = df_nuevo.loc[:, ~df_nuevo.columns.str.contains("^Unnamed")]
 
             columnas_requeridas = ["operación", "Depositar", "Retirar", "Fecha", "Al usuario"]
