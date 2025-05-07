@@ -223,10 +223,15 @@ elif "📋 Registro Fénix" in seccion:
     def convertir_monto(valor):
         if pd.isna(valor): return 0.0
         valor = str(valor).strip()
-        if "," in valor and "." in valor:
+    
+        # Reemplazar miles y decimales correctamente (formato 1.234,56 → 1234.56)
+        if re.match(r"^\d{1,3}(\.\d{3})*,\d{1,2}$", valor):
             valor = valor.replace(".", "").replace(",", ".")
+        elif re.match(r"^\d{1,3}(\.\d{3})+$", valor):
+            valor = valor.replace(".", "")
         elif "," in valor:
             valor = valor.replace(",", ".")
+        
         try:
             return float(valor)
         except:
