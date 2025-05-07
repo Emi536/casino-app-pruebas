@@ -220,17 +220,20 @@ elif "📋 Registro Fénix" in seccion:
         hoja_fenix = sh.add_worksheet(title="registro_fenix", rows="1000", cols="20")
         df_historial = pd.DataFrame()
 
-    # 🔧 Conversión segura de montos numéricos
     def convertir_monto(valor):
         if pd.isna(valor): return 0.0
-        valor = str(valor).strip().replace(".", "").replace(",", ".")  # Elimina puntos (miles) y deja coma como decimal
+        valor = str(valor)
+        # Eliminar caracteres invisibles y separadores ambiguos
+        valor = valor.replace("\u202f", "")  # Narrow no-break space
+        valor = valor.replace("\xa0", "")    # Non-breaking space
+        valor = valor.replace(" ", "")       # Espacios normales
+        valor = valor.replace(",", "")       # Comas (separador de miles)
         try:
             return float(valor)
         except:
             return 0.0
 
 
-    # 🧹 Limpieza completa del DataFrame
     def limpiar_dataframe(df_temp):
         df_temp = df_temp.copy()
         if "Jugador" in df_temp.columns:
@@ -272,6 +275,17 @@ elif "📋 Registro Fénix" in seccion:
             archivo_limpio = StringIO("\n".join(contenido_limpio))
             df_nuevo = pd.read_csv(archivo_limpio, sep=sep_detectado, dtype=str, encoding="utf-8")
             df_nuevo = df_nuevo.loc[:, ~df_nuevo.columns.str.contains("^Unnamed")]
+
+            # 🔁 Limpiar montos ANTES de renombrar
+            for col in ["Depositar", "Retirar", "Wager", "Balance antes de operación"]:
+                if col in df_nuevo.columns:
+                    df_nuevo[col] = (
+                        df_nuevo[col]
+                        .astype(str)
+                        .str.replace(",", "", regex=False)
+                        .str.replace(" ", "", regex=False)
+                    )
+                    df_nuevo[col] = pd.to_numeric(df_nuevo[col], errors="coerce").fillna(0.0)
 
             columnas_requeridas = ["operación", "Depositar", "Retirar", "Fecha", "Al usuario"]
             if not all(col in df_nuevo.columns for col in columnas_requeridas):
@@ -319,7 +333,6 @@ elif "📋 Registro Fénix" in seccion:
         except Exception as e:
             st.error(f"❌ Error al procesar los datos pegados: {e}")
 
-    # 📊 Mostrar resumen
     if not df_historial.empty:
         st.info(f"📊 Total de registros acumulados: {len(df_historial)}")
         df = df_historial.copy()
@@ -370,7 +383,6 @@ elif "📋 Registro Fénix" in seccion:
         except Exception as e:
             st.error(f"❌ Error al generar el resumen: {e}")
 
-    
     # 🔵 Tabla Bono Fénix
         try:
             hoja_bonos_fenix = sh.worksheet("Exclusivos + recurrentes fenix")
@@ -402,6 +414,7 @@ elif "📋 Registro Fénix" in seccion:
         
         except Exception as e:
             st.error(f"❌ Error al cargar la tabla bono Fénix: {e}")
+
 
 
 #SECCIÓN EROS
