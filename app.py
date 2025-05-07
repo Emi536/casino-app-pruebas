@@ -196,6 +196,7 @@ if seccion == "🔝 Métricas de jugadores":
         else:
             st.error("❌ El archivo no tiene el formato esperado.")
 
+#SECCION FENIX
 elif "📋 Registro Fénix" in seccion:
     st.header("📋 Registro general de jugadores - Fénix")
 
@@ -240,6 +241,8 @@ elif "📋 Registro Fénix" in seccion:
             df_temp["Retiro"] = df_temp["Retiro"].apply(convertir_monto)
         if "Fecha" in df_temp.columns:
             df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"], errors="coerce")
+        if "Tiempo" in df_temp.columns:
+            df_temp["Tiempo"] = pd.to_datetime(df_temp["Tiempo"], format="%H:%M:%S", errors="coerce").dt.time
         return df_temp
 
     df_historial = limpiar_dataframe(df_historial)
@@ -339,7 +342,15 @@ elif "📋 Registro Fénix" in seccion:
                 wagger = cargas_wagger["Monto"].sum()
                 total_monto = hl + wagger
                 total_retiro = retiros["Retiro"].sum()
-                ganancias = hl + wagger - total_retiro
+                ganancias = total_monto - total_retiro
+
+                franja_horaria = "No disponible"
+                if "Tiempo" in cargas.columns:
+                    cargas["Hora"] = pd.to_datetime(cargas["Tiempo"], errors="coerce").dt.hour
+                    horas_validas = cargas["Hora"].dropna()
+                    if not horas_validas.empty:
+                        franja_horaria = horas_validas.mode().values[0]
+                        franja_horaria = f"{int(franja_horaria):02d}:00 hs"
 
                 if not cargas.empty:
                     resumen.append({
@@ -352,7 +363,7 @@ elif "📋 Registro Fénix" in seccion:
                         "Monto Total": total_monto,
                         "Retiros": total_retiro,
                         "Ganancias casino": ganancias,
-                        "Rango horario de juego": "No calculado",
+                        "Rango horario de juego": franja_horaria,
                         "Última vez que cargó": cargas["Fecha"].max(),
                         "Racha Activa (Días)": (cargas["Fecha"].max() - cargas["Fecha"].min()).days,
                         "Última vez que se lo contactó": "No disponible"
@@ -369,6 +380,7 @@ elif "📋 Registro Fénix" in seccion:
 
         except Exception as e:
             st.error(f"❌ Error al generar el resumen: {e}")
+
 
 
 
