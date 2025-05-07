@@ -221,19 +221,29 @@ elif "📋 Registro Fénix" in seccion:
         hoja_fenix = sh.add_worksheet(title="registro_fenix", rows="1000", cols="20")
         df_historial = pd.DataFrame()
 
+    def convertir_monto(valor):
+        if pd.isna(valor): return 0.0
+        valor = str(valor).strip()
+        if "," in valor and "." in valor:
+            valor = valor.replace(".", "").replace(",", ".")
+        elif "," in valor:
+            valor = valor.replace(",", ".")
+        try:
+            return float(valor)
+        except:
+            return 0.0
 
     def limpiar_dataframe(df_temp):
         df_temp = df_temp.copy()
         if "Jugador" in df_temp.columns:
             df_temp["Jugador"] = df_temp["Jugador"].astype(str).apply(lambda x: x.strip().lower())
         if "Monto" in df_temp.columns:
-            df_temp["Monto"] = pd.to_numeric(df_temp["Monto"], errors="coerce").fillna(0)
+            df_temp["Monto"] = df_temp["Monto"].apply(convertir_monto)
         if "Retiro" in df_temp.columns:
-            df_temp["Retiro"] = pd.to_numeric(df_temp["Retiro"], errors="coerce").fillna(0)
+            df_temp["Retiro"] = df_temp["Retiro"].apply(convertir_monto)
         if "Fecha" in df_temp.columns:
             df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"], errors="coerce")
         return df_temp
-
 
     df_historial = limpiar_dataframe(df_historial)
 
@@ -260,6 +270,7 @@ elif "📋 Registro Fénix" in seccion:
                 contenido_limpio.append(sep_detectado.join(columnas))
 
             archivo_limpio = StringIO("\n".join(contenido_limpio))
+            df_nuevo = pd.read_csv(archivo_limpio, sep=sep_detectado, decimal=".", thousands=",", dtype=str)
             df_nuevo = df_nuevo.loc[:, ~df_nuevo.columns.str.contains("^Unnamed")]
 
             columnas_requeridas = ["operación", "Depositar", "Retirar", "Fecha", "Al usuario"]
@@ -390,8 +401,6 @@ elif "📋 Registro Fénix" in seccion:
         
         except Exception as e:
             st.error(f"❌ Error al cargar la tabla bono Fénix: {e}")
-
-
 
 
 #SECCIÓN EROS
