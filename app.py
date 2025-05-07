@@ -10,6 +10,7 @@ import gspread
 from google.oauth2 import service_account
 import pytz
 import hashlib
+import re
 
 # --- Título principal ---
 st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>", unsafe_allow_html=True)
