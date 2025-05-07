@@ -10,7 +10,6 @@ import gspread
 from google.oauth2 import service_account
 import pytz
 import hashlib
-import re
 
 # --- Título principal ---
 st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>", unsafe_allow_html=True)
@@ -224,17 +223,10 @@ elif "📋 Registro Fénix" in seccion:
     def convertir_monto(valor):
         if pd.isna(valor): return 0.0
         valor = str(valor).strip()
-    
-        # Si el número tiene miles con coma y decimales con punto (Ej: 1,000.00), quitar coma
-        if re.match(r"^\d{1,3}(,\d{3})+\.\d{1,2}$", valor):
-            valor = valor.replace(",", "")
-        # Si el número tiene miles con punto y decimales con coma (Ej: 1.000,00), convertir a punto decimal
-        elif re.match(r"^\d{1,3}(\.\d{3})+,\d{1,2}$", valor):
+        if "," in valor and "." in valor:
             valor = valor.replace(".", "").replace(",", ".")
-        # Si solo tiene coma decimal (Ej: 1000,00)
-        elif "," in valor and "." not in valor:
+        elif "," in valor:
             valor = valor.replace(",", ".")
-        
         try:
             return float(valor)
         except:
