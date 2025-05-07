@@ -223,11 +223,12 @@ elif "📋 Registro Fénix" in seccion:
     # 🔧 Conversión segura de montos numéricos
     def convertir_monto(valor):
         if pd.isna(valor): return 0.0
-        valor = str(valor).strip().replace(",", "").replace(" ", "")
+        valor = str(valor).strip().replace(".", "").replace(",", ".")  # Elimina puntos (miles) y deja coma como decimal
         try:
             return float(valor)
         except:
             return 0.0
+
 
     # 🧹 Limpieza completa del DataFrame
     def limpiar_dataframe(df_temp):
