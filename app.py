@@ -436,7 +436,7 @@ elif "📋 Registro Fénix" in seccion:
             datos_bonos = hoja_bonos_fenix.get_all_records()
             df_bonos_fenix = pd.DataFrame(datos_bonos)
         
-            # Renombrar columnas para estandarizar
+            # Renombrar columnas
             df_bonos_fenix.rename(columns={
                 "USUARIO": "Usuario",
                 "FUNNEL": "Tipo de Bono",
@@ -453,16 +453,21 @@ elif "📋 Registro Fénix" in seccion:
             # Reemplazar fechas inválidas
             df_bonos_fenix["Fecha del último mensaje"] = df_bonos_fenix["Fecha del último mensaje"].replace(["30/12/1899", "1899-12-30"], "Sin registros")
         
-            # Orden final de columnas para la tabla bono
-            tabla_bono_fenix = df_bonos_fenix[[
+            # Armar columnas visibles evitando duplicados
+            columnas_finales = [
                 "Usuario",
                 "Tipo de Bono",
                 "Cuántas veces se le ofreció el bono",
                 "Cuántas veces cargó con bono",
-                "Monto total" if "Monto total" in df_bonos_fenix.columns else "Conversión",  # fallback si no está Monto total
                 "Conversión",
                 "Fecha del último mensaje"
-            ]]
+            ]
+        
+            # Si "Monto total" existe, lo insertamos en la posición 4
+            if "Monto total" in df_bonos_fenix.columns:
+                columnas_finales.insert(4, "Monto total")
+        
+            tabla_bono_fenix = df_bonos_fenix[columnas_finales]
         
             st.subheader("🎁 Tabla Bono - Fénix")
             st.dataframe(tabla_bono_fenix)
