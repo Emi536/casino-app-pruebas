@@ -338,8 +338,13 @@ elif "📋 Registro Fénix" in seccion:
         df = df_historial.copy()
 
         try:
+            from collections import Counter
+
             valores_hl = ["hl_casinofenix"]
-            valores_wagger = ["Fenix_Wagger100", "Fenix_Wagger40", "Fenix_Wagger30", "Fenix_Wagger50", "Fenix_Wagger150", "Fenix_Wagger200"]
+            valores_wagger = [
+                "Fenix_Wagger100", "Fenix_Wagger40", "Fenix_Wagger30",
+                "Fenix_Wagger50", "Fenix_Wagger150", "Fenix_Wagger200"
+            ]
 
             resumen = []
             jugadores = df["Jugador"].dropna().unique()
@@ -358,20 +363,30 @@ elif "📋 Registro Fénix" in seccion:
                 total_retiro = retiros["Retiro"].sum()
                 ganancias_casino = total_monto - total_retiro
 
-                # Rango horario (hora más frecuente de carga)
+                # 🔍 Nuevo cálculo de rango horario por patrón diario
                 rango = "Sin datos"
                 if not cargas.empty and "Hora" in cargas.columns:
-                    horas = pd.to_datetime(cargas["Hora"], errors="coerce").dt.hour.dropna()
-                    if not horas.empty:
-                        hora_dominante = int(horas.mode()[0])
-                        if 6 <= hora_dominante < 12:
-                            rango = "Mañana"
-                        elif 12 <= hora_dominante < 18:
-                            rango = "Tarde"
-                        elif 18 <= hora_dominante < 24:
-                            rango = "Noche"
-                        else:
-                            rango = "Madrugada"
+                    try:
+                        cargas["Hora"] = pd.to_datetime(cargas["Hora"], format="%H:%M:%S", errors="coerce")
+                        cargas["Día"] = cargas["Fecha"].dt.date
+                        cargas["Hora_hora"] = cargas["Hora"].dt.hour
+                        horas_dominantes = cargas.groupby("Día")["Hora_hora"].agg(lambda x: x.mode().iloc[0])
+                        if not horas_dominantes.empty:
+                            conteo = Counter(horas_dominantes)
+                            hora_patron, repeticiones = conteo.most_common(1)[0]
+
+                            if 6 <= hora_patron < 12:
+                                franja = "Mañana"
+                            elif 12 <= hora_patron < 18:
+                                franja = "Tarde"
+                            elif 18 <= hora_patron < 24:
+                                franja = "Noche"
+                            else:
+                                franja = "Madrugada"
+
+                            rango = f"{franja} ({hora_patron:02d}:00 hs) – patrón en {repeticiones} días"
+                    except Exception as e:
+                        rango = "Sin datos"
 
                 if not cargas.empty:
                     ultima_fecha = cargas["Fecha"].max()
