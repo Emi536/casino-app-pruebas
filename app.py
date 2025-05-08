@@ -297,6 +297,7 @@ elif "📋 Registro Fénix" in seccion:
                 "Depositar": "Monto",
                 "Retirar": "Retiro",
                 "Fecha": "Fecha",
+                "Tiempo": "Hora",
                 "Al usuario": "Jugador"
             })
 
@@ -336,6 +337,7 @@ elif "📋 Registro Fénix" in seccion:
     if not df_historial.empty:
         st.info(f"📊 Total de registros acumulados: {len(df_historial)}")
         df = df_historial.copy()
+        st.write("Ejemplo de valores en columna Hora:", df["Hora"].dropna().unique()[:10])
 
         try:
             from collections import Counter
