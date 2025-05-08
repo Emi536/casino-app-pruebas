@@ -337,6 +337,9 @@ elif "📋 Registro Fénix" in seccion:
     if not df_historial.empty:
         st.info(f"📊 Total de registros acumulados: {len(df_historial)}")
         df = df_historial.copy()
+        if "Tiempo" in df.columns and "Hora" not in df.columns:
+            df = df.rename(columns={"Tiempo": "Hora"})
+
         st.write("Ejemplo de valores en columna Hora:", df["Hora"].dropna().unique()[:10])
 
         try:
