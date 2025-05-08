@@ -368,28 +368,34 @@ elif "📋 Registro Fénix" in seccion:
                 total_retiro = retiros["Retiro"].sum()
                 ganancias_casino = total_monto - total_retiro
 
-                # 🔍 Nuevo cálculo de rango horario por patrón diario
+                # 🔍 Nuevo cálculo de rango horario por patrón diario (mínimo 2 días)
                 rango = "Sin datos"
                 if not cargas.empty and "Hora" in cargas.columns:
                     try:
                         cargas["Hora"] = pd.to_datetime(cargas["Hora"], format="%H:%M:%S", errors="coerce")
                         cargas["Día"] = cargas["Fecha"].dt.date
                         cargas["Hora_hora"] = cargas["Hora"].dt.hour
-                        horas_dominantes = cargas.groupby("Día")["Hora_hora"].agg(lambda x: x.mode().iloc[0])
-                        if not horas_dominantes.empty:
-                            conteo = Counter(horas_dominantes)
+
+                        # Hora dominante por día (ej: si en un día jugó 23:10 y 23:30 → 23)
+                        hora_por_dia = cargas.groupby("Día")["Hora_hora"].agg(lambda x: int(x.median()))
+                        conteo = Counter(hora_por_dia)
+
+                        if conteo:
                             hora_patron, repeticiones = conteo.most_common(1)[0]
 
-                            if 6 <= hora_patron < 12:
-                                franja = "Mañana"
-                            elif 12 <= hora_patron < 18:
-                                franja = "Tarde"
-                            elif 18 <= hora_patron < 24:
-                                franja = "Noche"
-                            else:
-                                franja = "Madrugada"
+                            if repeticiones >= 2:
+                                if 6 <= hora_patron < 12:
+                                    franja = "Mañana"
+                                elif 12 <= hora_patron < 18:
+                                    franja = "Tarde"
+                                elif 18 <= hora_patron < 24:
+                                    franja = "Noche"
+                                else:
+                                    franja = "Madrugada"
 
-                            rango = f"{franja} ({hora_patron:02d}:00 hs) – patrón en {repeticiones} días"
+                                rango = f"{franja} ({hora_patron:02d}:00 hs) – patrón en {repeticiones} días"
+                            else:
+                                rango = "Actividad dispersa"
                     except Exception as e:
                         rango = "Sin datos"
 
