@@ -340,8 +340,6 @@ elif "📋 Registro Fénix" in seccion:
         if "Tiempo" in df.columns and "Hora" not in df.columns:
             df = df.rename(columns={"Tiempo": "Hora"})
 
-        st.write("Ejemplo de valores en columna Hora:", df["Hora"].dropna().unique()[:10])
-
         try:
             from collections import Counter
 
