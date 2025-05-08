@@ -355,23 +355,44 @@ elif "📋 Registro Fénix" in seccion:
                 hl = cargas_hl["Monto"].sum()
                 wagger = cargas_wagger["Monto"].sum()
                 total_monto = hl + wagger
+                total_retiro = retiros["Retiro"].sum()
+                ganancias_casino = total_monto - total_retiro
+
+                # Rango horario (hora más frecuente de carga)
+                rango = "Sin datos"
+                if not cargas.empty and "Hora" in cargas.columns:
+                    horas = pd.to_datetime(cargas["Hora"], errors="coerce").dt.hour.dropna()
+                    if not horas.empty:
+                        hora_dominante = int(horas.mode()[0])
+                        if 6 <= hora_dominante < 12:
+                            rango = "Mañana"
+                        elif 12 <= hora_dominante < 18:
+                            rango = "Tarde"
+                        elif 18 <= hora_dominante < 24:
+                            rango = "Noche"
+                        else:
+                            rango = "Madrugada"
 
                 if not cargas.empty:
+                    ultima_fecha = cargas["Fecha"].max()
                     resumen.append({
                         "Nombre de jugador": jugador,
+                        "Tipo de bono": "",
                         "Fecha que ingresó": cargas["Fecha"].min(),
                         "Veces que cargó": len(cargas),
                         "Hl": hl,
                         "Wagger": wagger,
                         "Monto total": total_monto,
-                        "Última vez que cargó": cargas["Fecha"].max(),
-                        "Días inactivo": (pd.to_datetime(datetime.date.today()) - cargas["Fecha"].max()).days,
-                        "Cantidad de retiro": retiros["Retiro"].sum(),
-                        "LTV (Lifetime Value)": total_monto,
-                        "Duración activa (días)": (cargas["Fecha"].max() - cargas["Fecha"].min()).days
+                        "Cantidad de retiro": total_retiro,
+                        "Ganacias casino": ganancias_casino,
+                        "Rango horario de juego": rango,
+                        "Última vez que cargó": ultima_fecha,
+                        "Días inactivo": (pd.to_datetime(datetime.date.today()) - ultima_fecha).days,
+                        "Racha Activa (Días)": (ultima_fecha - cargas["Fecha"].min()).days,
+                        "Última vez que se lo contacto": ""
                     })
 
-            df_registro = pd.DataFrame(resumen).sort_values("Días inactivo", ascending=False)
+            df_registro = pd.DataFrame(resumen).sort_values("Última vez que cargó", ascending=False)
 
             st.subheader("📄 Registro completo de jugadores")
             st.dataframe(df_registro)
