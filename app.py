@@ -19,7 +19,7 @@ print(hashed_passwords)
 
 
 # Leer secrets
-credentials = json.loads(str(st.secrets["credentials"])
+credentials = json.loads(str(st.secrets["credentials"]))
 cookie = st.secrets["cookie"]
 
 # Inicializar autenticador
