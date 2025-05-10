@@ -17,8 +17,9 @@ passwords = ['z01erosfxbet0125']
 hashed_passwords = stauth.Hasher(passwords).generate()
 print(hashed_passwords)
 
-# Leer datos desde secrets
-credentials = st.secrets["credentials"]
+
+# Leer secrets
+credentials = copy.deepcopy(st.secrets["credentials"])
 cookie = st.secrets["cookie"]
 
 # Inicializar autenticador
@@ -30,15 +31,18 @@ authenticator = stauth.Authenticate(
     cookie["expiry_days"]
 )
 
-# Ejecutar login
+# Login
 name, auth_status, username = authenticator.login("Iniciar sesión", "main")
 
-# Mostrar según estado
+# Control de acceso
 if auth_status is False:
     st.error("❌ Usuario o contraseña incorrectos")
+
 elif auth_status is None:
     st.warning("🔐 Por favor ingresá tus credenciales")
-else:
+
+elif auth_status:
+    # Solo se muestra si está logueado
     authenticator.logout("Cerrar sesión", "sidebar")
     st.sidebar.success(f"Bienvenido, {name}")
 
