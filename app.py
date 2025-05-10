@@ -439,7 +439,8 @@ elif "📋 Registro Fénix" in seccion:
                     right_on="USUARIO_NORM",
                     how="left"
                 ).drop(columns=["USUARIO_NORM", "JUGADOR_NORM"])
-                df_registro["Tipo de bono"] = df_registro["FUNNEL"]
+                # Asignar 'n/a' si no hay coincidencia
+                df_registro["Tipo de bono"] = df_registro["FUNNEL"].fillna("n/a")
                 df_registro = df_registro.drop(columns=["FUNNEL"])
 
             
