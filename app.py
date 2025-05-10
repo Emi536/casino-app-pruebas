@@ -426,22 +426,22 @@ elif "📋 Registro Fénix" in seccion:
                 df_users = pd.DataFrame(rows_users, columns=headers_users)
             
                 # Normalizar nombres
-                df_users["USUARIO"] = df_users["USUARIO"].astype(str).str.strip().str.lower()
-                df_registro["Nombre de jugador"] = df_registro["Nombre de jugador"].astype(str).str.strip().str.lower()
                 def normalizar_usuario(nombre):
                     return str(nombre).strip().lower().replace(" ", "").replace("_", "")
-
-                df_users["USUARIO"] = df_users["USUARIO"].apply(normalizar_usuario)
-                df_registro["Nombre de jugador"] = df_registro["Nombre de jugador"].apply(normalizar_usuario)
-
+                
+                df_users["USUARIO_NORM"] = df_users["USUARIO"].apply(normalizar_usuario)
+                df_registro["JUGADOR_NORM"] = df_registro["Nombre de jugador"].apply(normalizar_usuario)
             
                 # Merge por nombre de usuario
                 df_registro = df_registro.merge(
-                    df_users[["USUARIO", "FUNNEL"]],
-                    left_on="Nombre de jugador",
-                    right_on="USUARIO",
+                    df_users[["USUARIO_NORM", "FUNNEL"]],
+                    left_on="JUGADOR_NORM",
+                    right_on="USUARIO_NORM",
                     how="left"
-                ).drop(columns=["USUARIO"])
+                ).drop(columns=["USUARIO_NORM", "JUGADOR_NORM"])
+                df_registro["Tipo de bono"] = df_registro["FUNNEL"]
+                df_registro = df_registro.drop(columns=["FUNNEL"])
+
             
                 # Completar columna vacía
                 df_registro["Tipo de bono"] = df_registro["FUNNEL"]
