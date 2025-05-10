@@ -19,12 +19,11 @@ hashed_passwords = stauth.Hasher(passwords).generate()
 print(hashed_passwords)
 
 
-# Leer secrets
-credentials = json.loads(str(st.secrets["credentials"]))
+# Leer credenciales y configuración de cookies desde secrets.toml
+credentials = st.secrets["credentials"]
 cookie = st.secrets["cookie"]
 
-# Inicializar autenticador
-credentials = dict(st.secrets["credentials"])
+# Inicializar el autenticador
 authenticator = stauth.Authenticate(
     credentials,
     cookie["name"],
@@ -32,21 +31,21 @@ authenticator = stauth.Authenticate(
     cookie["expiry_days"]
 )
 
-# Login
+# Mostrar el formulario de inicio de sesión
 name, auth_status, username = authenticator.login("Iniciar sesión", "main")
 
-# Control de acceso
-if auth_status is False:
-    st.error("❌ Usuario o contraseña incorrectos")
-
-elif auth_status is None:
-    st.warning("🔐 Por favor ingresá tus credenciales")
-
-elif auth_status:
-    # Solo se muestra si está logueado
+# Manejo del estado de autenticación
+if auth_status:
     authenticator.logout("Cerrar sesión", "sidebar")
     st.sidebar.success(f"Bienvenido, {name}")
 
+    # Aquí comienza el contenido seguro de tu aplicación
+    st.write("Contenido de la aplicación para usuarios autenticados.")
+
+elif auth_status is False:
+    st.error("❌ Usuario o contraseña incorrectos")
+elif auth_status is None:
+    st.warning("🔐 Por favor ingresá tus credenciales")
 # --- Título principal ---
 st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>", unsafe_allow_html=True)
 import streamlit as st
