@@ -235,25 +235,23 @@ elif auth_status:
             df_temp = df_temp.copy()
             if "Jugador" in df_temp.columns:
                 df_temp["Jugador"] = df_temp["Jugador"].astype(str).str.strip().str.lower()
-        
+    
             for col in ["Monto", "Retiro", "Balance antes de operación", "Wager"]:
                 if col in df_temp.columns:
                     df_temp[col] = df_temp[col].apply(convertir_monto)
-        
+    
             if "Fecha" in df_temp.columns:
                 df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"], errors="coerce")
-        
+    
             return df_temp
-        
+    
         df_historial = limpiar_dataframe(df_historial)
-        
+    
         if "Fecha" in df_historial.columns:
             df_historial["Fecha"] = pd.to_datetime(df_historial["Fecha"], errors="coerce")
             df_historial = df_historial[df_historial["Fecha"].notna()]
             limite = fecha_actual_date - datetime.timedelta(days=9)
             df_historial = df_historial[df_historial["Fecha"].dt.date >= limite]
-
-
     
         if texto_pegar:
             try:
@@ -906,12 +904,22 @@ elif auth_status:
         df_historial = pd.DataFrame()
     
         try:
-            hoja_argento = sh.worksheet("registro_betargento")
-            data_argento = hoja_argento.get_all_records()
-            df_historial = pd.DataFrame(data_argento)
-        except:
-            hoja_argento = sh.add_worksheet(title="registro_betargento", rows="1000", cols="20")
-            df_historial = pd.DataFrame()
+            # Intentar obtener la hoja existente
+            try:
+                hoja_argento = sh.worksheet("registro_betargento")
+                data_argento = hoja_argento.get_all_records()
+                df_historial = pd.DataFrame(data_argento)
+            except gspread.exceptions.WorksheetNotFound:
+                # Si la hoja no existe, intentar crearla
+                try:
+                    hoja_argento = sh.add_worksheet(title="registro_betargento", rows="1000", cols="20")
+                    df_historial = pd.DataFrame()
+                except gspread.exceptions.APIError as e:
+                    st.error("❌ Error al crear la hoja de Bet Argento. Por favor, verifica los permisos de la hoja de cálculo.")
+                    st.stop()
+        except Exception as e:
+            st.error(f"❌ Error al acceder a la hoja de cálculo: {str(e)}")
+            st.stop()
     
         def convertir_monto(valor):
             if pd.isna(valor): return 0.0
@@ -1237,7 +1245,6 @@ elif auth_status:
             except Exception as e:
                 st.error(f"❌ Error al generar la Tabla Bono Bet Argento: {e}")
     
-    
     elif seccion == "📆 Seguimiento de jugadores inactivos":
         st.header("📆 Seguimiento de Jugadores Inactivos Mejorado")
         archivo_agenda = st.file_uploader("📁 Subí tu archivo con dos hojas (Nombres y Reporte General):", type=["xlsx", "xls"], key="agenda")
@@ -1384,3 +1391,4 @@ elif auth_status:
     
             except Exception as e:
                 st.error(f"❌ Error al procesar el archivo: {e}")
+
