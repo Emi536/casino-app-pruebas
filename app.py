@@ -432,12 +432,18 @@ elif "📋 Registro Fénix" in seccion:
         try:
             # Leer hoja principal
             hoja_registro = sh.worksheet("registro_users")
+        
+            # Validación opcional de encabezados
+            raw_data = hoja_registro.get_all_values()
+            encabezados_hoja = raw_data[0]
+            if len(encabezados_hoja) != len(set(encabezados_hoja)):
+                st.warning("⚠️ Atención: hay encabezados duplicados en la hoja registro_users.")
+        
             data_registro = hoja_registro.get_all_records(expected_headers=[
                 "ID_USUARIO", "USUARIO", "FUNNEL", "BONOS OFRECIDOS", "BONOS USADOS",
                 "MONTO TOTAL CARGADO", "% DE CONVERSION", "ULT. ACTUALIZACION"
             ])
-
-
+        
             df_registro_users = pd.DataFrame(data_registro)
         
             # Leer hoja con categorías
@@ -462,7 +468,7 @@ elif "📋 Registro Fénix" in seccion:
                 "FUNNEL": "Tipo de Bono",
                 "BONOS OFRECIDOS": "Cuántas veces se le ofreció el bono",
                 "BONOS USADOS": "Cuántas veces cargó con bono",
-                "MONTO TOTAL  CARGADO": "Monto total",
+                "MONTO TOTAL CARGADO": "Monto total",  # ✅ corregido
                 "% DE CONVERSION": "Conversión",
                 "ULT. ACTUALIZACION": "Fecha del último mensaje",
                 "CATEGORIA DE BONO": "Categoría de Bono"
@@ -488,6 +494,7 @@ elif "📋 Registro Fénix" in seccion:
         
         except Exception as e:
             st.error(f"❌ Error al generar la Tabla Bono Fénix: {e}")
+
 
 
 
