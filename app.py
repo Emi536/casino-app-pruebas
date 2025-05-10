@@ -669,11 +669,17 @@ elif auth_status:
     
                 df_historial = pd.concat([df_historial, df_nuevo], ignore_index=True)
                 df_historial.drop_duplicates(subset=["ID"], inplace=True)
-    
+
+                # Filtrar solo los últimos 10 días antes de actualizar la hoja
+                df_historial["Fecha"] = pd.to_datetime(df_historial["Fecha"], errors="coerce")
+                limite = fecha_actual_date - datetime.timedelta(days=9)
+                df_historial_10dias = df_historial[df_historial["Fecha"].dt.date >= limite].copy()
+
+                # Actualizar la hoja con los últimos 10 días
                 hoja_eros.clear()
-                hoja_eros.update([df_historial.columns.tolist()] + df_historial.astype(str).values.tolist())
-    
-                st.success(f"✅ Registros de Eros actualizados correctamente. Total acumulado: {len(df_historial)}")
+                hoja_eros.update([df_historial_10dias.columns.tolist()] + df_historial_10dias.astype(str).values.tolist())
+
+                st.success(f"✅ Registros de Eros actualizados correctamente. Total acumulado: {len(df_historial_10dias)}")
     
             except Exception as e:
                 st.error(f"❌ Error al procesar los datos pegados: {e}")
