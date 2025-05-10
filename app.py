@@ -454,6 +454,8 @@ elif "📋 Registro Fénix" in seccion:
                             df_merged[campo] = df_merged[campo].fillna(0)
                 # El tipo de bono viene de registro_users
                 df_merged = df_merged.rename(columns={"FUNNEL": "Tipo de bono"})
+                # Eliminar columnas duplicadas conservando la primera aparición
+                df_merged = df_merged.loc[:, ~df_merged.columns.duplicated()]
                 # Mostrar solo columnas relevantes
                 columnas_finales = [
                     "USUARIO", "Tipo de bono", "Fecha que ingresó", "Veces que cargó", "Hl", "Wagger", "Monto total", "Cantidad de retiro", "Ganacias casino", "Rango horario de juego", "Última vez que cargó", "Días inactivo", "Racha Activa (Días)", "Última vez que se lo contacto"
