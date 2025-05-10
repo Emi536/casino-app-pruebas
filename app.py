@@ -13,11 +13,6 @@ import hashlib
 import streamlit_authenticator as stauth
 import copy
 
-# --- Título principal ---
-st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>", unsafe_allow_html=True)
-import streamlit as st
-import hashlib
-
 passwords = ['z01erosfxbet0125']
 hashed_passwords = stauth.Hasher(passwords).generate()
 print(hashed_passwords)
@@ -46,6 +41,13 @@ elif auth_status is None:
 else:
     authenticator.logout("Cerrar sesión", "sidebar")
     st.sidebar.success(f"Bienvenido, {name}")
+
+# --- Título principal ---
+st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>", unsafe_allow_html=True)
+import streamlit as st
+import hashlib
+
+
 # --- Conexión a Google Sheets ---
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 credentials = service_account.Credentials.from_service_account_info(
