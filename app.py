@@ -434,13 +434,42 @@ elif "📋 Registro Fénix" in seccion:
             hoja_registro = sh.worksheet("registro_users")
             raw_data = hoja_registro.get_all_values()
             headers = raw_data[0]
+            
+            # Manejar encabezados duplicados
+            seen = set()
+            unique_headers = []
+            for header in headers:
+                if header in seen:
+                    # Agregar un sufijo numérico al encabezado duplicado
+                    counter = 1
+                    while f"{header}_{counter}" in seen:
+                        counter += 1
+                    header = f"{header}_{counter}"
+                seen.add(header)
+                unique_headers.append(header)
+            
             rows = raw_data[1:]
-            df_registro_users = pd.DataFrame(rows, columns=headers)
+            df_registro_users = pd.DataFrame(rows, columns=unique_headers)
         
             # Leer hoja con categorías de bonos
             hoja_bonos = sh.worksheet("bonos_ofrecidos")
-            data_bonos = hoja_bonos.get_all_records()
-            df_bonos = pd.DataFrame(data_bonos)
+            raw_data_bonos = hoja_bonos.get_all_values()
+            headers_bonos = raw_data_bonos[0]
+            
+            # Manejar encabezados duplicados en bonos
+            seen_bonos = set()
+            unique_headers_bonos = []
+            for header in headers_bonos:
+                if header in seen_bonos:
+                    counter = 1
+                    while f"{header}_{counter}" in seen_bonos:
+                        counter += 1
+                    header = f"{header}_{counter}"
+                seen_bonos.add(header)
+                unique_headers_bonos.append(header)
+            
+            rows_bonos = raw_data_bonos[1:]
+            df_bonos = pd.DataFrame(rows_bonos, columns=unique_headers_bonos)
         
             # Limpiar nombre de usuario
             df_registro_users["USUARIO"] = df_registro_users["USUARIO"].astype(str).str.strip().str.lower()
