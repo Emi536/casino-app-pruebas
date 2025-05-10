@@ -24,11 +24,12 @@ credentials = st.secrets["credentials"]
 cookie = st.secrets["cookie"]
 
 # Inicializar el autenticador
+credentials = copy.deepcopy(st.secrets["credentials"].to_dict())
 authenticator = stauth.Authenticate(
     credentials,
-    cookie["name"],
-    cookie["key"],
-    cookie["expiry_days"]
+    st.secrets["cookie"]["name"],
+    st.secrets["cookie"]["key"],
+    st.secrets["cookie"]["expiry_days"]
 )
 
 # Mostrar el formulario de inicio de sesión
