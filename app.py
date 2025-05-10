@@ -424,57 +424,40 @@ elif "📋 Registro Fénix" in seccion:
                 headers_users = raw_data_users[0]
                 rows_users = raw_data_users[1:]
                 df_users = pd.DataFrame(rows_users, columns=headers_users)
-
+            
+                # Normalizar nombres
                 def normalizar_usuario(nombre):
                     return str(nombre).strip().lower().replace(" ", "").replace("_", "")
-
+                
                 df_users["USUARIO_NORM"] = df_users["USUARIO"].apply(normalizar_usuario)
-                if not resumen:
-                    df_registro = pd.DataFrame()
-                else:
-                    df_registro = pd.DataFrame(resumen)
-                    df_registro["JUGADOR_NORM"] = df_registro["Nombre de jugador"].apply(normalizar_usuario)
+                df_registro["JUGADOR_NORM"] = df_registro["Nombre de jugador"].apply(normalizar_usuario)
+            
+                # Merge por nombre de usuario
+                df_registro = df_registro.merge(
+                    df_users[["USUARIO_NORM", "FUNNEL"]],
+                    left_on="JUGADOR_NORM",
+                    right_on="USUARIO_NORM",
+                    how="left"
+                ).drop(columns=["USUARIO_NORM", "JUGADOR_NORM"])
+                # Asignar 'n/a' si no hay coincidencia
+                df_registro["Tipo de bono"] = df_registro["FUNNEL"].fillna("n/a")
+                df_registro = df_registro.drop(columns=["FUNNEL"])
 
-                # Merge tipo outer: todos los de registro_users y todos los que tengan actividad
-                df_merged = pd.merge(
-                    df_users,
-                    df_registro,
-                    left_on="USUARIO_NORM",
-                    right_on="JUGADOR_NORM",
-                    how="outer"
-                )
-                # El tipo de bono puede venir de registro_users o de actividad, priorizar registro_users
-                df_merged["Tipo de bono"] = df_merged["FUNNEL"].combine_first(df_merged.get("Tipo de bono"))
-                # Eliminar columnas duplicadas conservando la primera aparición
-                df_merged = df_merged.loc[:, ~df_merged.columns.duplicated()]
-                # Rellenar campos de actividad con n/a o 0 si no hay datos
-                campos_actividad = [
-                    "Fecha que ingresó", "Veces que cargó", "Hl", "Wagger", "Monto total", "Cantidad de retiro", "Ganacias casino", "Rango horario de juego", "Última vez que cargó", "Días inactivo", "Racha Activa (Días)", "Última vez que se lo contacto"
-                ]
-                for campo in campos_actividad:
-                    if campo in df_merged.columns:
-                        if df_merged[campo].dtype == object:
-                            df_merged[campo] = df_merged[campo].fillna("n/a")
-                        else:
-                            df_merged[campo] = df_merged[campo].fillna(0)
-                # Mostrar solo columnas relevantes (USUARIO si existe, sino Nombre de jugador)
-                if "USUARIO" in df_merged.columns:
-                    col_usuario = "USUARIO"
-                else:
-                    col_usuario = "Nombre de jugador"
-                columnas_finales = [
-                    col_usuario, "Tipo de bono", "Fecha que ingresó", "Veces que cargó", "Hl", "Wagger", "Monto total", "Cantidad de retiro", "Ganacias casino", "Rango horario de juego", "Última vez que cargó", "Días inactivo", "Racha Activa (Días)", "Última vez que se lo contacto"
-                ]
-                # Filtrar solo columnas que existan
-                columnas_finales = [c for c in columnas_finales if c in df_merged.columns]
-                df_merged = df_merged[columnas_finales]
-                st.subheader("📄 Registro completo de jugadores")
-                st.dataframe(df_merged)
-                df_merged.to_excel("registro_jugadores.xlsx", index=False)
-                with open("registro_jugadores.xlsx", "rb") as f:
-                    st.download_button("📅 Descargar Excel", f, file_name="registro_jugadores.xlsx")
+            
+                # Completar columna vacía
+                df_registro["Tipo de bono"] = df_registro["FUNNEL"]
+                df_registro = df_registro.drop(columns=["FUNNEL"])
+            
             except Exception as e:
                 st.warning(f"⚠️ No se pudo cargar el tipo de bono desde registro_users: {e}")
+
+
+            st.subheader("📄 Registro completo de jugadores")
+            st.dataframe(df_registro)
+
+            df_registro.to_excel("registro_jugadores.xlsx", index=False)
+            with open("registro_jugadores.xlsx", "rb") as f:
+                st.download_button("📅 Descargar Excel", f, file_name="registro_jugadores.xlsx")
 
         except Exception as e:
             st.error(f"❌ Error al generar el resumen: {e}")
