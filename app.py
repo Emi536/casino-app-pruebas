@@ -12,6 +12,7 @@ import pytz
 import hashlib
 import streamlit_authenticator as stauth
 import json
+import copy
 
 passwords = ['z01erosfxbet0125']
 hashed_passwords = stauth.Hasher(passwords).generate()
