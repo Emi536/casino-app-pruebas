@@ -16,38 +16,28 @@ st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>"
 import streamlit as st
 import hashlib
 
-# --- Cargar desde secrets ---
-USER = st.secrets["auth"]["usuario"]
-PASSWORD = st.secrets["auth"]["clave"]
+# --- Leer credenciales desde secrets.toml ---
+credentials = st.secrets["credentials"]
 
-def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
+# --- Inicializar autenticador ---
+authenticator = stauth.Authenticate(
+    credentials,
+    "mi_cookie_fenix",         # ID interno de cookie
+    "firma_segura_cookie",     # Clave secreta para firmar cookie
+    cookie_expiry_days=2       # Duración persistente de sesión
+)
 
-# --- Session state login persistente ---
-if "logueado" not in st.session_state:
-    st.session_state["logueado"] = False
+# --- Mostrar formulario de login ---
+name, auth_status, username = authenticator.login("Iniciar sesión", "main")
 
-# --- Pantalla de login ---
-if not st.session_state["logueado"]:
-    st.title("🔐 Iniciar sesión")
-    usuario_input = st.text_input("Usuario")
-    clave_input = st.text_input("Contraseña", type="password")
-
-    login_btn = st.button("Iniciar sesión")
-    
-    if login_btn:
-        if usuario_input == USER and hash_password(clave_input) == hash_password(PASSWORD):
-            st.session_state["logueado"] = True
-            st.rerun()  # ✅ Ahora seguro
-        else:
-            st.error("❌ Usuario o contraseña incorrectos")
-    st.stop()
-
-# --- CONTENIDO SEGURO DE LA APP ---
-st.sidebar.success(f"Bienvenido, {USER}")
-if st.sidebar.button("Cerrar sesión"):
-    st.session_state.clear()
-    st.rerun()
+# --- Control de acceso según estado ---
+if auth_status is False:
+    st.error("❌ Usuario o contraseña incorrectos")
+elif auth_status is None:
+    st.warning("🔐 Por favor ingresá tus credenciales")
+elif auth_status:
+    authenticator.logout("Cerrar sesión", "sidebar")
+    st.sidebar.success(f"Bienvenido, {name}")
 
 
 # --- Conexión a Google Sheets ---
