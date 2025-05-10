@@ -11,6 +11,7 @@ from google.oauth2 import service_account
 import pytz
 import hashlib
 import streamlit_authenticator as stauth
+import copy
 
 # --- Título principal ---
 st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>", unsafe_allow_html=True)
