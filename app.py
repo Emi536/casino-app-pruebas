@@ -435,13 +435,18 @@ elif "📋 Registro Fénix" in seccion:
                     df_registro = pd.DataFrame(resumen)
                     df_registro["JUGADOR_NORM"] = df_registro["Nombre de jugador"].apply(normalizar_usuario)
 
-                # Merge: base = df_users (todos los usuarios), agrega actividad si existe
-                df_merged = df_users.merge(
+                # Merge tipo outer: todos los de registro_users y todos los que tengan actividad
+                df_merged = pd.merge(
+                    df_users,
                     df_registro,
                     left_on="USUARIO_NORM",
                     right_on="JUGADOR_NORM",
-                    how="left"
+                    how="outer"
                 )
+                # El tipo de bono puede venir de registro_users o de actividad, priorizar registro_users
+                df_merged["Tipo de bono"] = df_merged["FUNNEL"].combine_first(df_merged.get("Tipo de bono"))
+                # Eliminar columnas duplicadas conservando la primera aparición
+                df_merged = df_merged.loc[:, ~df_merged.columns.duplicated()]
                 # Rellenar campos de actividad con n/a o 0 si no hay datos
                 campos_actividad = [
                     "Fecha que ingresó", "Veces que cargó", "Hl", "Wagger", "Monto total", "Cantidad de retiro", "Ganacias casino", "Rango horario de juego", "Última vez que cargó", "Días inactivo", "Racha Activa (Días)", "Última vez que se lo contacto"
@@ -452,14 +457,16 @@ elif "📋 Registro Fénix" in seccion:
                             df_merged[campo] = df_merged[campo].fillna("n/a")
                         else:
                             df_merged[campo] = df_merged[campo].fillna(0)
-                # El tipo de bono viene de registro_users
-                df_merged = df_merged.rename(columns={"FUNNEL": "Tipo de bono"})
-                # Eliminar columnas duplicadas conservando la primera aparición
-                df_merged = df_merged.loc[:, ~df_merged.columns.duplicated()]
-                # Mostrar solo columnas relevantes
+                # Mostrar solo columnas relevantes (USUARIO si existe, sino Nombre de jugador)
+                if "USUARIO" in df_merged.columns:
+                    col_usuario = "USUARIO"
+                else:
+                    col_usuario = "Nombre de jugador"
                 columnas_finales = [
-                    "USUARIO", "Tipo de bono", "Fecha que ingresó", "Veces que cargó", "Hl", "Wagger", "Monto total", "Cantidad de retiro", "Ganacias casino", "Rango horario de juego", "Última vez que cargó", "Días inactivo", "Racha Activa (Días)", "Última vez que se lo contacto"
+                    col_usuario, "Tipo de bono", "Fecha que ingresó", "Veces que cargó", "Hl", "Wagger", "Monto total", "Cantidad de retiro", "Ganacias casino", "Rango horario de juego", "Última vez que cargó", "Días inactivo", "Racha Activa (Días)", "Última vez que se lo contacto"
                 ]
+                # Filtrar solo columnas que existan
+                columnas_finales = [c for c in columnas_finales if c in df_merged.columns]
                 df_merged = df_merged[columnas_finales]
                 st.subheader("📄 Registro completo de jugadores")
                 st.dataframe(df_merged)
