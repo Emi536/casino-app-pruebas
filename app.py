@@ -27,6 +27,7 @@ credentials = st.secrets["credentials"]
 cookie = st.secrets["cookie"]
 
 # Inicializar autenticador
+credentials = dict(st.secrets["credentials"])
 authenticator = stauth.Authenticate(
     credentials,
     cookie["name"],
