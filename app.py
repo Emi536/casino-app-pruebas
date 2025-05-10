@@ -599,7 +599,7 @@ elif auth_status:
             df_historial = df_historial[df_historial["Fecha"].notna()]
             limite = fecha_actual_date - datetime.timedelta(days=9)
             df_historial = df_historial[df_historial["Fecha"].dt.date >= limite]
-    
+
         if texto_pegar:
             try:
                 sep_detectado = "\t" if "\t" in texto_pegar else ";" if ";" in texto_pegar else ","
