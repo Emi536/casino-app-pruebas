@@ -432,7 +432,11 @@ elif "📋 Registro Fénix" in seccion:
         try:
             # Leer hoja principal
             hoja_registro = sh.worksheet("registro_users")
-            data_registro = hoja_registro.get_all_records()
+            data_registro = hoja_registro.get_all_records(expected_headers=[
+                "ID_USUARIO", "USUARIO", "FUNNEL", "BONOS OFRECIDOS", "BONOS USADOS",
+                "MONTO TOTAL  CARGADO", "% DE CONVERSION", "ULT. ACTUALIZACION"
+            ])
+
             df_registro_users = pd.DataFrame(data_registro)
         
             # Leer hoja con categorías
