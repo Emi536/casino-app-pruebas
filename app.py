@@ -428,50 +428,62 @@ elif "📋 Registro Fénix" in seccion:
         except Exception as e:
             st.error(f"❌ Error al generar el resumen: {e}")
 
-    # 🔵 Tabla Bono Fénix
+        # 🔵 Tabla Bono Fénix desde hojas "registro_users" y "bonos_ofrecidos"
         try:
-            hoja_bonos_fenix = sh.worksheet("Exclusivos + recurrentes fenix")
-            datos_bonos = hoja_bonos_fenix.get_all_records()
-            df_bonos_fenix = pd.DataFrame(datos_bonos)
+            # Leer hoja principal
+            hoja_registro = sh.worksheet("registro_users")
+            data_registro = hoja_registro.get_all_records()
+            df_registro_users = pd.DataFrame(data_registro)
         
-            # Renombrar columnas
-            df_bonos_fenix.rename(columns={
+            # Leer hoja con categorías
+            hoja_bonos = sh.worksheet("bonos_ofrecidos")
+            data_bonos = hoja_bonos.get_all_records()
+            df_bonos = pd.DataFrame(data_bonos)
+        
+            # Limpiar nombre de usuario
+            df_registro_users["USUARIO"] = df_registro_users["USUARIO"].astype(str).str.strip().str.lower()
+            df_bonos["USUARIO"] = df_bonos["USUARIO"].astype(str).str.strip().str.lower()
+        
+            # Obtener la última categoría de bono por usuario
+            df_categorias = df_bonos.dropna(subset=["CATEGORIA DE BONO"]).sort_values("FECHA")
+            df_categorias = df_categorias.groupby("USUARIO")["CATEGORIA DE BONO"].last().reset_index()
+        
+            # Unir con el registro principal
+            df_bono = df_registro_users.merge(df_categorias, on="USUARIO", how="left")
+        
+            # Renombrar columnas al formato final
+            df_bono = df_bono.rename(columns={
                 "USUARIO": "Usuario",
                 "FUNNEL": "Tipo de Bono",
                 "BONOS OFRECIDOS": "Cuántas veces se le ofreció el bono",
                 "BONOS USADOS": "Cuántas veces cargó con bono",
+                "MONTO TOTAL  CARGADO": "Monto total",
                 "% DE CONVERSION": "Conversión",
-                "FECHA ULT CARGA": "Fecha del último mensaje"
-            }, inplace=True)
+                "ULT. ACTUALIZACION": "Fecha del último mensaje",
+                "CATEGORIA DE BONO": "Categoría de Bono"
+            })
         
-            # Limpiar y formatear valores
-            df_bonos_fenix["Conversión"] = df_bonos_fenix["Conversión"].astype(str).str.replace("%", "", regex=False)
-            df_bonos_fenix["Conversión"] = pd.to_numeric(df_bonos_fenix["Conversión"], errors="coerce").fillna(0)
+            # Limpiar campos
+            df_bono["Conversión"] = df_bono["Conversión"].astype(str).str.replace("%", "", regex=False)
+            df_bono["Conversión"] = pd.to_numeric(df_bono["Conversión"], errors="coerce").fillna(0)
+            df_bono["Fecha del último mensaje"] = df_bono["Fecha del último mensaje"].replace(["30/12/1899", "1899-12-30"], "Sin registros")
         
-            # Reemplazar fechas inválidas
-            df_bonos_fenix["Fecha del último mensaje"] = df_bonos_fenix["Fecha del último mensaje"].replace(["30/12/1899", "1899-12-30"], "Sin registros")
-        
-            # Armar columnas visibles evitando duplicados
+            # Seleccionar columnas finales
             columnas_finales = [
-                "Usuario",
-                "Tipo de Bono",
-                "Cuántas veces se le ofreció el bono",
-                "Cuántas veces cargó con bono",
-                "Conversión",
-                "Fecha del último mensaje"
+                "Usuario", "Tipo de Bono",
+                "Cuántas veces se le ofreció el bono", "Cuántas veces cargó con bono",
+                "Monto total", "Conversión",
+                "Fecha del último mensaje", "Categoría de Bono"
             ]
+            df_bono = df_bono[columnas_finales]
         
-            # Si "Monto total" existe, lo insertamos en la posición 4
-            if "Monto total" in df_bonos_fenix.columns:
-                columnas_finales.insert(4, "Monto total")
-        
-            tabla_bono_fenix = df_bonos_fenix[columnas_finales]
-        
+            # Mostrar en la app
             st.subheader("🎁 Tabla Bono - Fénix")
-            st.dataframe(tabla_bono_fenix)
+            st.dataframe(df_bono)
         
         except Exception as e:
-            st.error(f"❌ Error al cargar la tabla bono Fénix: {e}")
+            st.error(f"❌ Error al generar la Tabla Bono Fénix: {e}")
+
 
 
 
