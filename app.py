@@ -447,8 +447,10 @@ elif "📋 Registro Fénix" in seccion:
                 # Completar columna vacía
                 df_registro["Tipo de bono"] = df_registro["FUNNEL"]
                 df_registro = df_registro.drop(columns=["FUNNEL"])
-            
-            
+
+            except Exception as e:
+                st.warning(f"⚠️ No se pudo cargar el tipo de bono desde registro_users: {e}")
+
             st.subheader("📄 Registro completo de jugadores")
             st.dataframe(df_registro)
 
