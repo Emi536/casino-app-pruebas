@@ -1180,7 +1180,7 @@ elif auth_status:
             # 🔵 Tabla Bono Bet Argento desde hojas "registro_users" y "bonos_ofrecidos"
             try:
                 # Leer hoja principal ignorando posibles conflictos de encabezado
-                hoja_registro = sh.worksheet("registro_users")
+                hoja_registro = sh.worksheet("registro_bono_bet")
                 raw_data = hoja_registro.get_all_values()
                 headers = raw_data[0]
                 
