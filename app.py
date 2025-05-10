@@ -417,6 +417,33 @@ elif "📋 Registro Fénix" in seccion:
                     })
 
             df_registro = pd.DataFrame(resumen).sort_values("Última vez que cargó", ascending=False)
+            # 🧩 COMPLETAR TIPO DE BONO desde hoja 'registro_users'
+            try:
+                hoja_users = sh.worksheet("registro_users")
+                raw_data_users = hoja_users.get_all_values()
+                headers_users = raw_data_users[0]
+                rows_users = raw_data_users[1:]
+                df_users = pd.DataFrame(rows_users, columns=headers_users)
+            
+                # Normalizar nombres
+                df_users["USUARIO"] = df_users["USUARIO"].astype(str).str.strip().str.lower()
+                df_registro["Nombre de jugador"] = df_registro["Nombre de jugador"].astype(str).str.strip().str.lower()
+            
+                # Merge por nombre de usuario
+                df_registro = df_registro.merge(
+                    df_users[["USUARIO", "FUNNEL"]],
+                    left_on="Nombre de jugador",
+                    right_on="USUARIO",
+                    how="left"
+                ).drop(columns=["USUARIO"])
+            
+                # Completar columna vacía
+                df_registro["Tipo de bono"] = df_registro["FUNNEL"]
+                df_registro = df_registro.drop(columns=["FUNNEL"])
+            
+            except Exception as e:
+                st.warning(f"⚠️ No se pudo cargar el tipo de bono desde registro_users: {e}")
+
 
             st.subheader("📄 Registro completo de jugadores")
             st.dataframe(df_registro)
