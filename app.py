@@ -11,7 +11,7 @@ from google.oauth2 import service_account
 import pytz
 import hashlib
 import streamlit_authenticator as stauth
-import copy
+import json
 
 passwords = ['z01erosfxbet0125']
 hashed_passwords = stauth.Hasher(passwords).generate()
@@ -19,7 +19,7 @@ print(hashed_passwords)
 
 
 # Leer secrets
-credentials = copy.deepcopy(st.secrets["credentials"])
+credentials = json.loads(str(st.secrets["credentials"])
 cookie = st.secrets["cookie"]
 
 # Inicializar autenticador
