@@ -35,75 +35,70 @@ authenticator = stauth.Authenticate(
 # Mostrar el formulario de inicio de sesión
 name, auth_status, username = authenticator.login("Iniciar sesión", "main")
 
-# Manejo del estado de autenticación
-if auth_status:
-    authenticator.logout("Cerrar sesión", "sidebar")
-    st.sidebar.success(f"Bienvenido, {name}")
 
-    # Aquí comienza el contenido seguro de tu aplicación
-    st.write("Contenido de la aplicación para usuarios autenticados.")
-
-elif auth_status is False:
+if  auth_status is False:
     st.error("❌ Usuario o contraseña incorrectos")
 elif auth_status is None:
     st.warning("🔐 Por favor ingresá tus credenciales")
-# --- Título principal ---
-st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>", unsafe_allow_html=True)
-import streamlit as st
-import hashlib
+elif auth_status:
 
-
-# --- Conexión a Google Sheets ---
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-credentials = service_account.Credentials.from_service_account_info(
-    st.secrets["gcp_service_account"], scopes=scope
-)
-gc = gspread.authorize(credentials)
-SPREADSHEET_ID = "1HxbIBXBs8tlFtNy8RUQq8oANei1MHp_VleQmvCmLabY"
-sh = gc.open_by_key(SPREADSHEET_ID)
-worksheet = sh.sheet1
-
-# 🔵 Cargar historial si existe
-try:
-    historial_data = worksheet.get_all_records()
-    df_historial = pd.DataFrame(historial_data)
-except:
-    df_historial = pd.DataFrame()
-# Agregar CSS para ocultar GitHub Icon
-st.markdown("""
-    <style>
-    .stApp .header .stGitHub { display: none; }
-    </style>
-""", unsafe_allow_html=True)
-
-# Guardar la selección anterior y actual
-if "seccion_actual" not in st.session_state:
-    st.session_state.seccion_actual = ""
-
-seccion = st.sidebar.radio("Seleccioná una sección:", ["🔝 Métricas de jugadores", "📋 Registro Fénix","📋 Registro Eros","📋 Registro Bet Argento", "📆 Seguimiento de jugadores inactivos"])
-
-if seccion != st.session_state.seccion_actual:
-    st.session_state.texto_pegar = ""
-    st.session_state.seccion_actual = seccion
-
-# --- FUNCIONES ---
-def preparar_dataframe(df):
-    df = df.rename(columns={
-        "operación": "Tipo",
-        "Depositar": "Monto",
-        "Retirar": "Retiro",
-        "Wager": "?2",
-        "Límites": "?3",
-        "Balance antes de operación": "Saldo",
-        "Fecha": "Fecha",
-        "Tiempo": "Hora",
-        "Iniciador": "UsuarioSistema",
-        "Del usuario": "Plataforma",
-        "Sistema": "Admin",
-        "Al usuario": "Jugador",
-        "IP": "Extra"
-    })
-    return df
+    authenticator.logout("Cerrar sesión", "sidebar")
+    st.sidebar.success(f"Bienvenido, {name}")
+    # --- Título principal ---
+    st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>", unsafe_allow_html=True)
+    
+    
+    # --- Conexión a Google Sheets ---
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    credentials = service_account.Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"], scopes=scope
+    )
+    gc = gspread.authorize(credentials)
+    SPREADSHEET_ID = "1HxbIBXBs8tlFtNy8RUQq8oANei1MHp_VleQmvCmLabY"
+    sh = gc.open_by_key(SPREADSHEET_ID)
+    worksheet = sh.sheet1
+    
+    # 🔵 Cargar historial si existe
+    try:
+        historial_data = worksheet.get_all_records()
+        df_historial = pd.DataFrame(historial_data)
+    except:
+        df_historial = pd.DataFrame()
+    # Agregar CSS para ocultar GitHub Icon
+    st.markdown("""
+        <style>
+        .stApp .header .stGitHub { display: none; }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    # Guardar la selección anterior y actual
+    if "seccion_actual" not in st.session_state:
+        st.session_state.seccion_actual = ""
+    
+    seccion = st.sidebar.radio("Seleccioná una sección:", ["🔝 Métricas de jugadores", "📋 Registro Fénix","📋 Registro Eros","📋 Registro Bet Argento", "📆 Seguimiento de jugadores inactivos"])
+    
+    if seccion != st.session_state.seccion_actual:
+        st.session_state.texto_pegar = ""
+        st.session_state.seccion_actual = seccion
+    
+    # --- FUNCIONES ---
+    def preparar_dataframe(df):
+        df = df.rename(columns={
+            "operación": "Tipo",
+            "Depositar": "Monto",
+            "Retirar": "Retiro",
+            "Wager": "?2",
+            "Límites": "?3",
+            "Balance antes de operación": "Saldo",
+            "Fecha": "Fecha",
+            "Tiempo": "Hora",
+            "Iniciador": "UsuarioSistema",
+            "Del usuario": "Plataforma",
+            "Sistema": "Admin",
+            "Al usuario": "Jugador",
+            "IP": "Extra"
+        })
+        return df
 
 # --- SECCION 1: METRICAS DE JUGADORES ---
 if seccion == "🔝 Métricas de jugadores":
