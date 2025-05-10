@@ -22,12 +22,11 @@ passwords = ['z01erosfxbet0125']
 hashed_passwords = stauth.Hasher(passwords).generate()
 print(hashed_passwords)
 
-# --- Leer credenciales y cookies desde secrets ---
+# Leer datos desde secrets
 credentials = st.secrets["credentials"]
 cookie = st.secrets["cookie"]
 
-# --- Inicializar autenticador ---
-credentials = dict(st.secrets["credentials"])
+# Inicializar autenticador
 authenticator = stauth.Authenticate(
     credentials,
     cookie["name"],
@@ -35,24 +34,17 @@ authenticator = stauth.Authenticate(
     cookie["expiry_days"]
 )
 
-# --- Login solo si aún no está autenticado ---
-if "auth_status" not in st.session_state:
-    name, auth_status, username = authenticator.login("Iniciar sesión", "main")
-    st.session_state["auth_status"] = auth_status
-    st.session_state["username"] = username
-    st.session_state["name"] = name
+# Ejecutar login
+name, auth_status, username = authenticator.login("Iniciar sesión", "main")
 
-# --- Control de acceso ---
-if st.session_state["auth_status"] is False:
+# Mostrar según estado
+if auth_status is False:
     st.error("❌ Usuario o contraseña incorrectos")
-    st.stop()
-elif st.session_state["auth_status"] is None:
+elif auth_status is None:
     st.warning("🔐 Por favor ingresá tus credenciales")
-    st.stop()
-elif st.session_state["auth_status"]:
+else:
     authenticator.logout("Cerrar sesión", "sidebar")
-    st.sidebar.success(f"Bienvenido, {st.session_state['name']}")
-
+    st.sidebar.success(f"Bienvenido, {name}")
 # --- Conexión a Google Sheets ---
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 credentials = service_account.Credentials.from_service_account_info(
