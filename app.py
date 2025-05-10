@@ -10,11 +10,16 @@ import gspread
 from google.oauth2 import service_account
 import pytz
 import hashlib
+import streamlit_authenticator as stauth
 
 # --- Título principal ---
 st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>", unsafe_allow_html=True)
 import streamlit as st
 import hashlib
+
+passwords = ['z01erosfxbet0125']
+hashed_passwords = stauth.Hasher(passwords).generate()
+print(hashed_passwords)
 
 # --- Leer credenciales y cookie desde secrets.toml ---
 credentials = st.secrets["credentials"]
