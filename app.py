@@ -16,15 +16,16 @@ st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>"
 import streamlit as st
 import hashlib
 
-# --- Leer credenciales desde secrets.toml ---
+# --- Leer credenciales y cookie desde secrets.toml ---
 credentials = st.secrets["credentials"]
+cookie = st.secrets["cookie"]
 
-# --- Inicializar autenticador ---
+# --- Inicializar autenticador con persistencia ---
 authenticator = stauth.Authenticate(
     credentials,
-    "mi_cookie_fenix",         # ID interno de cookie
-    "firma_segura_cookie",     # Clave secreta para firmar cookie
-    cookie_expiry_days=2       # Duración persistente de sesión
+    cookie["name"],
+    cookie["key"],
+    cookie["expiry_days"]
 )
 
 # --- Mostrar formulario de login ---
