@@ -430,23 +430,14 @@ elif "📋 Registro Fénix" in seccion:
 
         # 🔵 Tabla Bono Fénix desde hojas "registro_users" y "bonos_ofrecidos"
         try:
-            # Leer hoja principal
+            # Leer hoja principal ignorando posibles conflictos de encabezado
             hoja_registro = sh.worksheet("registro_users")
-        
-            # Validación opcional de encabezados
             raw_data = hoja_registro.get_all_values()
-            encabezados_hoja = raw_data[0]
-            if len(encabezados_hoja) != len(set(encabezados_hoja)):
-                st.warning("⚠️ Atención: hay encabezados duplicados en la hoja registro_users.")
+            headers = raw_data[0]
+            rows = raw_data[1:]
+            df_registro_users = pd.DataFrame(rows, columns=headers)
         
-            data_registro = hoja_registro.get_all_records(expected_headers=[
-                "ID_USUARIO", "USUARIO", "FUNNEL", "BONOS OFRECIDOS", "BONOS USADOS",
-                "MONTO TOTAL CARGADO", "% DE CONVERSION", "ULT. ACTUALIZACION"
-            ])
-        
-            df_registro_users = pd.DataFrame(data_registro)
-        
-            # Leer hoja con categorías
+            # Leer hoja con categorías de bonos
             hoja_bonos = sh.worksheet("bonos_ofrecidos")
             data_bonos = hoja_bonos.get_all_records()
             df_bonos = pd.DataFrame(data_bonos)
@@ -468,7 +459,7 @@ elif "📋 Registro Fénix" in seccion:
                 "FUNNEL": "Tipo de Bono",
                 "BONOS OFRECIDOS": "Cuántas veces se le ofreció el bono",
                 "BONOS USADOS": "Cuántas veces cargó con bono",
-                "MONTO TOTAL CARGADO": "Monto total",  # ✅ corregido
+                "MONTO TOTAL CARGADO": "Monto total",
                 "% DE CONVERSION": "Conversión",
                 "ULT. ACTUALIZACION": "Fecha del último mensaje",
                 "CATEGORIA DE BONO": "Categoría de Bono"
@@ -494,6 +485,7 @@ elif "📋 Registro Fénix" in seccion:
         
         except Exception as e:
             st.error(f"❌ Error al generar la Tabla Bono Fénix: {e}")
+
 
 
 
