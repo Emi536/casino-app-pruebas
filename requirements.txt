@@ -1,11 +1,10 @@
-streamlit
-pandas
+streamlit==1.33.0
+pandas>=1.5
 matplotlib
 openpyxl
 xlsxwriter
 xlrd
 plotly
 gspread 
-oauth2client
 pytz
-streamlit_authenticator 
+streamlit_authenticator==0.2.3 
