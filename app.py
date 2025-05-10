@@ -20,7 +20,7 @@ print(hashed_passwords)
 
 
 # Leer credenciales y configuración de cookies desde secrets.toml
-credentials = st.secrets["credentials"]
+credentials = dict(st.secrets["credentials"])
 cookie = st.secrets["cookie"]
 
 # Inicializar el autenticador
