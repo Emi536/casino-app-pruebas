@@ -26,6 +26,7 @@ credentials = st.secrets["credentials"]
 cookie = st.secrets["cookie"]
 
 # --- Inicializar autenticador con persistencia ---
+credentials = copy.deepcopy(st.secrets["credentials"])
 authenticator = stauth.Authenticate(
     credentials,
     cookie["name"],
