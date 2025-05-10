@@ -24,7 +24,6 @@ credentials = dict(st.secrets["credentials"])
 cookie = st.secrets["cookie"]
 
 # Inicializar el autenticador
-credentials = copy.deepcopy(st.secrets["credentials"].to_dict())
 authenticator = stauth.Authenticate(
     credentials,
     st.secrets["cookie"]["name"],
