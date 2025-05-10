@@ -428,6 +428,12 @@ elif "📋 Registro Fénix" in seccion:
                 # Normalizar nombres
                 df_users["USUARIO"] = df_users["USUARIO"].astype(str).str.strip().str.lower()
                 df_registro["Nombre de jugador"] = df_registro["Nombre de jugador"].astype(str).str.strip().str.lower()
+                def normalizar_usuario(nombre):
+                    return str(nombre).strip().lower().replace(" ", "").replace("_", "")
+
+                df_users["USUARIO"] = df_users["USUARIO"].apply(normalizar_usuario)
+                df_registro["Nombre de jugador"] = df_registro["Nombre de jugador"].apply(normalizar_usuario)
+
             
                 # Merge por nombre de usuario
                 df_registro = df_registro.merge(
