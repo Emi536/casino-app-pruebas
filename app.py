@@ -440,7 +440,7 @@ elif "📋 Registro Fénix" in seccion:
                     how="left"
                 ).drop(columns=["USUARIO_NORM", "JUGADOR_NORM"])
                 # Asignar 'n/a' si no hay coincidencia
-                df_registro["Tipo de bono"] = df_registro["FUNNEL"].fillna("n/a")
+                df_registro["Tipo de bono"] = df_registro["FUNNEL"].fillna("N/A")
                 df_registro = df_registro.drop(columns=["FUNNEL"])
 
             
@@ -448,10 +448,7 @@ elif "📋 Registro Fénix" in seccion:
                 df_registro["Tipo de bono"] = df_registro["FUNNEL"]
                 df_registro = df_registro.drop(columns=["FUNNEL"])
             
-            except Exception as e:
-                st.warning(f"⚠️ No se pudo cargar el tipo de bono desde registro_users: {e}")
-
-
+            
             st.subheader("📄 Registro completo de jugadores")
             st.dataframe(df_registro)
 
