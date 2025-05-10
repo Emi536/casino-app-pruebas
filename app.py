@@ -235,23 +235,25 @@ elif auth_status:
             df_temp = df_temp.copy()
             if "Jugador" in df_temp.columns:
                 df_temp["Jugador"] = df_temp["Jugador"].astype(str).str.strip().str.lower()
-    
+        
             for col in ["Monto", "Retiro", "Balance antes de operación", "Wager"]:
                 if col in df_temp.columns:
                     df_temp[col] = df_temp[col].apply(convertir_monto)
-    
+        
             if "Fecha" in df_temp.columns:
                 df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"], errors="coerce")
-    
+        
             return df_temp
-    
+        
         df_historial = limpiar_dataframe(df_historial)
-    
+        
         if "Fecha" in df_historial.columns:
             df_historial["Fecha"] = pd.to_datetime(df_historial["Fecha"], errors="coerce")
             df_historial = df_historial[df_historial["Fecha"].notna()]
             limite = fecha_actual_date - datetime.timedelta(days=9)
             df_historial = df_historial[df_historial["Fecha"].dt.date >= limite]
+
+
     
         if texto_pegar:
             try:
