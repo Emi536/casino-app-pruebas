@@ -907,8 +907,27 @@ elif auth_status:
             # Intentar obtener la hoja existente
             try:
                 hoja_argento = sh.worksheet("registro_betargento")
-                data_argento = hoja_argento.get_all_records()
-                df_historial = pd.DataFrame(data_argento)
+                # Obtener todos los valores y manejar encabezados duplicados
+                raw_data = hoja_argento.get_all_values()
+                if raw_data:
+                    headers = raw_data[0]
+                    # Manejar encabezados duplicados
+                    seen = set()
+                    unique_headers = []
+                    for header in headers:
+                        if header in seen:
+                            # Agregar un sufijo numérico al encabezado duplicado
+                            counter = 1
+                            while f"{header}_{counter}" in seen:
+                                counter += 1
+                            header = f"{header}_{counter}"
+                        seen.add(header)
+                        unique_headers.append(header)
+                    
+                    # Crear DataFrame con encabezados únicos
+                    df_historial = pd.DataFrame(raw_data[1:], columns=unique_headers)
+                else:
+                    df_historial = pd.DataFrame()
             except gspread.exceptions.WorksheetNotFound:
                 # Si la hoja no existe, intentar crearla
                 try:
@@ -1391,4 +1410,3 @@ elif auth_status:
     
             except Exception as e:
                 st.error(f"❌ Error al procesar el archivo: {e}")
-
