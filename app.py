@@ -457,7 +457,7 @@ elif auth_status:
             # 🔵 Tabla Bono Fénix desde hojas "registro_users" y "bonos_ofrecidos"
             try:
                 # Leer hoja principal ignorando posibles conflictos de encabezado
-                hoja_registro = sh.worksheet("registro_users")
+                hoja_registro = sh.worksheet("registro_bono_fenix")
                 raw_data = hoja_registro.get_all_values()
                 headers = raw_data[0]
                 
@@ -478,7 +478,7 @@ elif auth_status:
                 df_registro_users = pd.DataFrame(rows, columns=unique_headers)
             
                 # Leer hoja con categorías de bonos
-                hoja_bonos = sh.worksheet("bonos_ofrecidos")
+                hoja_bonos = sh.worksheet("bonos_ofrecidos_fenix")
                 raw_data_bonos = hoja_bonos.get_all_values()
                 headers_bonos = raw_data_bonos[0]
                 
