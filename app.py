@@ -416,7 +416,7 @@ elif auth_status:
                 df_registro = pd.DataFrame(resumen).sort_values("Última vez que cargó", ascending=False)
                 # 🧩 COMPLETAR TIPO DE BONO desde hoja 'registro_users'
                 try:
-                    hoja_users = sh.worksheet("registro_users")
+                    hoja_users = sh.worksheet("registro_bono_fenix")
                     raw_data_users = hoja_users.get_all_values()
                     headers_users = raw_data_users[0]
                     rows_users = raw_data_users[1:]
