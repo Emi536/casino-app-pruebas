@@ -47,18 +47,19 @@ elif auth_status:
     st.markdown("""
         <h1 style='text-align: center; 
                    color: #FFC107; 
-                   font-family: "Georgia", serif; 
-                   font-weight: 600;
+                   font-family: "Segoe UI", sans-serif; 
+                   font-weight: 800; 
                    font-size: 40px;
-                   text-shadow: 1px 1px 2px black;
-                   margin-bottom: 0.3em;'>
+                   margin-bottom: 0.2em;'>
             Strike IQ
         </h1>
         <p style='text-align: center; 
-                  color: #FFFFFF; 
+                  color: #CCCCCC; 
+                  font-family: "Segoe UI", sans-serif; 
                   font-size: 16px; 
-                  font-family: "Georgia", serif;'>
-            Análisis avanzado para decisiones con impacto
+                  margin-top: 0; 
+                  font-style: italic;'>
+            Análisis inteligente de comportamiento en casinos
         </p>
     """, unsafe_allow_html=True)
     
