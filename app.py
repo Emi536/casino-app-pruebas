@@ -1,5 +1,5 @@
 import streamlit as st
-st.set_page_config(page_title="PlayerMetrics - Análisis de Cargas", layout="wide")
+st.set_page_config(page_title="Strike IQ - Análisis de Cargas", layout="wide")
 
 import pandas as pd
 import datetime
@@ -44,7 +44,21 @@ elif auth_status:
     authenticator.logout("Cerrar sesión", "sidebar")
     st.sidebar.success(f"Bienvenido, {name}")
     # --- Título principal ---
-    st.markdown("<h1 style='text-align: center; color:#F44336;'>Player Metrics</h1>", unsafe_allow_html=True)
+    st.markdown("""
+        <h1 style='text-align: center; 
+                   color: #2E7D32; 
+                   font-family: "Segoe UI", Roboto, sans-serif; 
+                   font-weight: 600;
+                   margin-bottom: 0.2em;'>
+            Strike IQ
+        </h1>
+        <p style='text-align: center; 
+                  color: #B0BEC5; 
+                  font-size: 18px; 
+                  font-family: "Segoe UI", Roboto, sans-serif;'>
+            Análisis inteligente de actividad de jugadores
+        </p>
+    """, unsafe_allow_html=True)
     
     
     # --- Conexión a Google Sheets ---
