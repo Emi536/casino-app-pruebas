@@ -47,7 +47,7 @@ elif auth_status:
             text-align: center;
             font-size: 52px;
             font-weight: 900;
-            color: #CFD8DC;
+            color: #66BB6A;
             font-family: "Segoe UI", sans-serif;
             margin-bottom: 5px;
             letter-spacing: 1px;'>
