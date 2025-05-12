@@ -46,17 +46,19 @@ elif auth_status:
     # --- Título principal ---
     st.markdown("""
         <h1 style='text-align: center; 
-                   color: #2E7D32; 
-                   font-family: "Segoe UI", Roboto, sans-serif; 
-                   font-weight: 600;
-                   margin-bottom: 0.2em;'>
-            Strike IQ
+                   color: #0D47A1; 
+                   font-family: "Segoe UI", sans-serif; 
+                   font-weight: 700;
+                   letter-spacing: 1px;
+                   margin-bottom: 0.3em;'>
+            STRIKE IQ
         </h1>
         <p style='text-align: center; 
-                  color: #B0BEC5; 
-                  font-size: 18px; 
-                  font-family: "Segoe UI", Roboto, sans-serif;'>
-            Análisis inteligente de actividad de jugadores
+                  color: #90A4AE; 
+                  font-size: 16px; 
+                  font-style: italic;
+                  font-family: "Segoe UI", sans-serif;'>
+            Plataforma de análisis estratégico de jugadores
         </p>
     """, unsafe_allow_html=True)
     
