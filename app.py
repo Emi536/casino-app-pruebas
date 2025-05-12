@@ -47,7 +47,7 @@ elif auth_status:
             text-align: center;
             font-size: 52px;
             font-weight: 900;
-            color: #FFD700;
+            color: #CFD8DC;
             font-family: "Segoe UI", sans-serif;
             margin-bottom: 5px;
             letter-spacing: 1px;'>
@@ -61,7 +61,7 @@ elif auth_status:
             margin-top: 0;
             font-style: italic;
             letter-spacing: 0.5px;'>
-            Inteligencia estratégica para casinos online
+            Inteligencia estratégica
         </p>
     """, unsafe_allow_html=True)
     
