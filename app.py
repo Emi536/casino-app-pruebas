@@ -42,24 +42,26 @@ elif auth_status is None:
 elif auth_status:
 
     authenticator.logout("Cerrar sesión", "sidebar")
-    st.sidebar.success(f"Bienvenido, {name}")
-    # --- Título principal ---
     st.markdown("""
-        <h1 style='text-align: center; 
-                   color: #FFC107; 
-                   font-family: "Segoe UI", sans-serif; 
-                   font-weight: 800; 
-                   font-size: 40px;
-                   margin-bottom: 0.2em;'>
+        <h1 style='
+            text-align: center;
+            font-size: 52px;
+            font-weight: 900;
+            color: #FFD700;
+            font-family: "Segoe UI", sans-serif;
+            margin-bottom: 5px;
+            letter-spacing: 1px;'>
             Strike IQ
         </h1>
-        <p style='text-align: center; 
-                  color: #CCCCCC; 
-                  font-family: "Segoe UI", sans-serif; 
-                  font-size: 16px; 
-                  margin-top: 0; 
-                  font-style: italic;'>
-            Análisis inteligente de comportamiento en casinos
+        <p style='
+            text-align: center;
+            font-size: 18px;
+            color: #B0BEC5;
+            font-family: "Segoe UI", sans-serif;
+            margin-top: 0;
+            font-style: italic;
+            letter-spacing: 0.5px;'>
+            Inteligencia estratégica para casinos online
         </p>
     """, unsafe_allow_html=True)
     
