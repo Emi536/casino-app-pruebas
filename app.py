@@ -46,18 +46,19 @@ elif auth_status:
     # --- Título principal ---
     st.markdown("""
         <h1 style='text-align: center; 
-                   color: #00C853; 
-                   font-family: "Fira Code", monospace; 
-                   font-size: 42px;
-                   font-weight: bold;
-                   margin-bottom: 0.2em;'>
-            Strike IQ ⚡
+                   color: #FFC107; 
+                   font-family: "Georgia", serif; 
+                   font-weight: 600;
+                   font-size: 40px;
+                   text-shadow: 1px 1px 2px black;
+                   margin-bottom: 0.3em;'>
+            Strike IQ
         </h1>
         <p style='text-align: center; 
-                  color: #B9F6CA; 
-                  font-size: 15px; 
-                  font-family: "Fira Code", monospace;'>
-            Smart Insights. Fast Action.
+                  color: #FFFFFF; 
+                  font-size: 16px; 
+                  font-family: "Georgia", serif;'>
+            Análisis avanzado para decisiones con impacto
         </p>
     """, unsafe_allow_html=True)
     
