@@ -731,57 +731,48 @@ elif auth_status:
             df = df_historial.copy()
             if "Tiempo" in df.columns and "Hora" not in df.columns:
                 df = df.rename(columns={"Tiempo": "Hora"})
-        
-            import hashlib
-        
-            def hash_dataframe(df):
-                return hashlib.md5(pd.util.hash_pandas_object(df, index=True).values).hexdigest()
-        
-            df_hash = hash_dataframe(df)
-            actualizar = st.button("🔄 Recalcular resumen de jugadores")
-        
-            valores_hl = ["hl_casinofenix"]
-            valores_wagger = [
-                "Fenix_Wagger100", "Fenix_Wagger40", "Fenix_Wagger30",
-                "Fenix_Wagger50", "Fenix_Wagger150", "Fenix_Wagger200"
-            ]
-        
-            if (
-                "hash_fenix" not in st.session_state
-                or "registro_fenix" not in st.session_state
-                or st.session_state.hash_fenix != df_hash
-                or actualizar
-            ):
-                st.session_state.hash_fenix = df_hash
+    
+            try:
+                from collections import Counter
+    
+                valores_hl = ["hl_Erosonline"]
+                valores_wagger = [
+                    "Eros_wagger30%", "Eros_wagger40%", "Eros_wagger50%",
+                    "Eros_wagger100%", "Eros_wagger150%", "Eros_wagger200%"
+                ]
+    
                 resumen = []
                 jugadores = df["Jugador"].dropna().unique()
-        
-                from collections import Counter
-        
+    
                 for jugador in jugadores:
                     historial = df[df["Jugador"] == jugador].sort_values("Fecha")
                     cargas = historial[historial["Tipo"].str.lower() == "in"]
                     retiros = historial[historial["Tipo"].str.lower() == "out"]
-        
+    
                     cargas_hl = cargas[cargas["Del usuario"].isin(valores_hl)]
                     cargas_wagger = cargas[cargas["Del usuario"].isin(valores_wagger)]
-        
+    
                     hl = cargas_hl["Monto"].sum()
                     wagger = cargas_wagger["Monto"].sum()
                     total_monto = hl + wagger
                     total_retiro = retiros["Retiro"].sum()
                     ganancias_casino = total_monto - total_retiro
-        
+    
+                    # 🔍 Nuevo cálculo de rango horario por patrón diario (mínimo 2 días)
                     rango = "Sin datos"
                     if not cargas.empty and "Hora" in cargas.columns:
                         try:
                             cargas["Hora"] = pd.to_datetime(cargas["Hora"], format="%H:%M:%S", errors="coerce")
                             cargas["Día"] = cargas["Fecha"].dt.date
                             cargas["Hora_hora"] = cargas["Hora"].dt.hour
+    
+                            # Hora dominante por día (ej: si en un día jugó 23:10 y 23:30 → 23)
                             hora_por_dia = cargas.groupby("Día")["Hora_hora"].agg(lambda x: int(x.median()))
                             conteo = Counter(hora_por_dia)
+    
                             if conteo:
                                 hora_patron, repeticiones = conteo.most_common(1)[0]
+    
                                 if repeticiones >= 2:
                                     if 6 <= hora_patron < 12:
                                         franja = "Mañana"
@@ -791,12 +782,13 @@ elif auth_status:
                                         franja = "Noche"
                                     else:
                                         franja = "Madrugada"
+    
                                     rango = f"{franja} ({hora_patron:02d}:00 hs) – patrón en {repeticiones} días"
                                 else:
                                     rango = "Actividad dispersa"
-                        except:
+                        except Exception as e:
                             rango = "Sin datos"
-        
+    
                     if not cargas.empty:
                         ultima_fecha = cargas["Fecha"].max()
                         resumen.append({
@@ -815,13 +807,8 @@ elif auth_status:
                             "Racha Activa (Días)": (ultima_fecha - cargas["Fecha"].min()).days,
                             "Última vez que se lo contacto": ""
                         })
-        
+    
                 df_registro = pd.DataFrame(resumen).sort_values("Última vez que cargó", ascending=False)
-                st.session_state.registro_fenix = df_registro
-                st.success("✅ Resumen recalculado.")
-            else:
-                df_registro = st.session_state.registro_fenix.copy()
-                st.info("⚡ Usando resumen cacheado.")
 
 
                 # 🧩 COMPLETAR TIPO DE BONO desde hoja 'registro_users'
