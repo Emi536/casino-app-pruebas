@@ -228,13 +228,27 @@ elif auth_status:
         texto_pegar = st.text_area("📋 Pegá aquí el reporte copiado (incluí encabezados)", height=300, key="texto_pegar")
         df_historial = pd.DataFrame()
     
-        try:
-            hoja_fenix = sh.worksheet("registro_fenix")
-            data_fenix = hoja_fenix.get_all_records()
-            df_historial = pd.DataFrame(data_fenix)
-        except:
-            hoja_fenix = sh.add_worksheet(title="registro_fenix", rows="1000", cols="20")
-            df_historial = pd.DataFrame()
+        def cargar_datos_fenix():
+            try:
+                hoja_fenix = sh.worksheet("registro_fenix")
+                data = hoja_fenix.get_all_records()
+                return pd.DataFrame(data)
+            except:
+                try:
+                    sh.add_worksheet(title="registro_fenix", rows="1000", cols="20")
+                except:
+                    pass
+                return pd.DataFrame()
+    
+        if "datos_fenix" not in st.session_state:
+            st.session_state.datos_fenix = cargar_datos_fenix()
+    
+        # 🔄 Botón para refrescar manualmente
+        if st.button("🔄 Refrescar datos desde Google Sheets"):
+            st.session_state.datos_fenix = cargar_datos_fenix()
+    
+        df_historial = st.session_state.datos_fenix.copy()
+
     
         def convertir_monto(valor):
             if pd.isna(valor): return 0.0
