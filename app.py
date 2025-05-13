@@ -489,13 +489,14 @@ elif auth_status:
                 df_registro["Tipo de bono"] = df_registro["FUNNEL"].fillna("N/A")
                 df_registro = df_registro.drop(columns=["FUNNEL"])
             
-            except Exception as e:
-                st.warning(f"⚠️ No se pudo cargar el tipo de bono desde registro_bono_fenix: {e}")
-            st.dataframe(df_registro)
+                except Exception as e:
+                    st.warning(f"⚠️ No se pudo cargar el tipo de bono desde registro_bono_fenix: {e}")
 
-            df_registro.to_excel("registro_jugadores_fenix.xlsx", index=False)
-            with open("registro_jugadores_fenix.xlsx", "rb") as f:
-                st.download_button("🗓️ Descargar Excel", f, file_name="registro_jugadores_fenix.xlsx")
+                st.dataframe(df_registro)
+    
+                df_registro.to_excel("registro_jugadores_fenix.xlsx", index=False)
+                with open("registro_jugadores_fenix.xlsx", "rb") as f:
+                    st.download_button("🗓️ Descargar Excel", f, file_name="registro_jugadores_fenix.xlsx")
 
             except Exception as e:
                 st.error(f"❌ Error al generar el resumen: {e}")
