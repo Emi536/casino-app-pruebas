@@ -224,9 +224,7 @@ elif auth_status:
         st.info(f"⏰ Última actualización: {fecha_actual}")
     
         responsable = st.text_input("👤 Ingresá tu nombre para registrar quién sube el reporte", value="Anónimo")
-    
         texto_pegar = st.text_area("📋 Pegá aquí el reporte copiado (incluí encabezados)", height=300, key="texto_pegar")
-        df_historial = pd.DataFrame()
     
         def cargar_datos_fenix():
             try:
@@ -243,173 +241,108 @@ elif auth_status:
         if "datos_fenix" not in st.session_state:
             st.session_state.datos_fenix = cargar_datos_fenix()
     
-        # 🔄 Botón para refrescar manualmente
         if st.button("🔄 Refrescar datos desde Google Sheets"):
             st.session_state.datos_fenix = cargar_datos_fenix()
     
         df_historial = st.session_state.datos_fenix.copy()
-
     
         def convertir_monto(valor):
             if pd.isna(valor): return 0.0
-            valor = str(valor)
-            # Eliminar caracteres invisibles y separadores ambiguos
-            valor = valor.replace("\u202f", "")  # Narrow no-break space
-            valor = valor.replace("\xa0", "")    # Non-breaking space
-            valor = valor.replace(" ", "")       # Espacios normales
-            valor = valor.replace(",", "")       # Comas (separador de miles)
-            try:
-                return float(valor)
-            except:
-                return 0.0
-    
+            valor = str(valor).replace("\u202f", "").replace("\xa0", "").replace(" ", "").replace(",", "")
+            try: return float(valor)
+            except: return 0.0
     
         def limpiar_dataframe(df_temp):
             df_temp = df_temp.copy()
             if "Jugador" in df_temp.columns:
                 df_temp["Jugador"] = df_temp["Jugador"].astype(str).str.strip().str.lower()
-    
             for col in ["Monto", "Retiro", "Balance antes de operación", "Wager"]:
                 if col in df_temp.columns:
                     df_temp[col] = df_temp[col].apply(convertir_monto)
-    
             if "Fecha" in df_temp.columns:
                 df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"], errors="coerce")
-    
             return df_temp
     
         df_historial = limpiar_dataframe(df_historial)
     
         if "Fecha" in df_historial.columns:
-            df_historial["Fecha"] = pd.to_datetime(df_historial["Fecha"], errors="coerce")
             df_historial = df_historial[df_historial["Fecha"].notna()]
             limite = fecha_actual_date - datetime.timedelta(days=9)
             df_historial = df_historial[df_historial["Fecha"].dt.date >= limite]
     
         if texto_pegar:
             try:
-                sep_detectado = "\t" if "\t" in texto_pegar else ";" if ";" in texto_pegar else ","
+                sep = "\t" if "\t" in texto_pegar else ";" if ";" in texto_pegar else ","
                 lineas = texto_pegar.strip().splitlines()
-                encabezados = lineas[0].split(sep_detectado)
-                cantidad_columnas = len(encabezados)
-    
-                contenido_limpio = [sep_detectado.join(encabezados)]
+                encabezados = lineas[0].split(sep)
+                contenido_limpio = [sep.join(encabezados)]
                 for fila in lineas[1:]:
-                    columnas = fila.split(sep_detectado)
-                    if len(columnas) < cantidad_columnas:
-                        columnas += [""] * (cantidad_columnas - len(columnas))
-                    elif len(columnas) > cantidad_columnas:
-                        columnas = columnas[:cantidad_columnas]
-                    contenido_limpio.append(sep_detectado.join(columnas))
-    
-                archivo_limpio = StringIO("\n".join(contenido_limpio))
-                df_nuevo = pd.read_csv(archivo_limpio, sep=sep_detectado, dtype=str, encoding="utf-8")
-                df_nuevo = df_nuevo.loc[:, ~df_nuevo.columns.str.contains("^Unnamed")]
-    
-                # 🔁 Limpiar montos ANTES de renombrar
-                for col in ["Depositar", "Retirar", "Wager", "Balance antes de operación"]:
-                    if col in df_nuevo.columns:
-                        df_nuevo[col] = (
-                            df_nuevo[col]
-                            .astype(str)
-                            .str.replace(",", "", regex=False)
-                            .str.replace(" ", "", regex=False)
-                        )
-                        df_nuevo[col] = pd.to_numeric(df_nuevo[col], errors="coerce").fillna(0.0)
-    
-                columnas_requeridas = ["operación", "Depositar", "Retirar", "Fecha", "Al usuario"]
-                if not all(col in df_nuevo.columns for col in columnas_requeridas):
-                    st.error("❌ El reporte pegado no contiene los encabezados necesarios o está mal formateado.")
-                    st.stop()
-    
+                    columnas = fila.split(sep)
+                    columnas = (columnas + [""] * len(encabezados))[:len(encabezados)]
+                    contenido_limpio.append(sep.join(columnas))
+                df_nuevo = pd.read_csv(StringIO("\n".join(contenido_limpio)), sep=sep, dtype=str)
                 df_nuevo = df_nuevo.rename(columns={
-                    "operación": "Tipo",
-                    "Depositar": "Monto",
-                    "Retirar": "Retiro",
-                    "Fecha": "Fecha",
-                    "Tiempo": "Hora",
-                    "Al usuario": "Jugador"
+                    "operación": "Tipo", "Depositar": "Monto", "Retirar": "Retiro",
+                    "Fecha": "Fecha", "Tiempo": "Hora", "Al usuario": "Jugador"
                 })
-    
                 df_nuevo["Responsable"] = responsable
                 df_nuevo["Fecha_Subida"] = fecha_actual
-    
-                valores_fenix = [
-                    "hl_casinofenix",
-                    "Fenix_Wagger100", "Fenix_Wagger40", "Fenix_Wagger30",
-                    "Fenix_Wagger50", "Fenix_Wagger150", "Fenix_Wagger200"
-                ]
-                if "Del usuario" in df_nuevo.columns:
-                    df_nuevo["Del usuario"] = df_nuevo["Del usuario"].astype(str).str.strip()
-                    df_nuevo = df_nuevo[df_nuevo["Del usuario"].isin(valores_fenix)]
-    
                 df_nuevo = limpiar_dataframe(df_nuevo)
-    
                 if "ID" in df_nuevo.columns and "ID" in df_historial.columns:
-                    ids_existentes = df_historial["ID"].astype(str).tolist()
-                    df_nuevo = df_nuevo[~df_nuevo["ID"].astype(str).isin(ids_existentes)]
-    
-                if df_nuevo.empty:
-                    st.warning("⚠️ Todos los registros pegados ya existían en el historial (mismo ID). No se agregó nada.")
-                    st.stop()
-    
-                df_historial = pd.concat([df_historial, df_nuevo], ignore_index=True)
-                df_historial.drop_duplicates(subset=["ID"], inplace=True)
-    
-                hoja_fenix.clear()
-                hoja_fenix.update([df_historial.columns.tolist()] + df_historial.astype(str).values.tolist())
-    
-                st.success(f"✅ Registros de Fénix actualizados correctamente. Total acumulado: {len(df_historial)}")
-    
+                    nuevos = ~df_nuevo["ID"].astype(str).isin(df_historial["ID"].astype(str))
+                    df_nuevo = df_nuevo[nuevos]
+                if not df_nuevo.empty:
+                    df_historial = pd.concat([df_historial, df_nuevo], ignore_index=True).drop_duplicates(subset="ID")
+                    hoja_fenix = sh.worksheet("registro_fenix")
+                    hoja_fenix.clear()
+                    hoja_fenix.update([df_historial.columns.tolist()] + df_historial.astype(str).values.tolist())
+                    st.success(f"✅ Registros de Fénix actualizados. Total: {len(df_historial)}")
+                else:
+                    st.warning("⚠️ No se agregaron registros nuevos.")
             except Exception as e:
-                st.error(f"❌ Error al procesar los datos pegados: {e}")
+                st.error(f"❌ Error al procesar el reporte: {e}")
     
         if not df_historial.empty:
             st.info(f"📊 Total de registros acumulados: {len(df_historial)}")
             df = df_historial.copy()
             if "Tiempo" in df.columns and "Hora" not in df.columns:
                 df = df.rename(columns={"Tiempo": "Hora"})
-        
+    
             import hashlib
-        
             def hash_dataframe(df):
                 return hashlib.md5(pd.util.hash_pandas_object(df, index=True).values).hexdigest()
-        
+    
             df_hash = hash_dataframe(df)
             actualizar = st.button("🔄 Recalcular resumen de jugadores")
-        
+    
             valores_hl = ["hl_casinofenix"]
             valores_wagger = [
                 "Fenix_Wagger100", "Fenix_Wagger40", "Fenix_Wagger30",
                 "Fenix_Wagger50", "Fenix_Wagger150", "Fenix_Wagger200"
             ]
-        
+    
             if (
-                "hash_fenix" not in st.session_state
-                or "registro_fenix" not in st.session_state
-                or st.session_state.hash_fenix != df_hash
-                or actualizar
+                "hash_fenix" not in st.session_state or
+                "registro_fenix" not in st.session_state or
+                st.session_state.hash_fenix != df_hash or actualizar
             ):
                 st.session_state.hash_fenix = df_hash
                 resumen = []
                 jugadores = df["Jugador"].dropna().unique()
-        
                 from collections import Counter
-        
+    
                 for jugador in jugadores:
                     historial = df[df["Jugador"] == jugador].sort_values("Fecha")
                     cargas = historial[historial["Tipo"].str.lower() == "in"]
                     retiros = historial[historial["Tipo"].str.lower() == "out"]
-        
                     cargas_hl = cargas[cargas["Del usuario"].isin(valores_hl)]
                     cargas_wagger = cargas[cargas["Del usuario"].isin(valores_wagger)]
-        
                     hl = cargas_hl["Monto"].sum()
                     wagger = cargas_wagger["Monto"].sum()
                     total_monto = hl + wagger
                     total_retiro = retiros["Retiro"].sum()
                     ganancias_casino = total_monto - total_retiro
-        
+    
                     rango = "Sin datos"
                     if not cargas.empty and "Hora" in cargas.columns:
                         try:
@@ -434,7 +367,7 @@ elif auth_status:
                                     rango = "Actividad dispersa"
                         except:
                             rango = "Sin datos"
-        
+    
                     if not cargas.empty:
                         ultima_fecha = cargas["Fecha"].max()
                         resumen.append({
@@ -453,54 +386,20 @@ elif auth_status:
                             "Racha Activa (Días)": (ultima_fecha - cargas["Fecha"].min()).days,
                             "Última vez que se lo contacto": ""
                         })
-        
+    
                 df_registro = pd.DataFrame(resumen).sort_values("Última vez que cargó", ascending=False)
                 st.session_state.registro_fenix = df_registro
                 st.success("✅ Resumen recalculado.")
             else:
                 df_registro = st.session_state.registro_fenix.copy()
-                st.info("⚡ Usando resumen cacheado.")
+                st.info("⚡️ Usando resumen cacheado.")
     
-                df_registro = pd.DataFrame(resumen).sort_values("Última vez que cargó", ascending=False)
-            # 🧩 COMPLETAR TIPO DE BONO desde hoja 'registro_users'
-            try:
-                hoja_users = sh.worksheet("registro_bono_fenix")
-                raw_data_users = hoja_users.get_all_values()
-                headers_users = raw_data_users[0]
-                rows_users = raw_data_users[1:]
-                df_users = pd.DataFrame(rows_users, columns=headers_users)
-                
-                # Normalizar nombres
-                def normalizar_usuario(nombre):
-                    return str(nombre).strip().lower().replace(" ", "").replace("_", "")
-                    
-                df_users["USUARIO_NORM"] = df_users["USUARIO"].apply(normalizar_usuario)
-                df_registro["JUGADOR_NORM"] = df_registro["Nombre de jugador"].apply(normalizar_usuario)
-                
-                # Merge por nombre de usuario
-                df_registro = df_registro.merge(
-                    df_users[["USUARIO_NORM", "FUNNEL"]],
-                    left_on="JUGADOR_NORM",
-                    right_on="USUARIO_NORM",
-                    how="left"
-                ).drop(columns=["USUARIO_NORM", "JUGADOR_NORM"])
-                
-                # Asignar 'N/A' si no hay coincidencia
-                df_registro["Tipo de bono"] = df_registro["FUNNEL"].fillna("N/A")
-                df_registro = df_registro.drop(columns=["FUNNEL"])
-                
-            except Exception as e:
-                st.warning(f"⚠️ No se pudo cargar el tipo de bono desde registro_users: {e}")
-    
-                st.subheader("📄 Registro completo de jugadores")
-                st.dataframe(df_registro)
-    
-                df_registro.to_excel("registro_jugadores.xlsx", index=False)
-                with open("registro_jugadores.xlsx", "rb") as f:
-                    st.download_button("📅 Descargar Excel", f, file_name="registro_jugadores.xlsx")
-    
-            except Exception as e:
-                st.error(f"❌ Error al generar el resumen: {e}")
+            # Mostrar resumen y descarga
+            st.subheader("📄 Registro completo de jugadores")
+            st.dataframe(df_registro)
+            df_registro.to_excel("registro_jugadores.xlsx", index=False)
+            with open("registro_jugadores.xlsx", "rb") as f:
+                st.download_button("🗓️ Descargar Excel", f, file_name="registro_jugadores.xlsx")
     
             # 🔵 Tabla Bono Fénix desde hojas "registro_users" y "bonos_ofrecidos"
             try:
