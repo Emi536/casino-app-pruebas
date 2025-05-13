@@ -770,8 +770,8 @@ elif auth_status:
                 df_registro = pd.DataFrame(resumen).sort_values("Última vez que cargó", ascending=False)
 
                 try:
-                    # 🧩 COMPLETAR TIPO DE BONO desde hoja 'registro_users'
-                    hoja_users = sh.worksheet("registro_bono_eros")
+                    # 🧩 COMPLETAR TIPO DE BONO desde hoja 'bonos_ofrecidos'
+                    hoja_users = sh.worksheet("bonos_ofrecidos_eros")
                     raw_data_users = hoja_users.get_all_values()
                     headers_users = raw_data_users[0]
                     rows_users = raw_data_users[1:]
