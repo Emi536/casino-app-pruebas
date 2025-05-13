@@ -802,8 +802,7 @@ elif auth_status:
                     df_registro = df_registro.drop(columns=["FUNNEL"])
                 
             except Exception as e:
-                st.warning(f"⚠️ No se pudo cargar el tipo de bono desde registro_users: {e}")
-
+                st.error(f"❌ Error al generar el resumen: {e}")
     
             # 🔵 Tabla Bono Eros desde hojas "registro_users" y "bonos_ofrecidos"
             try:
