@@ -492,15 +492,13 @@ elif auth_status:
             except Exception as e:
                 st.warning(f"⚠️ No se pudo cargar el tipo de bono desde registro_bono_fenix: {e}")
 
-                st.dataframe(df_registro)
-    
-                df_registro.to_excel("registro_jugadores_fenix.xlsx", index=False)
-                with open("registro_jugadores_fenix.xlsx", "rb") as f:
-                    st.download_button("🗓️ Descargar Excel", f, file_name="registro_jugadores_fenix.xlsx")
-
-            except Exception as e:
-                st.error(f"❌ Error al generar el resumen: {e}")
-
+            # ✅ Mostrar siempre la tabla y botón de descarga (fuera del try/except)
+            st.subheader("📄 Registro completo de jugadores")
+            st.dataframe(df_registro)
+            
+            df_registro.to_excel("registro_jugadores_fenix.xlsx", index=False)
+            with open("registro_jugadores_fenix.xlsx", "rb") as f:
+                st.download_button("🗓️ Descargar Excel", f, file_name="registro_jugadores_fenix.xlsx")
 
     
             # 🔵 Tabla Bono Fénix desde hojas "registro_users" y "bonos_ofrecidos"
