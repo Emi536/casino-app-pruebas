@@ -489,8 +489,8 @@ elif auth_status:
                 df_registro["Tipo de bono"] = df_registro["FUNNEL"].fillna("N/A")
                 df_registro = df_registro.drop(columns=["FUNNEL"])
             
-                except Exception as e:
-                    st.warning(f"⚠️ No se pudo cargar el tipo de bono desde registro_bono_fenix: {e}")
+            except Exception as e:
+                st.warning(f"⚠️ No se pudo cargar el tipo de bono desde registro_bono_fenix: {e}")
 
                 st.dataframe(df_registro)
     
