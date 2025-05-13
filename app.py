@@ -770,8 +770,10 @@ elif auth_status:
                 df_registro = pd.DataFrame(resumen).sort_values("Última vez que cargó", ascending=False)
             except Exception as e:
                 st.error(f"❌ Error al generar el resumen: {e}")
+                df_registro = pd.DataFrame()
 
                 # 🧩 COMPLETAR TIPO DE BONO desde hoja 'registro_users'
+        if not df_registro.empty:
                 try:
                     hoja_users = sh.worksheet("registro_bono_eros")
                     raw_data_users = hoja_users.get_all_values()
@@ -803,6 +805,7 @@ elif auth_status:
                     st.warning(f"⚠️ No se pudo cargar el tipo de bono desde registro_users: {e}")
                 
                 # 🔵 Tabla Bono Eros desde hojas "registro_users" y "bonos_ofrecidos"
+        if not df_registro.empty:
                 try:
                     hoja_registro = sh.worksheet("registro_bono_eros")
                     raw_data = hoja_registro.get_all_values()
@@ -876,6 +879,9 @@ elif auth_status:
                 
                 except Exception as e:
                     st.error(f"❌ Error al generar la Tabla Bono Eros: {e}")
+        if not df_registro.empty:
+            st.subheader("📄 Registro completo de jugadores")
+            st.dataframe(df_registro)
 
     # SECCIÓN BET ARGENTO
     elif "📋 Registro Bet Argento" in seccion:
