@@ -822,28 +822,33 @@ elif auth_status:
                 hoja_registro = sh.worksheet("registro_bono_eros")
                 raw_data = hoja_registro.get_all_values()
                 headers = raw_data[0]
-                
+            
                 # Manejar encabezados duplicados
                 seen = set()
                 unique_headers = []
                 for header in headers:
                     if header in seen:
-                        # Agregar un sufijo numérico al encabezado duplicado
                         counter = 1
                         while f"{header}_{counter}" in seen:
                             counter += 1
                         header = f"{header}_{counter}"
                     seen.add(header)
                     unique_headers.append(header)
-                
+            
                 rows = raw_data[1:]
                 df_registro_users = pd.DataFrame(rows, columns=unique_headers)
+            
+                # Normalizar y eliminar duplicados (🟡 NUEVO)
+                df_registro_users["USUARIO"] = df_registro_users["USUARIO"].astype(str).str.strip().str.lower()
+                df_registro_users["USUARIO_NORM"] = df_registro_users["USUARIO"].apply(lambda x: x.replace(" ", "").replace("_", ""))
+                df_registro_users = df_registro_users.drop_duplicates(subset=["USUARIO_NORM"], keep="last")
+                df_registro_users = df_registro_users.drop(columns=["USUARIO_NORM"])
             
                 # Leer hoja con categorías de bonos
                 hoja_bonos = sh.worksheet("bonos_ofrecidos_eros")
                 raw_data_bonos = hoja_bonos.get_all_values()
                 headers_bonos = raw_data_bonos[0]
-                
+            
                 # Manejar encabezados duplicados en bonos
                 seen_bonos = set()
                 unique_headers_bonos = []
@@ -855,12 +860,11 @@ elif auth_status:
                         header = f"{header}_{counter}"
                     seen_bonos.add(header)
                     unique_headers_bonos.append(header)
-                
+            
                 rows_bonos = raw_data_bonos[1:]
                 df_bonos = pd.DataFrame(rows_bonos, columns=unique_headers_bonos)
             
                 # Limpiar nombre de usuario
-                df_registro_users["USUARIO"] = df_registro_users["USUARIO"].astype(str).str.strip().str.lower()
                 df_bonos["USUARIO"] = df_bonos["USUARIO"].astype(str).str.strip().str.lower()
             
                 # Obtener la última categoría de bono por usuario
@@ -885,7 +889,9 @@ elif auth_status:
                 # Limpiar campos
                 df_bono["Conversión"] = df_bono["Conversión"].astype(str).str.replace("%", "", regex=False)
                 df_bono["Conversión"] = pd.to_numeric(df_bono["Conversión"], errors="coerce").fillna(0)
-                df_bono["Fecha del último mensaje"] = df_bono["Fecha del último mensaje"].replace(["30/12/1899", "1899-12-30"], "Sin registros")
+                df_bono["Fecha del último mensaje"] = df_bono["Fecha del último mensaje"].replace(
+                    ["30/12/1899", "1899-12-30"], "Sin registros"
+                )
             
                 # Seleccionar columnas finales
                 columnas_finales = [
