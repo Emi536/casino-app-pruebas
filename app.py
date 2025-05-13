@@ -771,35 +771,35 @@ elif auth_status:
 
 
                 # 🧩 COMPLETAR TIPO DE BONO desde hoja 'registro_users'
-                try:
-                    hoja_users = sh.worksheet("registro_bono_eros")
-                    raw_data_users = hoja_users.get_all_values()
-                    headers_users = raw_data_users[0]
-                    rows_users = raw_data_users[1:]
-                    df_users = pd.DataFrame(rows_users, columns=headers_users)
+            try:
+                hoja_users = sh.worksheet("registro_bono_eros")
+                raw_data_users = hoja_users.get_all_values()
+                headers_users = raw_data_users[0]
+                rows_users = raw_data_users[1:]
+                df_users = pd.DataFrame(rows_users, columns=headers_users)
                 
-                    def normalizar_usuario(nombre):
-                        return str(nombre).strip().lower().replace(" ", "").replace("_", "")
+                def normalizar_usuario(nombre):
+                    return str(nombre).strip().lower().replace(" ", "").replace("_", "")
                 
-                    df_users["USUARIO_NORM"] = df_users["USUARIO"].apply(normalizar_usuario)
-                    df_registro["JUGADOR_NORM"] = df_registro["Nombre de jugador"].apply(normalizar_usuario)
+                df_users["USUARIO_NORM"] = df_users["USUARIO"].apply(normalizar_usuario)
+                df_registro["JUGADOR_NORM"] = df_registro["Nombre de jugador"].apply(normalizar_usuario)
                 
-                    # Mantener solo la última entrada de cada usuario
-                    df_users = df_users.dropna(subset=["FUNNEL"])
-                    df_users = df_users.drop_duplicates(subset=["USUARIO_NORM"], keep="last")
+                # Mantener solo la última entrada de cada usuario
+                df_users = df_users.dropna(subset=["FUNNEL"])
+                df_users = df_users.drop_duplicates(subset=["USUARIO_NORM"], keep="last")
                 
-                    df_registro = df_registro.merge(
-                        df_users[["USUARIO_NORM", "FUNNEL"]],
-                        left_on="JUGADOR_NORM",
-                        right_on="USUARIO_NORM",
-                        how="left"
-                    ).drop(columns=["USUARIO_NORM", "JUGADOR_NORM"])
+                df_registro = df_registro.merge(
+                    df_users[["USUARIO_NORM", "FUNNEL"]],
+                    left_on="JUGADOR_NORM",
+                    right_on="USUARIO_NORM",
+                    how="left"
+                ).drop(columns=["USUARIO_NORM", "JUGADOR_NORM"])
                 
-                    df_registro["Tipo de bono"] = df_registro["FUNNEL"].fillna("N/A")
-                    df_registro = df_registro.drop(columns=["FUNNEL"])
+                df_registro["Tipo de bono"] = df_registro["FUNNEL"].fillna("N/A")
+                df_registro = df_registro.drop(columns=["FUNNEL"])
                 
             except Exception as e:
-                    st.warning(f"⚠️ No se pudo cargar el tipo de bono desde registro_users: {e}")
+                st.warning(f"⚠️ No se pudo cargar el tipo de bono desde registro_users: {e}")
     
             # 🔵 Tabla Bono Eros desde hojas "registro_users" y "bonos_ofrecidos"
             try:
