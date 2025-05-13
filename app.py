@@ -456,10 +456,51 @@ elif auth_status:
                 st.success("✅ Resumen recalculado y cacheado.")
         
             df_registro = pd.DataFrame(resumen).sort_values("Última vez que cargó", ascending=False)
-            st.dataframe(df_registro)
+
+            try:
+                # 🧩 COMPLETAR TIPO DE BONO desde hoja 'registro_bono_fenix'
+                hoja_users = sh.worksheet("registro_bono_fenix")
+                raw_data_users = hoja_users.get_all_values()
+                headers_users = raw_data_users[0]
+                rows_users = raw_data_users[1:]
+                df_users = pd.DataFrame(rows_users, columns=headers_users)
+            
+                # Normalizar nombres de usuario
+                def normalizar_usuario(nombre):
+                    return str(nombre).strip().lower().replace(" ", "").replace("_", "")
+            
+                df_users["USUARIO_NORM"] = df_users["USUARIO"].apply(normalizar_usuario)
+            
+                # ✅ Eliminar duplicados conservando la última aparición del usuario
+                df_users = df_users.drop_duplicates(subset=["USUARIO_NORM"], keep="last")
+            
+                # Normalizar también en el DataFrame del resumen
+                df_registro["JUGADOR_NORM"] = df_registro["Nombre de jugador"].apply(normalizar_usuario)
+            
+                # Merge para obtener el tipo de bono (FUNNEL)
+                df_registro = df_registro.merge(
+                    df_users[["USUARIO_NORM", "FUNNEL"]],
+                    left_on="JUGADOR_NORM",
+                    right_on="USUARIO_NORM",
+                    how="left"
+                ).drop(columns=["USUARIO_NORM", "JUGADOR_NORM"])
+            
+                # Asignar tipo de bono (rellenar con "N/A" si no hay match)
+                df_registro["Tipo de bono"] = df_registro["FUNNEL"].fillna("N/A")
+                df_registro = df_registro.drop(columns=["FUNNEL"])
+            
+            except Exception as e:
+                st.warning(f"⚠️ No se pudo cargar el tipo de bono desde registro_bono_fenix: {e}")
+                        st.dataframe(df_registro)
+
             df_registro.to_excel("registro_jugadores_fenix.xlsx", index=False)
             with open("registro_jugadores_fenix.xlsx", "rb") as f:
                 st.download_button("🗓️ Descargar Excel", f, file_name="registro_jugadores_fenix.xlsx")
+
+            except Exception as e:
+                st.error(f"❌ Error al generar el resumen: {e}")
+
+
     
             # 🔵 Tabla Bono Fénix desde hojas "registro_users" y "bonos_ofrecidos"
             try:
