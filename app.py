@@ -768,6 +768,7 @@ elif auth_status:
                         })
     
                 df_registro = pd.DataFrame(resumen).sort_values("Última vez que cargó", ascending=False)
+
                 try:
                     # 🧩 COMPLETAR TIPO DE BONO desde hoja 'registro_users'
                     hoja_users = sh.worksheet("registro_bono_eros")
@@ -775,29 +776,39 @@ elif auth_status:
                     headers_users = raw_data_users[0]
                     rows_users = raw_data_users[1:]
                     df_users = pd.DataFrame(rows_users, columns=headers_users)
-                
+
+                    # Normalizar nombres y fechas
                     def normalizar_usuario(nombre):
                         return str(nombre).strip().lower().replace(" ", "").replace("_", "")
-                
+
                     df_users["USUARIO_NORM"] = df_users["USUARIO"].apply(normalizar_usuario)
                     df_users["FECHA"] = pd.to_datetime(df_users["FECHA"], errors="coerce")
                     df_users = df_users.sort_values("FECHA")
                     df_users = df_users.drop_duplicates(subset=["USUARIO_NORM"], keep="last")
-                
+
                     df_registro["JUGADOR_NORM"] = df_registro["Nombre de jugador"].apply(normalizar_usuario)
-                
+
+                    # Merge final con último funnel por jugador
                     df_registro = df_registro.merge(
                         df_users[["USUARIO_NORM", "FUNNEL"]],
                         left_on="JUGADOR_NORM",
                         right_on="USUARIO_NORM",
                         how="left"
                     ).drop(columns=["USUARIO_NORM", "JUGADOR_NORM"])
-                
+
                     df_registro["Tipo de bono"] = df_registro["FUNNEL"].fillna("N/A")
                     df_registro = df_registro.drop(columns=["FUNNEL"])
-                
                 except Exception as e:
                     st.warning(f"⚠️ No se pudo cargar el tipo de bono desde registro_users: {e}")
+
+                # Mostrar en app
+                st.subheader("📄 Registro completo de jugadores")
+                st.dataframe(df_registro)
+
+                # Exportar a Excel
+                df_registro.to_excel("registro_jugadores.xlsx", index=False)
+                with open("registro_jugadores.xlsx", "rb") as f:
+                    st.download_button("📅 Descargar Excel", f, file_name="registro_jugadores.xlsx")
     
             # 🔵 Tabla Bono Eros desde hojas "registro_users" y "bonos_ofrecidos"
             try:
