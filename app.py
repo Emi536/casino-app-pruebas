@@ -511,8 +511,8 @@ elif auth_status:
             #st.subheader("📄 Registro filtrado de jugadores")
             #st.dataframe(df_filtrado)
             
-            # Exportar
-            df_filtrado.to_excel("registro_jugadores_fenix_filtrado.xlsx", index=False)
+            # Exportar resumen filtrado
+            df_registro.to_excel("registro_jugadores_fenix_filtrado.xlsx", index=False)
             with open("registro_jugadores_fenix_filtrado.xlsx", "rb") as f:
                 st.download_button("📥 Descargar Excel filtrado", f, file_name="registro_jugadores_fenix_filtrado.xlsx")
 
