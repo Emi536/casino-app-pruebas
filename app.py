@@ -542,7 +542,7 @@ elif auth_status:
             
             except Exception as e:
                 st.warning(f"⚠️ No se pudo identificar jugadores con bono de ayer: {e}")
-                st.dataframe(df_registro)
+            st.dataframe(df_registro)
             
             df_registro.to_excel("registro_jugadores_fenix.xlsx", index=False)
             with open("registro_jugadores_fenix.xlsx", "rb") as f:
