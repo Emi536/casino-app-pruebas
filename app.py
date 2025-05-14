@@ -437,6 +437,7 @@ elif auth_status:
                 st.success("✅ Resumen recalculado y cacheado.")
     
             df_registro = pd.DataFrame(resumen).sort_values("Última vez que cargó", ascending=False)
+            df_registro["Última vez que cargó"] = pd.to_datetime(df_registro["Última vez que cargó"], errors="coerce")
     
             # Filtro de fecha posterior sobre df_registro
             st.markdown("### 📅 Filtrar resumen por fecha de última carga")
@@ -445,15 +446,15 @@ elif auth_status:
                 filtro_desde = st.date_input("📆 Desde", value=df_registro["Última vez que cargó"].min().date(), key="desde_filtro")
             with col2:
                 filtro_hasta = st.date_input("📆 Hasta", value=df_registro["Última vez que cargó"].max().date(), key="hasta_filtro")
-    
+            
             df_filtrado = df_registro[
                 (df_registro["Última vez que cargó"].dt.date >= filtro_desde) &
                 (df_registro["Última vez que cargó"].dt.date <= filtro_hasta)
             ]
-    
+            
             st.subheader("📄 Registro de jugadores")
             st.dataframe(df_filtrado)
-    
+            
             df_filtrado.to_excel("registro_jugadores_fenix_filtrado.xlsx", index=False)
             with open("registro_jugadores_fenix_filtrado.xlsx", "rb") as f:
                 st.download_button("📥 Descargar Excel filtrado", f, file_name="registro_jugadores_fenix_filtrado.xlsx", key="descargar_filtrado_1")
