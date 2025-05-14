@@ -354,7 +354,22 @@ elif auth_status:
 
         if not df_historial.empty:
             st.info(f"📊 Total de registros acumulados: {len(df_historial)}")
-            df = df_historial.copy()
+
+            # 📅 Filtros de fecha para calcular el resumen solo con datos en el rango
+            st.markdown("### 🔎 Filtro por fecha de actividad")
+            col1, col2 = st.columns(2)
+            with col1:
+                fecha_desde = st.date_input("📆 Desde", value=df_historial["Fecha"].min().date(), key="desde_fenix_raw")
+            with col2:
+                fecha_hasta = st.date_input("📆 Hasta", value=df_historial["Fecha"].max().date(), key="hasta_fenix_raw")
+            
+            # Filtrar df_historial ANTES de calcular resumen
+            df_historial_filtrado = df_historial[
+                (df_historial["Fecha"].dt.date >= fecha_desde) &
+                (df_historial["Fecha"].dt.date <= fecha_hasta)
+            ].copy()
+
+            df = df_historial_filtrado.copy()
             if "Tiempo" in df.columns and "Hora" not in df.columns:
                 df = df.rename(columns={"Tiempo": "Hora"})
         
@@ -492,26 +507,9 @@ elif auth_status:
             except Exception as e:
                 st.warning(f"⚠️ No se pudo cargar el tipo de bono desde registro_bono_fenix: {e}")
 
-            # 🔍 Filtro por fecha del resumen de jugadores
-            st.markdown("### 🔎 Filtro por fecha de actividad")
-            col1, col2 = st.columns(2)
-            with col1:
-                fecha_desde = st.date_input("📆 Desde", value=df_registro["Última vez que cargó"].min().date(), key="desde_fenix")
-            with col2:
-                fecha_hasta = st.date_input("📆 Hasta", value=df_registro["Última vez que cargó"].max().date(), key="hasta_fenix")
-            
-            # Convertir a datetime si hiciera falta
-            df_registro["Última vez que cargó"] = pd.to_datetime(df_registro["Última vez que cargó"], errors="coerce")
-            
-            # Aplicar el filtro
-            df_filtrado = df_registro[
-                (df_registro["Última vez que cargó"].dt.date >= fecha_desde) &
-                (df_registro["Última vez que cargó"].dt.date <= fecha_hasta)
-            ]
-            
             # Mostrar
-            #st.subheader("📄 Registro filtrado de jugadores")
-            #st.dataframe(df_filtrado)
+            st.subheader("📄 Registro filtrado de jugadores")
+            st.dataframe(df_filtrado)
             
             # Exportar
             df_filtrado.to_excel("registro_jugadores_fenix_filtrado.xlsx", index=False)
