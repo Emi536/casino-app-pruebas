@@ -513,31 +513,32 @@ elif auth_status:
                 raw_data_bonos = hoja_bonos_fenix.get_all_values()
                 df_bonos_fenix = pd.DataFrame(raw_data_bonos[1:], columns=raw_data_bonos[0])
             
-                # Normalizar columnas
+                # Normalizar y convertir FECHA
                 df_bonos_fenix["FECHA"] = pd.to_datetime(df_bonos_fenix["FECHA"], errors="coerce")
                 df_bonos_fenix["USUARIO"] = df_bonos_fenix["USUARIO"].astype(str).str.strip().str.lower()
             
-                # Calcular fecha de ayer
+                # Obtener fecha de AYER en zona horaria Argentina
                 zona_ar = pytz.timezone("America/Argentina/Buenos_Aires")
                 ayer = datetime.datetime.now(zona_ar).date() - datetime.timedelta(days=1)
             
-                # Filtrar usuarios con bono ofrecido AYER
+                # Usuarios que recibieron bono AYER
                 usuarios_bono_ayer = df_bonos_fenix[df_bonos_fenix["FECHA"].dt.date == ayer]["USUARIO"].unique().tolist()
             
-                # Normalizar en df_registro
+                # Normalizar nombres en df_registro
                 df_registro["USUARIO_NORM"] = df_registro["Nombre de jugador"].astype(str).str.strip().str.lower()
             
-                # Función de estilo
-                def resaltar_usuario(val):
-                    if val.strip().lower() in usuarios_bono_ayer:
-                        return 'color: red; font-weight: bold'
-                    return ''
+                # Agregar ícono 🔴 a los que recibieron bono ayer
+                df_registro["Nombre de jugador"] = df_registro.apply(
+                    lambda row: f"🔴 {row['Nombre de jugador']}" if row["USUARIO_NORM"] in usuarios_bono_ayer else row["Nombre de jugador"],
+                    axis=1
+                )
+                df_registro = df_registro.drop(columns=["USUARIO_NORM"])
             
-                # Mostrar tabla con estilo aplicado
-                st.dataframe(df_registro.drop(columns=["USUARIO_NORM"]).style.applymap(resaltar_usuario, subset=["Nombre de jugador"]))
+                # Mostrar la tabla actualizada
+                st.dataframe(df_registro)
             
             except Exception as e:
-                st.warning(f"⚠️ No se pudo aplicar el resaltado de usuarios con bono de ayer: {e}")
+                st.warning(f"⚠️ No se pudo identificar jugadores con bono de ayer: {e}")
                 st.dataframe(df_registro)
             
             df_registro.to_excel("registro_jugadores_fenix.xlsx", index=False)
