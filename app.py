@@ -523,21 +523,25 @@ elif auth_status:
                 df_bonos_fenix = df_bonos_fenix[df_bonos_fenix["FECHA"].notna()]
                 df_bonos_fenix["USUARIO_NORM"] = df_bonos_fenix["USUARIO"].apply(normalizar)
             
-                # 📆 Fecha actual y límite de 3 días hacia atrás
+                # 📆 Últimos 3 días
                 zona_ar = pytz.timezone("America/Argentina/Buenos_Aires")
                 hoy = datetime.datetime.now(zona_ar).date()
                 limite = hoy - datetime.timedelta(days=3)
             
-                # 🎯 Usuarios con bono en ese rango
+                # 🎯 Usuarios con bono reciente
                 usuarios_bono = df_bonos_fenix[df_bonos_fenix["FECHA"].dt.date >= limite]["USUARIO_NORM"].unique().tolist()
             
-                # 🔍 Normalizar df_registro y marcar los que coincidan
-                df_registro["JUGADOR_NORM"] = df_registro["Nombre de jugador"].apply(normalizar)
+                # 🧹 Limpiar íconos anteriores y normalizar
+                df_registro["Nombre limpio"] = df_registro["Nombre de jugador"].str.replace("🔴", "", regex=False)
+                df_registro["JUGADOR_NORM"] = df_registro["Nombre limpio"].apply(normalizar)
+            
+                # 🔴 Marcar visualmente si recibió bono
                 df_registro["Nombre de jugador"] = df_registro.apply(
-                    lambda row: f"🔴 {row['Nombre de jugador']}" if row["JUGADOR_NORM"] in usuarios_bono else row["Nombre de jugador"],
+                    lambda row: f"🔴 {row['Nombre limpio']}" if row["JUGADOR_NORM"] in usuarios_bono else row["Nombre limpio"],
                     axis=1
                 )
-                df_registro.drop(columns=["JUGADOR_NORM"], inplace=True)
+            
+                df_registro.drop(columns=["JUGADOR_NORM", "Nombre limpio"], inplace=True)
             
             except Exception as e:
                 st.warning(f"⚠️ No se pudo marcar los usuarios con bono reciente: {e}")
