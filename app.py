@@ -492,6 +492,33 @@ elif auth_status:
             except Exception as e:
                 st.warning(f"⚠️ No se pudo cargar el tipo de bono desde registro_bono_fenix: {e}")
 
+            # 🔍 Filtro por fecha del resumen de jugadores
+            st.markdown("### 🔎 Filtro por fecha de actividad")
+            col1, col2 = st.columns(2)
+            with col1:
+                fecha_desde = st.date_input("📆 Desde", value=df_registro["Última vez que cargó"].min().date(), key="desde_fenix")
+            with col2:
+                fecha_hasta = st.date_input("📆 Hasta", value=df_registro["Última vez que cargó"].max().date(), key="hasta_fenix")
+            
+            # Convertir a datetime si hiciera falta
+            df_registro["Última vez que cargó"] = pd.to_datetime(df_registro["Última vez que cargó"], errors="coerce")
+            
+            # Aplicar el filtro
+            df_filtrado = df_registro[
+                (df_registro["Última vez que cargó"].dt.date >= fecha_desde) &
+                (df_registro["Última vez que cargó"].dt.date <= fecha_hasta)
+            ]
+            
+            # Mostrar
+            st.subheader("📄 Registro filtrado de jugadores")
+            st.dataframe(df_filtrado)
+            
+            # Exportar
+            df_filtrado.to_excel("registro_jugadores_fenix_filtrado.xlsx", index=False)
+            with open("registro_jugadores_fenix_filtrado.xlsx", "rb") as f:
+                st.download_button("📥 Descargar Excel filtrado", f, file_name="registro_jugadores_fenix_filtrado.xlsx")
+
+
             # ✅ Mostrar siempre la tabla y botón de descarga (fuera del try/except)
             st.subheader("📄 Registro completo de jugadores")
             st.dataframe(df_registro)
