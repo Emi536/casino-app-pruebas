@@ -508,14 +508,14 @@ elif auth_status:
 
             # ✅ Mostrar siempre la tabla y botón de descarga (fuera del try/except)
             st.subheader("📄 Registro completo de jugadores")
+
+            col_filtro, col_orden = st.columns(2)
             
             # Checkbox para activar filtro por tipo de bono N/A
             activar_filtro_na = col_filtro.checkbox("🎯 Mostrar solo jugadores con bono 'N/A'")
             
             # Selector para orden
             criterio_orden = col_orden.selectbox("📊 Ordenar por:", ["Sin ordenar", "Veces que cargó", "Monto total", "Racha Activa (Días)"])
-
-            col_filtro, col_orden = st.columns(2)
             
             # Aplicar filtro y orden directamente sobre df_registro
             if activar_filtro_na:
