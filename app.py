@@ -534,15 +534,17 @@ elif auth_status:
                 ]["USUARIO_NORM"].unique().tolist()
             
                 # Normalizar en df_registro
-                df_registro["JUGADOR_NORM"] = df_registro["Nombre de jugador"].apply(normalizar)
-            
-                # 🔴 Marcar con ícono si fue contactado recientemente
-                df_registro["Nombre de jugador"] = df_registro.apply(
+                df_registro["JUGADOR_NORM"] = df_registro["Nombre de jugador"].astype(str).apply(normalizar)
+                
+                # Crear una copia visual del nombre
+                df_registro["Nombre visual"] = df_registro.apply(
                     lambda row: f"🔴 {row['Nombre de jugador']}" if row["JUGADOR_NORM"] in usuarios_bono_reciente else row["Nombre de jugador"],
                     axis=1
                 )
-            
-                df_registro = df_registro.drop(columns=["JUGADOR_NORM"])
+                
+                # Reemplazar visualmente el nombre en la tabla
+                df_registro["Nombre de jugador"] = df_registro["Nombre visual"]
+                df_registro = df_registro.drop(columns=["JUGADOR_NORM", "Nombre visual"])
             
             except Exception as e:
                 st.warning(f"⚠️ No se pudo marcar los usuarios con bono reciente: {e}")
