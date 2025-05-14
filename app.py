@@ -508,7 +508,37 @@ elif auth_status:
 
             # ✅ Mostrar siempre la tabla y botón de descarga (fuera del try/except)
             st.subheader("📄 Registro completo de jugadores")
-            st.dataframe(df_registro)
+            try:
+                hoja_bonos_fenix = sh.worksheet("bonos_ofrecidos_fenix")
+                raw_data_bonos = hoja_bonos_fenix.get_all_values()
+                df_bonos_fenix = pd.DataFrame(raw_data_bonos[1:], columns=raw_data_bonos[0])
+            
+                # Normalizar columnas
+                df_bonos_fenix["FECHA"] = pd.to_datetime(df_bonos_fenix["FECHA"], errors="coerce")
+                df_bonos_fenix["USUARIO"] = df_bonos_fenix["USUARIO"].astype(str).str.strip().str.lower()
+            
+                # Calcular fecha de ayer
+                zona_ar = pytz.timezone("America/Argentina/Buenos_Aires")
+                ayer = datetime.datetime.now(zona_ar).date() - datetime.timedelta(days=1)
+            
+                # Filtrar usuarios con bono ofrecido AYER
+                usuarios_bono_ayer = df_bonos_fenix[df_bonos_fenix["FECHA"].dt.date == ayer]["USUARIO"].unique().tolist()
+            
+                # Normalizar en df_registro
+                df_registro["USUARIO_NORM"] = df_registro["Nombre de jugador"].astype(str).str.strip().str.lower()
+            
+                # Función de estilo
+                def resaltar_usuario(val):
+                    if val.strip().lower() in usuarios_bono_ayer:
+                        return 'color: red; font-weight: bold'
+                    return ''
+            
+                # Mostrar tabla con estilo aplicado
+                st.dataframe(df_registro.drop(columns=["USUARIO_NORM"]).style.applymap(resaltar_usuario, subset=["Nombre de jugador"]))
+            
+            except Exception as e:
+                st.warning(f"⚠️ No se pudo aplicar el resaltado de usuarios con bono de ayer: {e}")
+                st.dataframe(df_registro)
             
             df_registro.to_excel("registro_jugadores_fenix.xlsx", index=False)
             with open("registro_jugadores_fenix.xlsx", "rb") as f:
