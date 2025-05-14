@@ -516,6 +516,11 @@ elif auth_status:
                 # Normalizar y convertir FECHA
                 df_bonos_fenix["FECHA"] = pd.to_datetime(df_bonos_fenix["FECHA"], errors="coerce")
                 df_bonos_fenix["USUARIO"] = df_bonos_fenix["USUARIO"].astype(str).str.strip().str.lower()
+
+                # Función de normalización común
+                def normalizar_nombre(nombre):
+                    return str(nombre).strip().lower().replace(" ", "").replace("_", "")
+
             
                 # Obtener fecha de AYER en zona horaria Argentina
                 zona_ar = pytz.timezone("America/Argentina/Buenos_Aires")
