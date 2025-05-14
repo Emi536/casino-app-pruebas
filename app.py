@@ -745,7 +745,21 @@ elif auth_status:
     
         if not df_historial.empty:
             st.info(f"📊 Total de registros acumulados: {len(df_historial)}")
-            df = df_historial.copy()
+            # 🗓️ Filtro por fecha de los registros individuales
+            st.markdown("### 📅 Filtrar registros por fecha de actividad")
+            col1, col2 = st.columns(2)
+            with col1:
+                filtro_desde = st.date_input("📆 Desde", value=df_historial["Fecha"].min().date(), key="desde_historial_eros")
+            with col2:
+                filtro_hasta = st.date_input("📆 Hasta", value=df_historial["Fecha"].max().date(), key="hasta_historial_eros")
+        
+            df_historial_filtrado = df_historial[
+                (df_historial["Fecha"].dt.date >= filtro_desde) &
+                (df_historial["Fecha"].dt.date <= filtro_hasta)
+            ].copy()
+        
+            # ⚠️ Este df se usará para calcular el resumen
+            df = df_historial_filtrado.copy()
             if "Tiempo" in df.columns and "Hora" not in df.columns:
                 df = df.rename(columns={"Tiempo": "Hora"})
         
@@ -1155,7 +1169,21 @@ elif auth_status:
     
         if not df_historial.empty:
             st.info(f"📊 Total de registros acumulados: {len(df_historial)}")
-            df = df_historial.copy()
+            # 🗓️ Filtro por fecha de los registros individuales
+            st.markdown("### 📅 Filtrar registros por fecha de actividad")
+            col1, col2 = st.columns(2)
+            with col1:
+                filtro_desde = st.date_input("📆 Desde", value=df_historial["Fecha"].min().date(), key="desde_historial_bet")
+            with col2:
+                filtro_hasta = st.date_input("📆 Hasta", value=df_historial["Fecha"].max().date(), key="hasta_historial_bet")
+        
+            df_historial_filtrado = df_historial[
+                (df_historial["Fecha"].dt.date >= filtro_desde) &
+                (df_historial["Fecha"].dt.date <= filtro_hasta)
+            ].copy()
+        
+            # ⚠️ Este df se usará para calcular el resumen
+            df = df_historial_filtrado.copy()
             if "Tiempo" in df.columns and "Hora" not in df.columns:
                 df = df.rename(columns={"Tiempo": "Hora"})
         
