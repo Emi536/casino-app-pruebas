@@ -513,34 +513,32 @@ elif auth_status:
                 raw_data_bonos = hoja_bonos_fenix.get_all_values()
                 df_bonos_fenix = pd.DataFrame(raw_data_bonos[1:], columns=raw_data_bonos[0])
             
-                # Normalizar y convertir FECHA
-                df_bonos_fenix["FECHA"] = pd.to_datetime(df_bonos_fenix["FECHA"], errors="coerce")
+                # 🛠️ Convertir FECHA explícitamente con formato día/mes/año
+                df_bonos_fenix["FECHA"] = pd.to_datetime(df_bonos_fenix["FECHA"], format="%d/%m/%Y %H:%M:%S", errors="coerce")
                 df_bonos_fenix["USUARIO"] = df_bonos_fenix["USUARIO"].astype(str)
             
-                # 🔁 Función de normalización unificada
-                def normalizar_nombre(nombre):
+                # Función de normalización
+                def normalizar(nombre):
                     return str(nombre).strip().lower().replace(" ", "").replace("_", "")
             
-                # Fecha de AYER (zona AR)
+                # Obtener fecha de AYER en zona horaria Argentina
                 zona_ar = pytz.timezone("America/Argentina/Buenos_Aires")
                 ayer = datetime.datetime.now(zona_ar).date() - datetime.timedelta(days=1)
             
-                # Usuarios con bono ayer (normalizados)
-                usuarios_bono_ayer_norm = df_bonos_fenix[
-                    df_bonos_fenix["FECHA"].dt.date == ayer
-                ]["USUARIO"].apply(normalizar_nombre).unique().tolist()
+                # Usuarios que recibieron bono AYER (normalizados)
+                usuarios_bono_ayer = df_bonos_fenix[df_bonos_fenix["FECHA"].dt.date == ayer]["USUARIO"]
+                usuarios_bono_ayer_norm = usuarios_bono_ayer.apply(normalizar).unique().tolist()
             
-                # Normalizar nombres de df_registro
-                df_registro["USUARIO_NORM"] = df_registro["Nombre de jugador"].apply(normalizar_nombre)
+                # Normalizar en df_registro
+                df_registro["__norm_usuario"] = df_registro["Nombre de jugador"].apply(normalizar)
             
-                # Agregar ícono 🔴 al lado si recibió bono ayer
+                # Agregar 🔴 si coincide
                 df_registro["Nombre de jugador"] = df_registro.apply(
-                    lambda row: f"🔴 {row['Nombre de jugador']}" if row["USUARIO_NORM"] in usuarios_bono_ayer_norm else row["Nombre de jugador"],
+                    lambda row: f"🔴 {row['Nombre de jugador']}" if row["__norm_usuario"] in usuarios_bono_ayer_norm else row["Nombre de jugador"],
                     axis=1
                 )
             
-                df_registro = df_registro.drop(columns=["USUARIO_NORM"])
-                st.dataframe(df_registro)
+                df_registro = df_registro.drop(columns=["__norm_usuario"])
             
             except Exception as e:
                 st.warning(f"⚠️ No se pudo identificar jugadores con bono de ayer: {e}")
