@@ -527,11 +527,17 @@ elif auth_status:
                 # Normalizar nombres en df_registro
                 df_registro["USUARIO_NORM"] = df_registro["Nombre de jugador"].astype(str).str.strip().str.lower()
             
-                # Agregar ícono 🔴 a los que recibieron bono ayer
+                # Normalizar usuarios con bono y en df_registro
+                usuarios_bono_ayer_norm = [u.strip().lower().replace(" ", "").replace("_", "") for u in usuarios_bono_ayer]
+                df_registro["USUARIO_NORM"] = df_registro["Nombre de jugador"].astype(str).str.strip().str.lower().str.replace(" ", "").str.replace("_", "")
+                
+                # Agregar ícono 🔴 si coincide con usuario de ayer
                 df_registro["Nombre de jugador"] = df_registro.apply(
-                    lambda row: f"🔴 {row['Nombre de jugador']}" if row["USUARIO_NORM"] in usuarios_bono_ayer else row["Nombre de jugador"],
+                    lambda row: f"🔴 {row['Nombre de jugador']}" if row["USUARIO_NORM"] in usuarios_bono_ayer_norm else row["Nombre de jugador"],
                     axis=1
                 )
+                
+                # Eliminar columna auxiliar
                 df_registro = df_registro.drop(columns=["USUARIO_NORM"])
             
                 # Mostrar la tabla actualizada
