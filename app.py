@@ -878,8 +878,6 @@ elif auth_status:
             with open("registro_jugadores.xlsx", "rb") as f:
                 st.download_button("📅 Descargar Excel", f, file_name="registro_jugadores.xlsx")
 
-        except Exception as e:
-            st.error(f"❌ Error al generar el resumen: {e}")
 
         # 🔵 Tabla Bono Eros desde hojas "registro_users" y "bonos_ofrecidos"
         try:
