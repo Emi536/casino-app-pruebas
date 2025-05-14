@@ -517,37 +517,54 @@ elif auth_status:
                 def normalizar(nombre):
                     return str(nombre).strip().lower().replace(" ", "").replace("_", "")
             
-                # 🔧 LIMPIEZA Y CONVERSIÓN CORRECTA
+                # Normalizar y filtrar
                 df_bonos_fenix = df_bonos_fenix[df_bonos_fenix["USUARIO"].notna()]
                 df_bonos_fenix["FECHA"] = pd.to_datetime(df_bonos_fenix["FECHA"], errors="coerce")
                 df_bonos_fenix = df_bonos_fenix[df_bonos_fenix["FECHA"].notna()]
                 df_bonos_fenix["USUARIO_NORM"] = df_bonos_fenix["USUARIO"].apply(normalizar)
             
-                # 🗓️ Fecha actual y últimos 3 días
                 zona_ar = pytz.timezone("America/Argentina/Buenos_Aires")
                 hoy = datetime.datetime.now(zona_ar).date()
-                tres_dias_atras = hoy - datetime.timedelta(days=5)
+                tres_dias_atras = hoy - datetime.timedelta(days=3)
             
-                # 🎯 USUARIOS que recibieron bono entre hace 3 días y hoy
-                usuarios_bono_reciente = df_bonos_fenix[
-                    df_bonos_fenix["FECHA"].dt.date >= tres_dias_atras
-                ]["USUARIO_NORM"].unique().tolist()
+                # 🎯 Usuarios con bono en los últimos 3 días
+                usuarios_bono_reciente = df_bonos_fenix[df_bonos_fenix["FECHA"].dt.date >= tres_dias_atras]["USUARIO_NORM"].unique().tolist()
             
-                # Normalizar en df_registro
-                df_registro["JUGADOR_NORM"] = df_registro["Nombre de jugador"].astype(str).apply(normalizar)
-                
-                # Crear una copia visual del nombre
-                df_registro["Nombre visual"] = df_registro.apply(
+                # Normalizar df_registro
+                df_registro["JUGADOR_NORM"] = df_registro["Nombre de jugador"].apply(normalizar)
+            
+                # 🔁 Agregar jugadores faltantes que recibieron bono y no estaban en df_registro
+                jugadores_faltantes = list(set(usuarios_bono_reciente) - set(df_registro["JUGADOR_NORM"]))
+                nuevos_rows = [{
+                    "Nombre de jugador": f"🔴 {usuario}",
+                    "Tipo de bono": "",
+                    "Fecha que ingresó": "",
+                    "Veces que cargó": 0,
+                    "Hl": 0,
+                    "Wagger": 0,
+                    "Monto total": 0,
+                    "Cantidad de retiro": 0,
+                    "Ganacias casino": 0,
+                    "Rango horario de juego": "",
+                    "Última vez que cargó": "",
+                    "Días inactivo": "",
+                    "Racha Activa (Días)": "",
+                    "Última vez que se lo contacto": ""
+                } for usuario in jugadores_faltantes]
+            
+                df_nuevos = pd.DataFrame(nuevos_rows)
+            
+                # 🔴 Marcar con ícono a los jugadores existentes
+                df_registro["Nombre de jugador"] = df_registro.apply(
                     lambda row: f"🔴 {row['Nombre de jugador']}" if row["JUGADOR_NORM"] in usuarios_bono_reciente else row["Nombre de jugador"],
                     axis=1
                 )
-                
-                # Reemplazar visualmente el nombre en la tabla
-                df_registro["Nombre de jugador"] = df_registro["Nombre visual"]
-                df_registro = df_registro.drop(columns=["JUGADOR_NORM", "Nombre visual"])
+            
+                df_registro = df_registro.drop(columns=["JUGADOR_NORM"])
+                df_registro = pd.concat([df_registro, df_nuevos], ignore_index=True)
             
             except Exception as e:
-                st.warning(f"⚠️ No se pudo marcar los usuarios con bono reciente: {e}")
+                st.warning(f"⚠️ No se pudo marcar o agregar jugadores con bono reciente: {e}")
 
             st.dataframe(df_registro)
             
