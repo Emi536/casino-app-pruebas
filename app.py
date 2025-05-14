@@ -526,7 +526,7 @@ elif auth_status:
                 # 🗓️ Fecha actual y últimos 3 días
                 zona_ar = pytz.timezone("America/Argentina/Buenos_Aires")
                 hoy = datetime.datetime.now(zona_ar).date()
-                tres_dias_atras = hoy - datetime.timedelta(days=3)
+                tres_dias_atras = hoy - datetime.timedelta(days=5)
             
                 # 🎯 USUARIOS que recibieron bono entre hace 3 días y hoy
                 usuarios_bono_reciente = df_bonos_fenix[
