@@ -515,37 +515,31 @@ elif auth_status:
             
                 # Normalizar y convertir FECHA
                 df_bonos_fenix["FECHA"] = pd.to_datetime(df_bonos_fenix["FECHA"], errors="coerce")
-                df_bonos_fenix["USUARIO"] = df_bonos_fenix["USUARIO"].astype(str).str.strip().str.lower()
-
-                # Función de normalización común
+                df_bonos_fenix["USUARIO"] = df_bonos_fenix["USUARIO"].astype(str)
+            
+                # 🔁 Función de normalización unificada
                 def normalizar_nombre(nombre):
                     return str(nombre).strip().lower().replace(" ", "").replace("_", "")
-
             
-                # Obtener fecha de AYER en zona horaria Argentina
+                # Fecha de AYER (zona AR)
                 zona_ar = pytz.timezone("America/Argentina/Buenos_Aires")
                 ayer = datetime.datetime.now(zona_ar).date() - datetime.timedelta(days=1)
             
-                # Usuarios que recibieron bono AYER
-                usuarios_bono_ayer = df_bonos_fenix[df_bonos_fenix["FECHA"].dt.date == ayer]["USUARIO"].unique().tolist()
+                # Usuarios con bono ayer (normalizados)
+                usuarios_bono_ayer_norm = df_bonos_fenix[
+                    df_bonos_fenix["FECHA"].dt.date == ayer
+                ]["USUARIO"].apply(normalizar_nombre).unique().tolist()
             
-                # Normalizar nombres en df_registro
-                df_registro["USUARIO_NORM"] = df_registro["Nombre de jugador"].astype(str).str.strip().str.lower()
+                # Normalizar nombres de df_registro
+                df_registro["USUARIO_NORM"] = df_registro["Nombre de jugador"].apply(normalizar_nombre)
             
-                # Normalizar usuarios con bono y en df_registro
-                usuarios_bono_ayer_norm = [u.strip().lower().replace(" ", "").replace("_", "") for u in usuarios_bono_ayer]
-                df_registro["USUARIO_NORM"] = df_registro["Nombre de jugador"].astype(str).str.strip().str.lower().str.replace(" ", "").str.replace("_", "")
-                
-                # Agregar ícono 🔴 si coincide con usuario de ayer
+                # Agregar ícono 🔴 al lado si recibió bono ayer
                 df_registro["Nombre de jugador"] = df_registro.apply(
                     lambda row: f"🔴 {row['Nombre de jugador']}" if row["USUARIO_NORM"] in usuarios_bono_ayer_norm else row["Nombre de jugador"],
                     axis=1
                 )
-                
-                # Eliminar columna auxiliar
-                df_registro = df_registro.drop(columns=["USUARIO_NORM"])
             
-                # Mostrar la tabla actualizada
+                df_registro = df_registro.drop(columns=["USUARIO_NORM"])
                 st.dataframe(df_registro)
             
             except Exception as e:
