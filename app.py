@@ -510,8 +510,8 @@ elif auth_status:
             ]
             
             # Mostrar
-            st.subheader("📄 Registro filtrado de jugadores")
-            st.dataframe(df_filtrado)
+            #st.subheader("📄 Registro filtrado de jugadores")
+            #st.dataframe(df_filtrado)
             
             # Exportar
             df_filtrado.to_excel("registro_jugadores_fenix_filtrado.xlsx", index=False)
