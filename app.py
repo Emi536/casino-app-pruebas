@@ -509,6 +509,24 @@ elif auth_status:
             # ✅ Mostrar siempre la tabla y botón de descarga (fuera del try/except)
             st.subheader("📄 Registro completo de jugadores")
 
+            # 🎯 Filtro por tipo de bono = N/A
+            st.markdown("### 🔎 Filtrar jugadores con bono 'N/A'")
+            activar_filtro_na = st.checkbox("🔘 Mostrar solo jugadores con tipo de bono 'N/A'")
+            
+            criterio_orden = st.selectbox("📊 Ordenar por:", ["Veces que cargó", "Monto total", "Racha Activa (Días)"])
+            
+            if activar_filtro_na:
+                df_filtrado = df_registro[df_registro["Tipo de bono"] == "N/A"].copy()
+            
+                if criterio_orden == "Veces que cargó":
+                    df_filtrado = df_filtrado.sort_values(by="Veces que cargó", ascending=False)
+                elif criterio_orden == "Monto total":
+                    df_filtrado = df_filtrado.sort_values(by="Monto total", ascending=False)
+                elif criterio_orden == "Racha Activa (Días)":
+                    df_filtrado = df_filtrado.sort_values(by="Racha Activa (Días)", ascending=False)
+            
+                st.dataframe(df_filtrado)
+
             try:
                 hoja_bonos_fenix = sh.worksheet("bonos_ofrecidos_fenix")
                 raw_data_bonos = hoja_bonos_fenix.get_all_values()
