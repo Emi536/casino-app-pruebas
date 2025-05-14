@@ -514,6 +514,8 @@ elif auth_status:
             
             # Selector para orden
             criterio_orden = col_orden.selectbox("📊 Ordenar por:", ["Sin ordenar", "Veces que cargó", "Monto total", "Racha Activa (Días)"])
+
+            col_filtro, col_orden = st.columns(2)
             
             # Aplicar filtro y orden directamente sobre df_registro
             if activar_filtro_na:
