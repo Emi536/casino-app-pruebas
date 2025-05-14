@@ -456,7 +456,7 @@ elif auth_status:
     
             df_filtrado.to_excel("registro_jugadores_fenix_filtrado.xlsx", index=False)
             with open("registro_jugadores_fenix_filtrado.xlsx", "rb") as f:
-                st.download_button("📥 Descargar Excel filtrado", f, file_name="registro_jugadores_fenix_filtrado.xlsx")
+                st.download_button("📥 Descargar Excel filtrado", f, file_name="registro_jugadores_fenix_filtrado.xlsx", key="descargar_filtrado_1")
 
 
             try:
@@ -501,7 +501,7 @@ elif auth_status:
             # Exportar resumen filtrado
             df_registro.to_excel("registro_jugadores_fenix_filtrado.xlsx", index=False)
             with open("registro_jugadores_fenix_filtrado.xlsx", "rb") as f:
-                st.download_button("📥 Descargar Excel filtrado", f, file_name="registro_jugadores_fenix_filtrado.xlsx")
+                st.download_button("📥 Descargar Excel filtrado", f, file_name="registro_jugadores_fenix_filtrado.xlsx", key="descargar_filtrado_2")
 
 
             # ✅ Mostrar siempre la tabla y botón de descarga (fuera del try/except)
