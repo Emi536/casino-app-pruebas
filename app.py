@@ -508,8 +508,8 @@ elif auth_status:
                 st.warning(f"⚠️ No se pudo cargar el tipo de bono desde registro_bono_fenix: {e}")
 
             # Mostrar
-            st.subheader("📄 Registro filtrado de jugadores")
-            st.dataframe(df_filtrado)
+            #st.subheader("📄 Registro filtrado de jugadores")
+            #st.dataframe(df_filtrado)
             
             # Exportar
             df_filtrado.to_excel("registro_jugadores_fenix_filtrado.xlsx", index=False)
