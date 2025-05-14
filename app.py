@@ -451,7 +451,7 @@ elif auth_status:
                 (df_registro["Última vez que cargó"].dt.date <= filtro_hasta)
             ]
     
-            st.subheader("📄 Registro filtrado de jugadores")
+            st.subheader("📄 Registro de jugadores")
             st.dataframe(df_filtrado)
     
             df_filtrado.to_excel("registro_jugadores_fenix_filtrado.xlsx", index=False)
