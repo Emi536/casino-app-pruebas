@@ -525,7 +525,7 @@ elif auth_status:
                 # 🗓️ AYER en horario argentino
                 zona_ar = pytz.timezone("America/Argentina/Buenos_Aires")
                 hoy = datetime.datetime.now(zona_ar).date()
-                ayer = hoy - datetime.timedelta(days=1)
+                ayer = datetime.date(2025, 5, 12) 
             
                 # 🎯 USUARIOS con bono AYER
                 usuarios_bono_ayer = df_bonos_fenix[df_bonos_fenix["FECHA"].dt.date == ayer]["USUARIO_NORM"].unique().tolist()
