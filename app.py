@@ -834,145 +834,145 @@ elif auth_status:
         
             df_registro = pd.DataFrame(resumen).sort_values("Última vez que cargó", ascending=False)
 
-                try:
-                    # 🧩 COMPLETAR TIPO DE BONO desde hoja 'registro_bono_eros'
-                    hoja_users = sh.worksheet("registro_bono_eros")
-                    raw_data_users = hoja_users.get_all_values()
-                    headers_users = raw_data_users[0]
-                    rows_users = raw_data_users[1:]
-                    df_users = pd.DataFrame(rows_users, columns=headers_users)
-                
-                    # Normalizar nombres de usuario
-                    def normalizar_usuario(nombre):
-                        return str(nombre).strip().lower().replace(" ", "").replace("_", "")
-                
-                    df_users["USUARIO_NORM"] = df_users["USUARIO"].apply(normalizar_usuario)
-                
-                    # ✅ Eliminar duplicados conservando la última aparición del usuario
-                    df_users = df_users.drop_duplicates(subset=["USUARIO_NORM"], keep="last")
-                
-                    # Normalizar también en el DataFrame de registro
-                    df_registro["JUGADOR_NORM"] = df_registro["Nombre de jugador"].apply(normalizar_usuario)
-                
-                    # Merge para obtener el tipo de bono (FUNNEL)
-                    df_registro = df_registro.merge(
-                        df_users[["USUARIO_NORM", "FUNNEL"]],
-                        left_on="JUGADOR_NORM",
-                        right_on="USUARIO_NORM",
-                        how="left"
-                    ).drop(columns=["USUARIO_NORM", "JUGADOR_NORM"])
-                
-                    # Asignar tipo de bono
-                    df_registro["Tipo de bono"] = df_registro["FUNNEL"].fillna("N/A")
-                    df_registro = df_registro.drop(columns=["FUNNEL"])
-                
-                except Exception as e:
-                    st.warning(f"⚠️ No se pudo cargar el tipo de bono desde registro_bono_eros: {e}")
-
-                # Mostrar en app
-                st.subheader("📄 Registro completo de jugadores")
-                st.dataframe(df_registro)
-
-                # Exportar a Excel
-                df_registro.to_excel("registro_jugadores.xlsx", index=False)
-                with open("registro_jugadores.xlsx", "rb") as f:
-                    st.download_button("📅 Descargar Excel", f, file_name="registro_jugadores.xlsx")
-
-            except Exception as e:
-                st.error(f"❌ Error al generar el resumen: {e}")
-    
-            # 🔵 Tabla Bono Eros desde hojas "registro_users" y "bonos_ofrecidos"
             try:
-                # Leer hoja principal ignorando posibles conflictos de encabezado
-                hoja_registro = sh.worksheet("registro_bono_eros")
-                raw_data = hoja_registro.get_all_values()
-                headers = raw_data[0]
+                # 🧩 COMPLETAR TIPO DE BONO desde hoja 'registro_bono_eros'
+                hoja_users = sh.worksheet("registro_bono_eros")
+                raw_data_users = hoja_users.get_all_values()
+                headers_users = raw_data_users[0]
+                rows_users = raw_data_users[1:]
+                df_users = pd.DataFrame(rows_users, columns=headers_users)
             
-                # Manejar encabezados duplicados
-                seen = set()
-                unique_headers = []
-                for header in headers:
-                    if header in seen:
-                        counter = 1
-                        while f"{header}_{counter}" in seen:
-                            counter += 1
-                        header = f"{header}_{counter}"
-                    seen.add(header)
-                    unique_headers.append(header)
+                # Normalizar nombres de usuario
+                def normalizar_usuario(nombre):
+                    return str(nombre).strip().lower().replace(" ", "").replace("_", "")
             
-                rows = raw_data[1:]
-                df_registro_users = pd.DataFrame(rows, columns=unique_headers)
+                df_users["USUARIO_NORM"] = df_users["USUARIO"].apply(normalizar_usuario)
             
-                # Normalizar y eliminar duplicados (🟡 NUEVO)
-                df_registro_users["USUARIO"] = df_registro_users["USUARIO"].astype(str).str.strip().str.lower()
-                df_registro_users["USUARIO_NORM"] = df_registro_users["USUARIO"].apply(lambda x: x.replace(" ", "").replace("_", ""))
-                df_registro_users = df_registro_users.drop_duplicates(subset=["USUARIO_NORM"], keep="last")
-                df_registro_users = df_registro_users.drop(columns=["USUARIO_NORM"])
+                # ✅ Eliminar duplicados conservando la última aparición del usuario
+                df_users = df_users.drop_duplicates(subset=["USUARIO_NORM"], keep="last")
             
-                # Leer hoja con categorías de bonos
-                hoja_bonos = sh.worksheet("bonos_ofrecidos_eros")
-                raw_data_bonos = hoja_bonos.get_all_values()
-                headers_bonos = raw_data_bonos[0]
+                # Normalizar también en el DataFrame de registro
+                df_registro["JUGADOR_NORM"] = df_registro["Nombre de jugador"].apply(normalizar_usuario)
             
-                # Manejar encabezados duplicados en bonos
-                seen_bonos = set()
-                unique_headers_bonos = []
-                for header in headers_bonos:
-                    if header in seen_bonos:
-                        counter = 1
-                        while f"{header}_{counter}" in seen_bonos:
-                            counter += 1
-                        header = f"{header}_{counter}"
-                    seen_bonos.add(header)
-                    unique_headers_bonos.append(header)
+                # Merge para obtener el tipo de bono (FUNNEL)
+                df_registro = df_registro.merge(
+                    df_users[["USUARIO_NORM", "FUNNEL"]],
+                    left_on="JUGADOR_NORM",
+                    right_on="USUARIO_NORM",
+                    how="left"
+                ).drop(columns=["USUARIO_NORM", "JUGADOR_NORM"])
             
-                rows_bonos = raw_data_bonos[1:]
-                df_bonos = pd.DataFrame(rows_bonos, columns=unique_headers_bonos)
-            
-                # Limpiar nombre de usuario
-                df_bonos["USUARIO"] = df_bonos["USUARIO"].astype(str).str.strip().str.lower()
-            
-                # Obtener la última categoría de bono por usuario
-                df_categorias = df_bonos.dropna(subset=["CATEGORIA DE BONO"]).sort_values("FECHA")
-                df_categorias = df_categorias.groupby("USUARIO")["CATEGORIA DE BONO"].last().reset_index()
-            
-                # Unir con el registro principal
-                df_bono = df_registro_users.merge(df_categorias, on="USUARIO", how="left")
-            
-                # Renombrar columnas al formato final
-                df_bono = df_bono.rename(columns={
-                    "USUARIO": "Usuario",
-                    "FUNNEL": "Tipo de Bono",
-                    "BONOS OFRECIDOS": "Cuántas veces se le ofreció el bono",
-                    "BONOS USADOS": "Cuántas veces cargó con bono",
-                    "MONTO TOTAL CARGADO": "Monto total",
-                    "% DE CONVERSION": "Conversión",
-                    "ULT. ACTUALIZACION": "Fecha del último mensaje",
-                    "CATEGORIA DE BONO": "Categoría de Bono"
-                })
-            
-                # Limpiar campos
-                df_bono["Conversión"] = df_bono["Conversión"].astype(str).str.replace("%", "", regex=False)
-                df_bono["Conversión"] = pd.to_numeric(df_bono["Conversión"], errors="coerce").fillna(0)
-                df_bono["Fecha del último mensaje"] = df_bono["Fecha del último mensaje"].replace(
-                    ["30/12/1899", "1899-12-30"], "Sin registros"
-                )
-            
-                # Seleccionar columnas finales
-                columnas_finales = [
-                    "Usuario", "Tipo de Bono",
-                    "Cuántas veces se le ofreció el bono", "Cuántas veces cargó con bono",
-                    "Monto total", "Conversión",
-                    "Fecha del último mensaje", "Categoría de Bono"
-                ]
-                df_bono = df_bono[columnas_finales]
-            
-                # Mostrar en la app
-                st.subheader("🎁 Tabla Bono - Eros")
-                st.dataframe(df_bono)
+                # Asignar tipo de bono
+                df_registro["Tipo de bono"] = df_registro["FUNNEL"].fillna("N/A")
+                df_registro = df_registro.drop(columns=["FUNNEL"])
             
             except Exception as e:
-                st.error(f"❌ Error al generar la Tabla Bono Eros: {e}")
+                st.warning(f"⚠️ No se pudo cargar el tipo de bono desde registro_bono_eros: {e}")
+
+            # Mostrar en app
+            st.subheader("📄 Registro completo de jugadores")
+            st.dataframe(df_registro)
+
+            # Exportar a Excel
+            df_registro.to_excel("registro_jugadores.xlsx", index=False)
+            with open("registro_jugadores.xlsx", "rb") as f:
+                st.download_button("📅 Descargar Excel", f, file_name="registro_jugadores.xlsx")
+
+        except Exception as e:
+            st.error(f"❌ Error al generar el resumen: {e}")
+
+        # 🔵 Tabla Bono Eros desde hojas "registro_users" y "bonos_ofrecidos"
+        try:
+            # Leer hoja principal ignorando posibles conflictos de encabezado
+            hoja_registro = sh.worksheet("registro_bono_eros")
+            raw_data = hoja_registro.get_all_values()
+            headers = raw_data[0]
+        
+            # Manejar encabezados duplicados
+            seen = set()
+            unique_headers = []
+            for header in headers:
+                if header in seen:
+                    counter = 1
+                    while f"{header}_{counter}" in seen:
+                        counter += 1
+                    header = f"{header}_{counter}"
+                seen.add(header)
+                unique_headers.append(header)
+        
+            rows = raw_data[1:]
+            df_registro_users = pd.DataFrame(rows, columns=unique_headers)
+        
+            # Normalizar y eliminar duplicados (🟡 NUEVO)
+            df_registro_users["USUARIO"] = df_registro_users["USUARIO"].astype(str).str.strip().str.lower()
+            df_registro_users["USUARIO_NORM"] = df_registro_users["USUARIO"].apply(lambda x: x.replace(" ", "").replace("_", ""))
+            df_registro_users = df_registro_users.drop_duplicates(subset=["USUARIO_NORM"], keep="last")
+            df_registro_users = df_registro_users.drop(columns=["USUARIO_NORM"])
+        
+            # Leer hoja con categorías de bonos
+            hoja_bonos = sh.worksheet("bonos_ofrecidos_eros")
+            raw_data_bonos = hoja_bonos.get_all_values()
+            headers_bonos = raw_data_bonos[0]
+        
+            # Manejar encabezados duplicados en bonos
+            seen_bonos = set()
+            unique_headers_bonos = []
+            for header in headers_bonos:
+                if header in seen_bonos:
+                    counter = 1
+                    while f"{header}_{counter}" in seen_bonos:
+                        counter += 1
+                    header = f"{header}_{counter}"
+                seen_bonos.add(header)
+                unique_headers_bonos.append(header)
+        
+            rows_bonos = raw_data_bonos[1:]
+            df_bonos = pd.DataFrame(rows_bonos, columns=unique_headers_bonos)
+        
+            # Limpiar nombre de usuario
+            df_bonos["USUARIO"] = df_bonos["USUARIO"].astype(str).str.strip().str.lower()
+        
+            # Obtener la última categoría de bono por usuario
+            df_categorias = df_bonos.dropna(subset=["CATEGORIA DE BONO"]).sort_values("FECHA")
+            df_categorias = df_categorias.groupby("USUARIO")["CATEGORIA DE BONO"].last().reset_index()
+        
+            # Unir con el registro principal
+            df_bono = df_registro_users.merge(df_categorias, on="USUARIO", how="left")
+        
+            # Renombrar columnas al formato final
+            df_bono = df_bono.rename(columns={
+                "USUARIO": "Usuario",
+                "FUNNEL": "Tipo de Bono",
+                "BONOS OFRECIDOS": "Cuántas veces se le ofreció el bono",
+                "BONOS USADOS": "Cuántas veces cargó con bono",
+                "MONTO TOTAL CARGADO": "Monto total",
+                "% DE CONVERSION": "Conversión",
+                "ULT. ACTUALIZACION": "Fecha del último mensaje",
+                "CATEGORIA DE BONO": "Categoría de Bono"
+            })
+        
+            # Limpiar campos
+            df_bono["Conversión"] = df_bono["Conversión"].astype(str).str.replace("%", "", regex=False)
+            df_bono["Conversión"] = pd.to_numeric(df_bono["Conversión"], errors="coerce").fillna(0)
+            df_bono["Fecha del último mensaje"] = df_bono["Fecha del último mensaje"].replace(
+                ["30/12/1899", "1899-12-30"], "Sin registros"
+            )
+        
+            # Seleccionar columnas finales
+            columnas_finales = [
+                "Usuario", "Tipo de Bono",
+                "Cuántas veces se le ofreció el bono", "Cuántas veces cargó con bono",
+                "Monto total", "Conversión",
+                "Fecha del último mensaje", "Categoría de Bono"
+            ]
+            df_bono = df_bono[columnas_finales]
+        
+            # Mostrar en la app
+            st.subheader("🎁 Tabla Bono - Eros")
+            st.dataframe(df_bono)
+        
+        except Exception as e:
+            st.error(f"❌ Error al generar la Tabla Bono Eros: {e}")
 
 
     # SECCIÓN BET ARGENTO
