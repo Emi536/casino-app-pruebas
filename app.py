@@ -517,36 +517,35 @@ elif auth_status:
                 def normalizar(nombre):
                     return str(nombre).strip().lower().replace(" ", "").replace("_", "")
             
-                # 🔧 LIMPIEZA Y CONVERSIÓN
-                df_bonos_fenix = df_bonos_fenix[df_bonos_fenix["FECHA"].notna()]
+                # 🔧 LIMPIEZA Y CONVERSIÓN CORRECTA
+                df_bonos_fenix = df_bonos_fenix[df_bonos_fenix["USUARIO"].notna()]
                 df_bonos_fenix["FECHA"] = pd.to_datetime(df_bonos_fenix["FECHA"], errors="coerce")
+                df_bonos_fenix = df_bonos_fenix[df_bonos_fenix["FECHA"].notna()]
                 df_bonos_fenix["USUARIO_NORM"] = df_bonos_fenix["USUARIO"].apply(normalizar)
             
-                # 🗓️ AYER en horario argentino
+                # 🗓️ Fecha actual y últimos 3 días
                 zona_ar = pytz.timezone("America/Argentina/Buenos_Aires")
                 hoy = datetime.datetime.now(zona_ar).date()
-                ayer = datetime.date(2025, 5, 12) 
+                tres_dias_atras = hoy - datetime.timedelta(days=3)
             
-                # 🎯 USUARIOS con bono AYER
-                usuarios_bono_ayer = df_bonos_fenix[df_bonos_fenix["FECHA"].dt.date == ayer]["USUARIO_NORM"].unique().tolist()
+                # 🎯 USUARIOS que recibieron bono entre hace 3 días y hoy
+                usuarios_bono_reciente = df_bonos_fenix[
+                    df_bonos_fenix["FECHA"].dt.date >= tres_dias_atras
+                ]["USUARIO_NORM"].unique().tolist()
             
-                # ✅ NORMALIZAR df_registro
+                # Normalizar en df_registro
                 df_registro["JUGADOR_NORM"] = df_registro["Nombre de jugador"].apply(normalizar)
             
-                # 🔴 AGREGAR ICONO
+                # 🔴 Marcar con ícono si fue contactado recientemente
                 df_registro["Nombre de jugador"] = df_registro.apply(
-                    lambda row: f"🔴 {row['Nombre de jugador']}" if row["JUGADOR_NORM"] in usuarios_bono_ayer else row["Nombre de jugador"],
+                    lambda row: f"🔴 {row['Nombre de jugador']}" if row["JUGADOR_NORM"] in usuarios_bono_reciente else row["Nombre de jugador"],
                     axis=1
                 )
             
                 df_registro = df_registro.drop(columns=["JUGADOR_NORM"])
             
-                # 🧪 DEBUG OPCIONAL
-                # st.write("📌 Usuarios que recibieron bono ayer:", usuarios_bono_ayer)
-            
             except Exception as e:
-                st.warning(f"⚠️ No se pudo marcar los usuarios con bono de ayer: {e}")
-
+                st.warning(f"⚠️ No se pudo marcar los usuarios con bono reciente: {e}")
 
             st.dataframe(df_registro)
             
