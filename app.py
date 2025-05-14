@@ -517,23 +517,32 @@ elif auth_status:
                 def normalizar(nombre):
                     return str(nombre).strip().lower().replace(" ", "").replace("_", "")
             
-                df_bonos_fenix["USUARIO_NORM"] = df_bonos_fenix["USUARIO"].apply(normalizar)
+                # 🔧 LIMPIEZA Y CONVERSIÓN
+                df_bonos_fenix = df_bonos_fenix[df_bonos_fenix["FECHA"].notna()]
                 df_bonos_fenix["FECHA"] = pd.to_datetime(df_bonos_fenix["FECHA"], errors="coerce")
+                df_bonos_fenix["USUARIO_NORM"] = df_bonos_fenix["USUARIO"].apply(normalizar)
             
+                # 🗓️ AYER en horario argentino
                 zona_ar = pytz.timezone("America/Argentina/Buenos_Aires")
                 hoy = datetime.datetime.now(zona_ar).date()
                 ayer = hoy - datetime.timedelta(days=1)
             
+                # 🎯 USUARIOS con bono AYER
                 usuarios_bono_ayer = df_bonos_fenix[df_bonos_fenix["FECHA"].dt.date == ayer]["USUARIO_NORM"].unique().tolist()
             
+                # ✅ NORMALIZAR df_registro
                 df_registro["JUGADOR_NORM"] = df_registro["Nombre de jugador"].apply(normalizar)
             
+                # 🔴 AGREGAR ICONO
                 df_registro["Nombre de jugador"] = df_registro.apply(
                     lambda row: f"🔴 {row['Nombre de jugador']}" if row["JUGADOR_NORM"] in usuarios_bono_ayer else row["Nombre de jugador"],
                     axis=1
                 )
             
                 df_registro = df_registro.drop(columns=["JUGADOR_NORM"])
+            
+                # 🧪 DEBUG OPCIONAL
+                # st.write("📌 Usuarios que recibieron bono ayer:", usuarios_bono_ayer)
             
             except Exception as e:
                 st.warning(f"⚠️ No se pudo marcar los usuarios con bono de ayer: {e}")
