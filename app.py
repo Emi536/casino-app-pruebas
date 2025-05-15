@@ -511,15 +511,21 @@ elif auth_status:
 
             col_filtro, col_orden = st.columns(2)
             
-            # Checkbox para activar filtro por tipo de bono N/A
-            activar_filtro_na = col_filtro.checkbox("🎯 Mostrar solo jugadores con bono 'N/A'")
+            # ✅ Filtro múltiple por tipo de bono
+            tipos_disponibles = df_registro["Tipo de bono"].dropna().unique().tolist()
+            tipos_disponibles.sort()
+            seleccion_tipos = col_filtro.multiselect(
+                "🎯 Filtrar por tipo de bono:",
+                options=tipos_disponibles,
+                default=["N/A"]  # Podés dejarlo vacío si querés que no filtre por defecto
+            )
             
-            # Selector para orden
+            # ✅ Selector de orden
             criterio_orden = col_orden.selectbox("📊 Ordenar por:", ["Sin ordenar", "Veces que cargó", "Monto total", "Racha Activa (Días)"])
             
-            # Aplicar filtro y orden directamente sobre df_registro
-            if activar_filtro_na:
-                df_registro = df_registro[df_registro["Tipo de bono"] == "N/A","EXCLUSIVOS","RECURRENTES","NUEVOS"]
+            # ✅ Aplicar filtros
+            if seleccion_tipos:
+                df_registro = df_registro[df_registro["Tipo de bono"].isin(seleccion_tipos)]
             
             if criterio_orden != "Sin ordenar":
                 columna_orden = {
