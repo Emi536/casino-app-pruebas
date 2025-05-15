@@ -271,7 +271,7 @@ elif auth_status:
         if "Fecha" in df_historial.columns:
             df_historial["Fecha"] = pd.to_datetime(df_historial["Fecha"], errors="coerce")
             df_historial = df_historial[df_historial["Fecha"].notna()]
-            limite = fecha_actual_date - datetime.timedelta(days=9)
+            limite = fecha_actual_date - datetime.timedelta(days=30)
             df_historial = df_historial[df_historial["Fecha"].dt.date >= limite]
     
         if texto_pegar:
@@ -726,7 +726,7 @@ elif auth_status:
         if "Fecha" in df_historial.columns:
             df_historial["Fecha"] = pd.to_datetime(df_historial["Fecha"], errors="coerce")
             df_historial = df_historial[df_historial["Fecha"].notna()]
-            limite = fecha_actual_date - datetime.timedelta(days=9)
+            limite = fecha_actual_date - datetime.timedelta(days=30)
             df_historial = df_historial[df_historial["Fecha"].dt.date >= limite]
 
         if texto_pegar:
@@ -1177,7 +1177,7 @@ elif auth_status:
         if "Fecha" in df_historial.columns:
             df_historial["Fecha"] = pd.to_datetime(df_historial["Fecha"], errors="coerce")
             df_historial = df_historial[df_historial["Fecha"].notna()]
-            limite = fecha_actual_date - datetime.timedelta(days=9)
+            limite = fecha_actual_date - datetime.timedelta(days=30)
             df_historial = df_historial[df_historial["Fecha"].dt.date >= limite]
     
         if texto_pegar:
