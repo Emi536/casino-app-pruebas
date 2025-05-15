@@ -963,6 +963,33 @@ elif auth_status:
 
             # Mostrar en app
             st.subheader("📄 Registro completo de jugadores")
+
+            col_filtro, col_orden = st.columns(2)
+            
+            # ✅ Filtro múltiple por tipo de bono
+            tipos_disponibles = df_registro["Tipo de bono"].dropna().unique().tolist()
+            tipos_disponibles.sort()
+            seleccion_tipos = col_filtro.multiselect(
+                "🎯 Filtrar por tipo de bono:",
+                options=tipos_disponibles,
+                default=["N/A"]  # Podés dejarlo vacío si querés que no filtre por defecto
+            )
+            
+            # ✅ Selector de orden
+            criterio_orden = col_orden.selectbox("📊 Ordenar por:", ["Sin ordenar", "Veces que cargó", "Monto total", "Racha Activa (Días)"])
+            
+            # ✅ Aplicar filtros
+            if seleccion_tipos:
+                df_registro = df_registro[df_registro["Tipo de bono"].isin(seleccion_tipos)]
+            
+            if criterio_orden != "Sin ordenar":
+                columna_orden = {
+                    "Veces que cargó": "Veces que cargó",
+                    "Monto total": "Monto total",
+                    "Racha Activa (Días)": "Racha Activa (Días)"
+                }[criterio_orden]
+                df_registro = df_registro.sort_values(by=columna_orden, ascending=False)
+
             st.dataframe(df_registro)
 
             # Exportar a Excel
@@ -1379,6 +1406,32 @@ elif auth_status:
                 st.warning(f"⚠️ No se pudo cargar el tipo de bono desde registro_bono_bet: {e}")
 
             st.subheader("📄 Registro completo de jugadores")
+
+            col_filtro, col_orden = st.columns(2)
+            
+            # ✅ Filtro múltiple por tipo de bono
+            tipos_disponibles = df_registro["Tipo de bono"].dropna().unique().tolist()
+            tipos_disponibles.sort()
+            seleccion_tipos = col_filtro.multiselect(
+                "🎯 Filtrar por tipo de bono:",
+                options=tipos_disponibles,
+                default=["N/A"]  # Podés dejarlo vacío si querés que no filtre por defecto
+            )
+            
+            # ✅ Selector de orden
+            criterio_orden = col_orden.selectbox("📊 Ordenar por:", ["Sin ordenar", "Veces que cargó", "Monto total", "Racha Activa (Días)"])
+            
+            # ✅ Aplicar filtros
+            if seleccion_tipos:
+                df_registro = df_registro[df_registro["Tipo de bono"].isin(seleccion_tipos)]
+            
+            if criterio_orden != "Sin ordenar":
+                columna_orden = {
+                    "Veces que cargó": "Veces que cargó",
+                    "Monto total": "Monto total",
+                    "Racha Activa (Días)": "Racha Activa (Días)"
+                }[criterio_orden]
+                df_registro = df_registro.sort_values(by=columna_orden, ascending=False)
             st.dataframe(df_registro)
 
             df_registro.to_excel("registro_jugadores_betargento.xlsx", index=False)
