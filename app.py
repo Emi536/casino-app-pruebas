@@ -519,7 +519,7 @@ elif auth_status:
             
             # Aplicar filtro y orden directamente sobre df_registro
             if activar_filtro_na:
-                df_registro = df_registro[df_registro["Tipo de bono"] == "N/A"]
+                df_registro = df_registro[df_registro["Tipo de bono"] == "N/A","EXCLUSIVOS","RECURRENTES","NUEVOS"]
             
             if criterio_orden != "Sin ordenar":
                 columna_orden = {
