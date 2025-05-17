@@ -30,7 +30,6 @@ authenticator = stauth.Authenticate(
 
 # Mostrar el formulario de inicio de sesión
 name, auth_status, username = authenticator.login("Iniciar sesión", "main")
-role = credentials["usernames"][username].get("role", "admin")
 
 
 if  auth_status is False:
@@ -38,6 +37,9 @@ if  auth_status is False:
 elif auth_status is None:
     st.warning("🔐 Por favor ingresá tus credenciales")
 elif auth_status:
+
+    role = credentials["usernames"][username].get("role", "admin")
+
 
     authenticator.logout("Cerrar sesión", "sidebar")
     st.markdown("""
