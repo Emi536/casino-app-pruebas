@@ -1526,149 +1526,83 @@ elif auth_status:
                 st.error(f"❌ Error al generar la Tabla Bono Bet Argento: {e}")
 
     
-    elif seccion == "📆 Seguimiento de jugadores inactivos":
-        st.header("📆 Seguimiento de Jugadores Inactivos Mejorado")
-        archivo_agenda = st.file_uploader("📁 Subí tu archivo con dos hojas (Nombres y Reporte General):", type=["xlsx", "xls"], key="agenda")
+    elif seccion == "📆 Agenda Fénix":
+        st.header("📆 Seguimiento de Jugadores Nuevos - Fénix")
     
-        if archivo_agenda:
-            try:
-                df_hoja1 = pd.read_excel(archivo_agenda, sheet_name=0)
-                df_hoja2 = pd.read_excel(archivo_agenda, sheet_name=1)
+        try:
+            hoja_agenda = sh.worksheet("agenda_fenix")
+            nombres_agenda = hoja_agenda.col_values(1)[1:]  # Omite encabezado
+            nombres_agenda = [str(n).strip().lower().replace(" ", "") for n in nombres_agenda if n]
+        except:
+            st.error("❌ No se pudo leer la hoja 'agenda_fenix'")
+            st.stop()
     
-                df_hoja2 = df_hoja2.rename(columns={
-                    "operación": "Tipo",
-                    "Depositar": "Monto",
-                    "Fecha": "Fecha",
-                    "Al usuario": "Jugador",
-                    "Retirar": "Retirar"
+        try:
+            hoja_fenix = sh.worksheet("registro_fenix")
+            data_fenix = hoja_fenix.get_all_records()
+            df_fenix = pd.DataFrame(data_fenix)
+        except:
+            st.error("❌ No se pudo leer la hoja 'registro_fenix'")
+            st.stop()
+    
+        df_fenix = df_fenix.rename(columns={
+            "Del usuario": "Plataforma",
+            "Jugador": "Jugador",
+            "Monto": "Monto",
+            "Fecha": "Fecha",
+            "Tipo": "Tipo"
+        })
+    
+        df_fenix["Jugador"] = df_fenix["Jugador"].astype(str).str.strip().str.lower().str.replace(" ", "")
+        df_fenix["Fecha"] = pd.to_datetime(df_fenix["Fecha"], errors="coerce")
+        df_fenix["Monto"] = pd.to_numeric(df_fenix["Monto"], errors="coerce").fillna(0)
+    
+        valores_wagger = ["Fenix_Wagger100", "Fenix_Wagger40", "Fenix_Wagger30", "Fenix_Wagger50", "Fenix_Wagger150", "Fenix_Wagger200"]
+    
+        hoy = pd.to_datetime(datetime.date.today())
+        resumen = []
+    
+        for jugador in nombres_agenda:
+            historial = df_fenix[df_fenix["Jugador"] == jugador].sort_values("Fecha")
+            cargas = historial[historial["Tipo"].str.lower() == "in"]
+    
+            if not cargas.empty:
+                cargas_hl = cargas[cargas["Plataforma"] == "hl_casinofenix"]
+                cargas_wagger = cargas[cargas["Plataforma"].isin(valores_wagger)]
+    
+                suma_hl = cargas_hl["Monto"].sum()
+                suma_wagger = cargas_wagger["Monto"].sum()
+                total_cargas = cargas["Monto"].sum()
+                fecha_ingreso = cargas["Fecha"].min()
+                ultima_carga = cargas["Fecha"].max()
+                promedio = cargas["Monto"].mean()
+                dias_inactivo = (hoy - ultima_carga).days
+    
+                if dias_inactivo <= 3:
+                    riesgo = "🟢 Bajo"
+                elif dias_inactivo <= 5:
+                    riesgo = "🟡 Medio"
+                else:
+                    riesgo = "🔴 Alto"
+    
+                resumen.append({
+                    "Nombre de Usuario": jugador,
+                    "Fecha que ingresó": fecha_ingreso,
+                    "Última vez que cargó": ultima_carga,
+                    "Veces que cargó": len(cargas),
+                    "Suma de las cargas (HL)": suma_hl,
+                    "Suma de las cargas (Wagger)": suma_wagger,
+                    "Monto promedio": promedio,
+                    "Días inactivos": dias_inactivo,
+                    "Nivel de riesgo": riesgo
                 })
     
-                df_hoja2["Jugador"] = df_hoja2["Jugador"].astype(str).str.strip().str.lower()
-                df_hoja2["Fecha"] = pd.to_datetime(df_hoja2["Fecha"], errors="coerce")
-                df_hoja2["Monto"] = pd.to_numeric(df_hoja2["Monto"], errors="coerce").fillna(0)
-                df_hoja2["Retirar"] = pd.to_numeric(df_hoja2["Retirar"], errors="coerce").fillna(0)
-    
-                nombres_hoja1 = df_hoja1["Nombre"].dropna().astype(str).str.strip().str.lower().unique()
-                df_filtrado = df_hoja2[df_hoja2["Jugador"].isin(nombres_hoja1)]
-    
-                resumen = []
-                hoy = pd.to_datetime(datetime.date.today())
-    
-                for jugador in df_filtrado["Jugador"].dropna().unique():
-                    historial = df_filtrado[df_filtrado["Jugador"] == jugador].sort_values("Fecha")
-                    cargas = historial[historial["Tipo"].str.lower() == "in"]
-    
-                    if not cargas.empty:
-                        fecha_ingreso = cargas["Fecha"].min()
-                        ultima_carga = cargas["Fecha"].max()
-                        veces_que_cargo = len(cargas)
-                        suma_de_cargas = cargas["Monto"].sum()
-                        promedio_monto = cargas["Monto"].mean()
-                        dias_inactivo = (hoy - ultima_carga).days
-                        dias_activos = (ultima_carga - fecha_ingreso).days
-                        cantidad_retiro = historial[historial["Tipo"].str.lower() == "out"]["Retirar"].sum()
-    
-                        ultimos_30 = cargas[cargas["Fecha"] >= hoy - pd.Timedelta(days=30)]
-                        cargas_30 = len(ultimos_30)
-                        monto_30 = ultimos_30["Monto"].mean() if not ultimos_30.empty else 0
-    
-                        riesgo = min(100, (dias_inactivo * 2.5) + (10 / (cargas_30 + 1)) + (3000 / (monto_30 + 1)))
-                        riesgo = round(riesgo, 2)
-    
-                        if riesgo >= 70:
-                            categoria = "🔥 Alto"
-                            accion = "Bono urgente / Contacto inmediato"
-                        elif 40 <= riesgo < 70:
-                            categoria = "🔹 Medio"
-                            accion = "Mantener contacto frecuente"
-                        else:
-                            categoria = "🔷 Bajo"
-                            accion = "Sin acción inmediata"
-    
-                        resumen.append({
-                            "Nombre de Usuario": jugador,
-                            "Fecha que ingresó": fecha_ingreso,
-                            "Última vez que cargó": ultima_carga,
-                            "Veces que cargó": veces_que_cargo,
-                            "Suma de las cargas": suma_de_cargas,
-                            "Monto promedio": promedio_monto,
-                            "Días inactivos": dias_inactivo,
-                            "Tiempo activo antes de inactividad (días)": dias_activos,
-                            "Cargas últimos 30d": cargas_30,
-                            "Monto promedio 30d": monto_30,
-                            "Cantidad de retiro": cantidad_retiro,
-                            "Riesgo de inactividad (%)": riesgo,
-                            "Nivel de riesgo": categoria,
-                            "Acción sugerida": accion,
-                            "Historial de contacto": "Sin contacto"
-                        })
-    
-                if resumen:
-                    df_resultado = pd.DataFrame(resumen).sort_values("Riesgo de inactividad (%)", ascending=False)
-    
-                    def color_alerta(dias):
-                        if dias > 30:
-                            return "🔴 Rojo"
-                        elif dias >= 15:
-                            return "🟡 Amarillo"
-                        else:
-                            return "🟢 Verde"
-    
-                    df_resultado["Alerta de inactividad"] = df_resultado["Días inactivos"].apply(color_alerta)
-    
-                    st.subheader("📊 Resumen de Inactividad y Riesgos")
-    
-                    riesgo_filtrar = st.selectbox("Filtrar jugadores por nivel de riesgo:", ["Todos", "Alto", "Medio", "Bajo"])
-                    if riesgo_filtrar != "Todos":
-                        df_resultado = df_resultado[df_resultado["Nivel de riesgo"].str.contains(riesgo_filtrar)]
-    
-                    editable_cols = ["Historial de contacto"]
-                    st.data_editor(
-                        df_resultado,
-                        num_rows="dynamic",
-                        use_container_width=True,
-                        column_config={col: st.column_config.TextColumn() for col in editable_cols}
-                    )
-    
-                    # 📈 Gráficos
-                    st.subheader("📉 Tendencia promedio de inactividad")
-                    dias_inactivos_media = df_resultado.groupby("Días inactivos").size().reset_index(name="Cantidad")
-                    fig_linea = px.line(dias_inactivos_media, x="Días inactivos", y="Cantidad", title="Días promedio de inactividad")
-                    st.plotly_chart(fig_linea, use_container_width=True)
-    
-                    st.subheader("🧐 Probabilidad de reactivación")
-                    df_resultado["Probabilidad de reactivación (%)"] = 100 - df_resultado["Riesgo de inactividad (%)"]
-                    fig_reactivacion = px.bar(df_resultado, x="Nombre de Usuario", y="Probabilidad de reactivación (%)", color="Nivel de riesgo", title="Chance de que recarguen")
-                    st.plotly_chart(fig_reactivacion, use_container_width=True)
-    
-                    st.subheader("⏳ Tiempo promedio de retención")
-                    tiempo_promedio_retencion = df_resultado["Tiempo activo antes de inactividad (días)"].mean()
-                    st.metric("Tiempo activo promedio", f"{tiempo_promedio_retencion:.1f} días")
-    
-                    st.subheader("🔻 Funnel de abandono")
-                    funnel = {
-                        "0-15 días": (df_resultado["Días inactivos"] <= 15).sum(),
-                        "16-30 días": ((df_resultado["Días inactivos"] > 15) & (df_resultado["Días inactivos"] <= 30)).sum(),
-                        "31-60 días": ((df_resultado["Días inactivos"] > 30) & (df_resultado["Días inactivos"] <= 60)).sum(),
-                        "60+ días": (df_resultado["Días inactivos"] > 60).sum()
-                    }
-                    funnel_df = pd.DataFrame(list(funnel.items()), columns=["Periodo", "Cantidad"])
-                    fig_funnel = px.funnel(funnel_df, x="Cantidad", y="Periodo", title="Funnel de abandono")
-                    st.plotly_chart(fig_funnel, use_container_width=True)
-    
-                    st.subheader("📈 Predicción de abandono futuro")
-                    cantidad_riesgo_alto = (df_resultado["Riesgo de inactividad (%)"] >= 60).sum()
-                    abandono_esperado = cantidad_riesgo_alto * 0.7
-                    if abandono_esperado > 0:
-                        fig_prediccion = px.bar(
-                            x=["Jugadores activos", "Posibles abandonos"],
-                            y=[len(df_resultado) - abandono_esperado, abandono_esperado],
-                            title="Proyección de abandono próximo",
-                            labels={"x": "Estado", "y": "Cantidad"}
-                        )
-                        st.plotly_chart(fig_prediccion, use_container_width=True)
-                    else:
-                        st.info("Actualmente no hay suficientes jugadores en riesgo medio-alto (60%+) para proyectar abandonos.")
-    
-            except Exception as e:
-                st.error(f"❌ Error al procesar el archivo: {e}")
+        if resumen:
+            df_resultado = pd.DataFrame(resumen).sort_values("Última vez que cargó", ascending=False)
+            st.subheader("📊 Resumen jugadores de agenda")
+            st.dataframe(df_resultado)
+            df_resultado.to_excel("resumen_agenda_fenix.xlsx", index=False)
+            with open("resumen_agenda_fenix.xlsx", "rb") as f:
+                st.download_button("📥 Descargar Excel", f, file_name="resumen_agenda_fenix.xlsx")
+        else:
+            st.info("⚠️ No se encontraron coincidencias entre jugadores nuevos y el historial de Fénix.")
