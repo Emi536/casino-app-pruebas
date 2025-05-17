@@ -30,6 +30,7 @@ authenticator = stauth.Authenticate(
 
 # Mostrar el formulario de inicio de sesión
 name, auth_status, username = authenticator.login("Iniciar sesión", "main")
+role = credentials["usernames"][username].get("role", "admin")
 
 
 if  auth_status is False:
@@ -90,8 +91,17 @@ elif auth_status:
     if "seccion_actual" not in st.session_state:
         st.session_state.seccion_actual = ""
     
-    seccion = st.sidebar.radio("Seleccioná una sección:", ["🔝 Métricas de jugadores", "📋 Registro Fénix","📋 Registro Eros","📋 Registro Bet Argento", "📆 Seguimiento de jugadores inactivos"])
+     # Definir qué secciones ve cada rol
+    secciones_por_rol = {
+        "admin": ["🔝 Métricas de jugadores", "📋 Registro Fénix", "📋 Registro Eros", "📋 Registro Bet Argento", "📆 Seguimiento de jugadores inactivos"],
+        "fenix_eros": ["🔝 Métricas de jugadores", "📋 Registro Fénix", "📋 Registro Eros"],
+        "bet": ["🔝 Métricas de jugadores","📋 Registro Bet Argento"]
+    }
     
+    # Obtener lista de secciones según el rol
+    secciones_disponibles = secciones_por_rol.get(role, [])
+    seccion = st.sidebar.radio("Seleccioná una sección:", secciones_disponibles)
+        
     if seccion != st.session_state.seccion_actual:
         st.session_state.texto_pegar = ""
         st.session_state.seccion_actual = seccion
