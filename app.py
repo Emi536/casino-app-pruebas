@@ -15,10 +15,6 @@ import json
 import copy
 import pickle 
 
-passwords = ['z01erosfxbet0125']
-hashed_passwords = stauth.Hasher(passwords).generate()
-print(hashed_passwords)
-
 
 # Leer credenciales y configuración de cookies desde secrets.toml
 credentials = dict(st.secrets["credentials"])
