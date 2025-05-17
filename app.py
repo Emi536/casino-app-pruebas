@@ -1606,3 +1606,165 @@ elif auth_status:
                 st.download_button("📥 Descargar Excel", f, file_name="resumen_agenda_fenix.xlsx")
         else:
             st.info("⚠️ No se encontraron coincidencias entre jugadores nuevos y el historial de Fénix.")
+
+    elif seccion == "📆 Agenda Eros":
+        st.header("📆 Seguimiento de Jugadores Nuevos - Eros")
+    
+        try:
+            hoja_agenda = sh.worksheet("agenda_eros")
+            nombres_agenda = hoja_agenda.col_values(1)[1:]
+            nombres_agenda = [str(n).strip().lower().replace(" ", "") for n in nombres_agenda if n]
+        except:
+            st.error("❌ No se pudo leer la hoja 'agenda_eros'")
+            st.stop()
+    
+        try:
+            hoja_eros = sh.worksheet("registro_eros")
+            data_eros = hoja_eros.get_all_records()
+            df_eros = pd.DataFrame(data_eros)
+        except:
+            st.error("❌ No se pudo leer la hoja 'registro_eros'")
+            st.stop()
+    
+        df_eros = df_eros.rename(columns={
+            "Del usuario": "Plataforma",
+            "Jugador": "Jugador",
+            "Monto": "Monto",
+            "Fecha": "Fecha",
+            "Tipo": "Tipo"
+        })
+    
+        df_eros["Jugador"] = df_eros["Jugador"].astype(str).str.strip().str.lower().str.replace(" ", "")
+        df_eros["Fecha"] = pd.to_datetime(df_eros["Fecha"], errors="coerce")
+        df_eros["Monto"] = pd.to_numeric(df_eros["Monto"], errors="coerce").fillna(0)
+    
+        valores_wagger = ["Eros_wagger30%", "Eros_wagger40%", "Eros_wagger50%", "Eros_wagger100%", "Eros_wagger150%", "Eros_wagger200%"]
+    
+        hoy = pd.to_datetime(datetime.date.today())
+        resumen = []
+    
+        for jugador in nombres_agenda:
+            historial = df_eros[df_eros["Jugador"] == jugador].sort_values("Fecha")
+            cargas = historial[historial["Tipo"].str.lower() == "in"]
+    
+            if not cargas.empty:
+                cargas_hl = cargas[cargas["Plataforma"] == "hl_Erosonline"]
+                cargas_wagger = cargas[cargas["Plataforma"].isin(valores_wagger)]
+    
+                suma_hl = cargas_hl["Monto"].sum()
+                suma_wagger = cargas_wagger["Monto"].sum()
+                fecha_ingreso = cargas["Fecha"].min()
+                ultima_carga = cargas["Fecha"].max()
+                promedio = cargas["Monto"].mean()
+                dias_inactivo = (hoy - ultima_carga).days
+    
+                if dias_inactivo <= 3:
+                    riesgo = "🟢 Bajo"
+                elif dias_inactivo <= 5:
+                    riesgo = "🟡 Medio"
+                else:
+                    riesgo = "🔴 Alto"
+    
+                resumen.append({
+                    "Nombre de Usuario": jugador,
+                    "Fecha que ingresó": fecha_ingreso,
+                    "Última vez que cargó": ultima_carga,
+                    "Veces que cargó": len(cargas),
+                    "Suma de las cargas (HL)": suma_hl,
+                    "Suma de las cargas (Wagger)": suma_wagger,
+                    "Monto promedio": promedio,
+                    "Días inactivos": dias_inactivo,
+                    "Nivel de riesgo": riesgo
+                })
+    
+        if resumen:
+            df_resultado = pd.DataFrame(resumen).sort_values("Última vez que cargó", ascending=False)
+            st.subheader("📊 Resumen jugadores de agenda")
+            st.dataframe(df_resultado)
+            df_resultado.to_excel("resumen_agenda_eros.xlsx", index=False)
+            with open("resumen_agenda_eros.xlsx", "rb") as f:
+                st.download_button("📥 Descargar Excel", f, file_name="resumen_agenda_eros.xlsx")
+        else:
+            st.info("⚠️ No se encontraron coincidencias entre jugadores nuevos y el historial de Eros.")
+
+    elif seccion == "📆 Agenda BetArgento":
+        st.header("📆 Seguimiento de Jugadores Nuevos - BetArgento")
+    
+        try:
+            hoja_agenda = sh.worksheet("agenda_bet")
+            nombres_agenda = hoja_agenda.col_values(1)[1:]
+            nombres_agenda = [str(n).strip().lower().replace(" ", "") for n in nombres_agenda if n]
+        except:
+            st.error("❌ No se pudo leer la hoja 'agenda_bet'")
+            st.stop()
+    
+        try:
+            hoja_bet = sh.worksheet("registro_betargento")
+            data_bet = hoja_bet.get_all_records()
+            df_bet = pd.DataFrame(data_bet)
+        except:
+            st.error("❌ No se pudo leer la hoja 'registro_betargento'")
+            st.stop()
+    
+        df_bet = df_bet.rename(columns={
+            "Del usuario": "Plataforma",
+            "Jugador": "Jugador",
+            "Monto": "Monto",
+            "Fecha": "Fecha",
+            "Tipo": "Tipo"
+        })
+    
+        df_bet["Jugador"] = df_bet["Jugador"].astype(str).str.strip().str.lower().str.replace(" ", "")
+        df_bet["Fecha"] = pd.to_datetime(df_bet["Fecha"], errors="coerce")
+        df_bet["Monto"] = pd.to_numeric(df_bet["Monto"], errors="coerce").fillna(0)
+    
+        valores_wagger = ["Argento_Wager","Argento_Wager30","Argento_Wager100", "Argento_Wager50", "Argento_Wager150", "Argento_Wager200"]
+    
+        hoy = pd.to_datetime(datetime.date.today())
+        resumen = []
+    
+        for jugador in nombres_agenda:
+            historial = df_bet[df_bet["Jugador"] == jugador].sort_values("Fecha")
+            cargas = historial[historial["Tipo"].str.lower() == "in"]
+    
+            if not cargas.empty:
+                cargas_hl = cargas[cargas["Plataforma"] == "hl_BetArgento"]
+                cargas_wagger = cargas[cargas["Plataforma"].isin(valores_wagger)]
+    
+                suma_hl = cargas_hl["Monto"].sum()
+                suma_wagger = cargas_wagger["Monto"].sum()
+                fecha_ingreso = cargas["Fecha"].min()
+                ultima_carga = cargas["Fecha"].max()
+                promedio = cargas["Monto"].mean()
+                dias_inactivo = (hoy - ultima_carga).days
+    
+                if dias_inactivo <= 3:
+                    riesgo = "🟢 Bajo"
+                elif dias_inactivo <= 5:
+                    riesgo = "🟡 Medio"
+                else:
+                    riesgo = "🔴 Alto"
+    
+                resumen.append({
+                    "Nombre de Usuario": jugador,
+                    "Fecha que ingresó": fecha_ingreso,
+                    "Última vez que cargó": ultima_carga,
+                    "Veces que cargó": len(cargas),
+                    "Suma de las cargas (HL)": suma_hl,
+                    "Suma de las cargas (Wagger)": suma_wagger,
+                    "Monto promedio": promedio,
+                    "Días inactivos": dias_inactivo,
+                    "Nivel de riesgo": riesgo
+                })
+    
+        if resumen:
+            df_resultado = pd.DataFrame(resumen).sort_values("Última vez que cargó", ascending=False)
+            st.subheader("📊 Resumen jugadores de agenda")
+            st.dataframe(df_resultado)
+            df_resultado.to_excel("resumen_agenda_betargento.xlsx", index=False)
+            with open("resumen_agenda_betargento.xlsx", "rb") as f:
+                st.download_button("📥 Descargar Excel", f, file_name="resumen_agenda_betargento.xlsx")
+        else:
+            st.info("⚠️ No se encontraron coincidencias entre jugadores nuevos y el historial de BetArgento.")
+
+
