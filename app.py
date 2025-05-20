@@ -935,29 +935,31 @@ elif auth_status:
             df_registro = pd.DataFrame(resumen).sort_values("Última vez que cargó", ascending=False)
 
             try:
-                hoja_princis = sh.worksheet("princi_eros")
-                data_princis = hoja_princis.get_all_values()
-                df_princis = pd.DataFrame(data_princis)
+                hoja_princi = sh.worksheet("princi_eros")
+                raw_princi = hoja_princi.get_all_values()
+                headers_princi = raw_princi[0]
+                data_princi = raw_princi[1:]
             
-                # Normalizar nombres y transponer para recorrer por columnas (cada princi)
-                df_princis = df_princis.fillna("").applymap(lambda x: x.strip().lower().replace(" ", ""))
-                princi_dict = {}
+                df_princi = pd.DataFrame(data_princi, columns=headers_princi)
             
-                for col in df_princis.columns:
-                    princi_num = f"Princi {int(ord(col.upper()) - 64)}"  # A=1, B=2,...
-                    for usuario in df_princis[col]:
-                        if usuario:
-                            princi_dict[usuario] = princi_num
+                # Crear diccionario {usuario_normalizado: princi}
+                mapa_princi = {}
+                for col in df_princi.columns:
+                    princi_nombre = col.strip()
+                    for nombre in df_princi[col].dropna():
+                        norm = str(nombre).strip().lower().replace(" ", "").replace("_", "")
+                        if norm:
+                            mapa_princi[norm] = princi_nombre
             
-                # Agregar columna de princi al df_registro
-                def obtener_princi(nombre):
-                    normalizado = str(nombre).strip().lower().replace(" ", "")
-                    return princi_dict.get(normalizado, "Sin asignar")
+                # Aplicar a df_registro
+                def asignar_princi(nombre):
+                    norm = str(nombre).strip().lower().replace(" ", "").replace("_", "")
+                    return mapa_princi.get(norm, "Sin princi")
             
-                df_registro["Princi"] = df_registro["Nombre de jugador"].apply(obtener_princi)
+                df_registro["Princi"] = df_registro["Nombre de jugador"].apply(asignar_princi)
             
             except Exception as e:
-                st.warning(f"⚠️ No se pudo asignar los princi a los jugadores: {e}")
+                st.warning(f"⚠️ No se pudo cargar la hoja princi_eros: {e}")
 
             try:
                 # 🧩 COMPLETAR TIPO DE BONO desde hoja 'registro_bono_eros'
