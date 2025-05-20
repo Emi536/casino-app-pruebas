@@ -935,33 +935,6 @@ elif auth_status:
             df_registro = pd.DataFrame(resumen).sort_values("Última vez que cargó", ascending=False)
 
             try:
-                hoja_princi = sh.worksheet("princi_eros")
-                raw_princi = hoja_princi.get_all_values()
-                headers_princi = raw_princi[0]
-                data_princi = raw_princi[1:]
-            
-                df_princi = pd.DataFrame(data_princi, columns=headers_princi)
-            
-                # Crear diccionario {usuario_normalizado: princi}
-                mapa_princi = {}
-                for col in df_princi.columns:
-                    princi_nombre = col.strip()
-                    for nombre in df_princi[col].dropna():
-                        norm = str(nombre).strip().lower().replace(" ", "").replace("_", "")
-                        if norm:
-                            mapa_princi[norm] = princi_nombre
-            
-                # Aplicar a df_registro
-                def asignar_princi(nombre):
-                    norm = str(nombre).strip().lower().replace(" ", "").replace("_", "")
-                    return mapa_princi.get(norm, "Sin princi")
-            
-                df_registro["Princi"] = df_registro["Nombre de jugador"].apply(asignar_princi)
-            
-            except Exception as e:
-                st.warning(f"⚠️ No se pudo cargar la hoja princi_eros: {e}")
-
-            try:
                 # 🧩 COMPLETAR TIPO DE BONO desde hoja 'registro_bono_eros'
                 hoja_users = sh.worksheet("registro_bono_eros")
                 raw_data_users = hoja_users.get_all_values()
