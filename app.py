@@ -480,6 +480,31 @@ elif auth_status:
             df_registro = pd.DataFrame(resumen).sort_values("Última vez que cargó", ascending=False)
 
             try:
+                hoja_princi_fenix = sh.worksheet("princi_fenix")
+                data_princi_fenix = hoja_princi_fenix.get_all_values()
+                df_princi_fenix = pd.DataFrame(data_princi_fenix[1:], columns=data_princi_fenix[0])
+            
+                # Normalizar nombres: remover espacios, convertir a minúscula
+                def normalizar(nombre):
+                    return str(nombre).strip().lower().replace(" ", "").replace("_", "")
+            
+                # Crear un diccionario: nombre_normalizado ➝ princi
+                mapping_princi_fenix = {}
+                for col in df_princi_fenix.columns:
+                    for nombre in df_princi_fenix[col]:
+                        if nombre.strip():
+                            nombre_norm = normalizar(nombre)
+                            mapping_princi_fenix[nombre_norm] = col.strip().upper()
+            
+                # Asignar el princi al dataframe df_registro
+                df_registro["Jugador_NORM"] = df_registro["Nombre de jugador"].apply(normalizar)
+                df_registro["PRINCI"] = df_registro["Jugador_NORM"].map(mapping_princi_fenix).fillna("N/A")
+                df_registro = df_registro.drop(columns=["Jugador_NORM"])
+            
+            except Exception as e:
+                st.warning(f"⚠️ No se pudo asignar los PRINCI a los jugadores (Fénix): {e}")
+
+            try:
                 # 🧩 COMPLETAR TIPO DE BONO desde hoja 'registro_bono_fenix'
                 hoja_users = sh.worksheet("registro_bono_fenix")
                 raw_data_users = hoja_users.get_all_values()
@@ -510,6 +535,12 @@ elif auth_status:
                 # Asignar tipo de bono (rellenar con "N/A" si no hay match)
                 df_registro["Tipo de bono"] = df_registro["FUNNEL"].fillna("N/A")
                 df_registro = df_registro.drop(columns=["FUNNEL"])
+                cols = df_registro.columns.tolist()
+                if "Tipo de bono" in cols and "PRINCI" in cols:
+                    cols.remove("PRINCI")
+                    idx = cols.index("Tipo de bono") + 1
+                    cols.insert(idx, "PRINCI")
+                    df_registro = df_registro[cols]
             
             except Exception as e:
                 st.warning(f"⚠️ No se pudo cargar el tipo de bono desde registro_bono_fenix: {e}")
