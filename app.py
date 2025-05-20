@@ -934,7 +934,30 @@ elif auth_status:
         
             df_registro = pd.DataFrame(resumen).sort_values("Última vez que cargó", ascending=False)
 
-
+            try:
+                hoja_princi = sh.worksheet("princi_eros")
+                data_princi = hoja_princi.get_all_values()
+                df_princi = pd.DataFrame(data_princi[1:], columns=data_princi[0])
+            
+                # Normalizar nombres: remover espacios, convertir a minúscula
+                def normalizar(nombre):
+                    return str(nombre).strip().lower().replace(" ", "").replace("_", "")
+            
+                # Crear un diccionario: nombre_normalizado ➝ princi
+                mapping_princi = {}
+                for col in df_princi.columns:
+                    for nombre in df_princi[col]:
+                        if nombre.strip():
+                            nombre_norm = normalizar(nombre)
+                            mapping_princi[nombre_norm] = col.strip().upper()
+            
+                # Asignar el princi al dataframe df_registro
+                df_registro["Jugador_NORM"] = df_registro["Nombre de jugador"].apply(normalizar)
+                df_registro["PRINCI"] = df_registro["Jugador_NORM"].map(mapping_princi).fillna("N/A")
+                df_registro = df_registro.drop(columns=["Jugador_NORM"])
+            
+            except Exception as e:
+                st.warning(f"⚠️ No se pudo asignar los PRINCI a los jugadores: {e}")
 
 
             try:
