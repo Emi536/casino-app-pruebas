@@ -934,30 +934,7 @@ elif auth_status:
         
             df_registro = pd.DataFrame(resumen).sort_values("Última vez que cargó", ascending=False)
 
-            try:
-                hoja_princis = sh.worksheet("princi_eros")
-                data_princis = hoja_princis.get_all_values()
-                df_princis = pd.DataFrame(data_princis)
-            
-                # Normalizar nombres y transponer para recorrer por columnas (cada princi)
-                df_princis = df_princis.fillna("").applymap(lambda x: x.strip().lower().replace(" ", ""))
-                princi_dict = {}
-            
-                for col in df_princis.columns:
-                    princi_num = f"Princi {int(ord(col.upper()) - 64)}"  # A=1, B=2,...
-                    for usuario in df_princis[col]:
-                        if usuario:
-                            princi_dict[usuario] = princi_num
-            
-                # Agregar columna de princi al df_registro
-                def obtener_princi(nombre):
-                    normalizado = str(nombre).strip().lower().replace(" ", "")
-                    return princi_dict.get(normalizado, "Sin asignar")
-            
-                df_registro["Princi"] = df_registro["Nombre de jugador"].apply(obtener_princi)
-            
-            except Exception as e:
-                st.warning(f"⚠️ No se pudo asignar los princi a los jugadores: {e}")
+
 
 
             try:
