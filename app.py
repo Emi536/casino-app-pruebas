@@ -992,6 +992,12 @@ elif auth_status:
                 # Asignar tipo de bono
                 df_registro["Tipo de bono"] = df_registro["FUNNEL"].fillna("N/A")
                 df_registro = df_registro.drop(columns=["FUNNEL"])
+                cols = df_registro.columns.tolist()
+                if "Tipo de bono" in cols and "PRINCI" in cols:
+                    cols.remove("PRINCI")
+                    idx = cols.index("Tipo de bono") + 1
+                    cols.insert(idx, "PRINCI")
+                    df_registro = df_registro[cols]
             
             except Exception as e:
                 st.warning(f"⚠️ No se pudo cargar el tipo de bono desde registro_bono_eros: {e}")
