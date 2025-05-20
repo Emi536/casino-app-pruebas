@@ -934,37 +934,31 @@ elif auth_status:
         
             df_registro = pd.DataFrame(resumen).sort_values("Última vez que cargó", ascending=False)
 
+
             try:
-                # Obtener hoja princi_eros
                 hoja_princi = sh.worksheet("princi_eros")
-                raw_data_princi = hoja_princi.get_all_values()
-                headers_princi = raw_data_princi[0]
-                rows_princi = raw_data_princi[1:]
-                df_princi = pd.DataFrame(rows_princi, columns=headers_princi)
+                data_princi = hoja_princi.get_all_values()
+                df_princi = pd.DataFrame(data_princi[1:], columns=data_princi[0])
             
-                # Normalizar función
+                # Normalizar nombres: remover espacios, convertir a minúscula
                 def normalizar(nombre):
                     return str(nombre).strip().lower().replace(" ", "").replace("_", "")
             
-                # Construir diccionario de usuario → princi
-                princi_map = {}
+                # Crear un diccionario: nombre_normalizado ➝ princi
+                mapping_princi = {}
                 for col in df_princi.columns:
-                    for val in df_princi[col].dropna():
-                        norm_name = normalizar(val)
-                        if norm_name:
-                            princi_map[norm_name] = col
+                    for nombre in df_princi[col]:
+                        if nombre.strip():
+                            nombre_norm = normalizar(nombre)
+                            mapping_princi[nombre_norm] = col.strip().upper()
             
-                # Normalizar jugadores
-                df_registro["JUGADOR_NORM"] = df_registro["Nombre de jugador"].apply(normalizar)
-            
-                # Asignar PRINCI
-                df_registro["PRINCI"] = df_registro["JUGADOR_NORM"].map(princi_map).fillna("Sin asignar")
-            
-                # Eliminar columna auxiliar
-                df_registro.drop(columns=["JUGADOR_NORM"], inplace=True)
+                # Asignar el princi al dataframe df_registro
+                df_registro["Jugador_NORM"] = df_registro["Nombre de jugador"].apply(normalizar)
+                df_registro["PRINCI"] = df_registro["Jugador_NORM"].map(mapping_princi).fillna("N/A")
+                df_registro = df_registro.drop(columns=["Jugador_NORM"])
             
             except Exception as e:
-                st.warning(f"⚠️ No se pudo asignar los princi a los jugadores: {e}")
+                st.warning(f"⚠️ No se pudo asignar los PRINCI a los jugadores: {e}")
 
 
             try:
