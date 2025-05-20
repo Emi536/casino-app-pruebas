@@ -1449,6 +1449,30 @@ elif auth_status:
                 st.success("✅ Resumen recalculado y cacheado.")
         
             df_registro = pd.DataFrame(resumen).sort_values("Última vez que cargó", ascending=False)
+
+            try:
+                hoja_princi = sh.worksheet("princi_betargento")
+                data_princi = hoja_princi.get_all_values()
+                df_princi = pd.DataFrame(data_princi[1:], columns=data_princi[0])
+            
+                def normalizar(nombre):
+                    return str(nombre).strip().lower().replace(" ", "").replace("_", "")
+            
+                mapping_princi = {}
+                for col in df_princi.columns:
+                    for nombre in df_princi[col]:
+                        if nombre.strip():
+                            nombre_norm = normalizar(nombre)
+                            mapping_princi[nombre_norm] = col.strip().upper()
+            
+                df_registro["Jugador_NORM"] = df_registro["Nombre de jugador"].apply(normalizar)
+                df_registro["PRINCI"] = df_registro["Jugador_NORM"].map(mapping_princi).fillna("N/A")
+                df_registro = df_registro.drop(columns=["Jugador_NORM"])
+            
+            except Exception as e:
+                st.warning(f"⚠️ No se pudo asignar los PRINCI a los jugadores de Bet Argento: {e}")
+
+
             try:
                 hoja_users = sh.worksheet("registro_bono_bet")
                 raw_data_users = hoja_users.get_all_values()
@@ -1473,6 +1497,12 @@ elif auth_status:
 
                 df_registro["Tipo de bono"] = df_registro["FUNNEL"].fillna("N/A")
                 df_registro = df_registro.drop(columns=["FUNNEL"])
+                cols = df_registro.columns.tolist()
+                if "Tipo de bono" in cols and "PRINCI" in cols:
+                    cols.remove("PRINCI")
+                    idx = cols.index("Tipo de bono") + 1
+                    cols.insert(idx, "PRINCI")
+                    df_registro = df_registro[cols]
 
             except Exception as e:
                 st.warning(f"⚠️ No se pudo cargar el tipo de bono desde registro_bono_bet: {e}")
