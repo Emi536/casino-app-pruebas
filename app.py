@@ -1803,7 +1803,7 @@ elif auth_status:
         
             if resumen_actualizado:
                 from collections import Counter
-                valores_hl = ["hl_Erosonline"]
+                valores_hl = ["hall_atenea"]
                 valores_wagger = [
                     "Eros_wagger30%", "Eros_wagger40%", "Eros_wagger50%",
                     "Eros_wagger100%", "Eros_wagger150%", "Eros_wagger200%"
