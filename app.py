@@ -1636,11 +1636,11 @@ elif auth_status:
         df_historial = pd.DataFrame()
     
         try:
-            hoja_eros = sh.worksheet("registro_spirita")
-            data_eros = hoja_eros.get_all_records()
-            df_historial = pd.DataFrame(data_eros)
+            hoja_spirita = sh.worksheet("registro_spirita")
+            data_spirita = hoja_spirita.get_all_records()
+            df_historial = pd.DataFrame(data_spirita)
         except:
-            hoja_eros = sh.add_worksheet(title="registro_spirita", rows="1000", cols="20")
+            hoja_spirita = sh.add_worksheet(title="registro_spirita", rows="1000", cols="20")
             df_historial = pd.DataFrame()
     
         def convertir_monto(valor):
@@ -1727,14 +1727,12 @@ elif auth_status:
                 df_nuevo["Responsable"] = responsable
                 df_nuevo["Fecha_Subida"] = fecha_actual
     
-                valores_eros = [
-                    "hl_Erosonline",
-                    "Eros_wagger30%", "Eros_wagger40%", "Eros_wagger50%",
-                    "Eros_wagger100%", "Eros_wagger150%", "Eros_wagger200%"
+                valores_spirita = [
+                    "hall_atenea"
                 ]
                 if "Del usuario" in df_nuevo.columns:
                     df_nuevo["Del usuario"] = df_nuevo["Del usuario"].astype(str).str.strip()
-                    df_nuevo = df_nuevo[df_nuevo["Del usuario"].isin(valores_eros)]
+                    df_nuevo = df_nuevo[df_nuevo["Del usuario"].isin(valores_spirita)]
     
                 df_nuevo = limpiar_dataframe(df_nuevo)
     
@@ -1749,10 +1747,10 @@ elif auth_status:
                 df_historial = pd.concat([df_historial, df_nuevo], ignore_index=True)
                 df_historial.drop_duplicates(subset=["ID"], inplace=True)
     
-                hoja_eros.clear()
-                hoja_eros.update([df_historial.columns.tolist()] + df_historial.astype(str).values.tolist())
+                hoja_spirita.clear()
+                hoja_spirita.update([df_historial.columns.tolist()] + df_historial.astype(str).values.tolist())
     
-                st.success(f"✅ Registros de Eros actualizados correctamente. Total acumulado: {len(df_historial)}")
+                st.success(f"✅ Registros de spirita actualizados correctamente. Total acumulado: {len(df_historial)}")
     
             except Exception as e:
                 st.error(f"❌ Error al procesar los datos pegados: {e}")
@@ -1805,8 +1803,8 @@ elif auth_status:
                 from collections import Counter
                 valores_hl = ["hall_atenea"]
                 valores_wagger = [
-                    "Eros_wagger30%", "Eros_wagger40%", "Eros_wagger50%",
-                    "Eros_wagger100%", "Eros_wagger150%", "Eros_wagger200%"
+                    "spirita_wagger30%", "spirita_wagger40%", "spirita_wagger50%",
+                    "spirita_wagger100%", "spirita_wagger150%", "spirita_wagger200%"
                 ]
                 jugadores = df["Jugador"].dropna().unique()
         
@@ -1981,7 +1979,7 @@ elif auth_status:
                 st.download_button("📅 Descargar Excel", f, file_name="registro_jugadores.xlsx")
 
 
-        # 🔵 Tabla Bono Eros desde hojas "registro_users" y "bonos_ofrecidos"
+        # 🔵 Tabla Bono Spirita desde hojas "registro_users" y "bonos_ofrecidos"
         try:
             # Leer hoja principal ignorando posibles conflictos de encabezado
             hoja_registro = sh.worksheet("registro_bono_spirita")
@@ -2010,7 +2008,7 @@ elif auth_status:
             df_registro_users = df_registro_users.drop(columns=["USUARIO_NORM"])
         
             # Leer hoja con categorías de bonos
-            hoja_bonos = sh.worksheet("bonos_ofrecidos_eros")
+            hoja_bonos = sh.worksheet("bonos_ofrecidos_spirita")
             raw_data_bonos = hoja_bonos.get_all_values()
             headers_bonos = raw_data_bonos[0]
         
