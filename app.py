@@ -748,30 +748,42 @@ elif auth_status:
         def convertir_monto(valor):
             if pd.isna(valor): return 0.0
             valor = str(valor)
-            # Eliminar caracteres invisibles y separadores ambiguos
-            valor = valor.replace("\u202f", "")  # Narrow no-break space
-            valor = valor.replace("\xa0", "")    # Non-breaking space
-            valor = valor.replace(" ", "")       # Espacios normales
-            valor = valor.replace(",", "")       # Comas (separador de miles)
+            valor = valor.replace("\u202f", "").replace("\xa0", "").replace(" ", "").replace(",", "")
             try:
                 return float(valor)
             except:
                 return 0.0
     
-    
         def limpiar_dataframe(df_temp):
             df_temp = df_temp.copy()
             if "Jugador" in df_temp.columns:
                 df_temp["Jugador"] = df_temp["Jugador"].astype(str).str.strip().str.lower()
-    
             for col in ["Monto", "Retiro", "Balance antes de operación", "Wager"]:
                 if col in df_temp.columns:
                     df_temp[col] = df_temp[col].apply(convertir_monto)
-    
             if "Fecha" in df_temp.columns:
                 df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"], errors="coerce")
-    
             return df_temp
+    
+        def procesar_retiros_validos(df, iniciadores_validos):
+            df["FechaHora"] = pd.to_datetime(df["Fecha"].astype(str) + " " + df["Hora"].astype(str), errors="coerce")
+            df_retiros_validos = df[
+                (df["Tipo"].str.lower() == "out") & df["Iniciador"].isin(iniciadores_validos)
+            ].copy()
+            df_cargas = df[df["Tipo"].str.lower() == "in"].copy()
+            df_retiros_validos["Clave"] = df_retiros_validos["Jugador"] + df_retiros_validos["Retiro"].astype(str)
+            df_cargas["Clave"] = df_cargas["Jugador"] + df_cargas["Monto"].astype(str)
+            df_cargas["FechaHora"] = pd.to_datetime(df_cargas["Fecha"].astype(str) + " " + df_cargas["Hora"].astype(str), errors="coerce")
+            claves_cargas = df_cargas.set_index("Clave")["FechaHora"].to_dict()
+            indices_a_excluir = []
+            for i, row in df_retiros_validos.iterrows():
+                clave = row["Clave"]
+                if clave in claves_cargas:
+                    delta = row["FechaHora"] - claves_cargas[clave]
+                    if pd.notnull(delta) and delta.total_seconds() <= 120:
+                        indices_a_excluir.append(i)
+            df_retiros_validos = df_retiros_validos.drop(index=indices_a_excluir)
+            return df_retiros_validos
     
         df_historial = limpiar_dataframe(df_historial)
     
@@ -915,7 +927,7 @@ elif auth_status:
                 for jugador in jugadores:
                     historial = df[df["Jugador"] == jugador].sort_values("Fecha")
                     cargas = historial[historial["Tipo"].str.lower() == "in"]
-                    retiros = historial[historial["Tipo"].str.lower() == "out"]
+                    retiros = procesar_retiros_validos(historial, ["DemonGOD", "DaniGOD", "NahueGOD", "CajeroJuancho", "JuanpiCajero", "FlorGOD", "SebaGOD"])
         
                     cargas_hl = cargas[cargas["Del usuario"].isin(valores_hl)]
                     cargas_wagger = cargas[cargas["Del usuario"].isin(valores_wagger)]
@@ -1256,8 +1268,35 @@ elif auth_status:
                 df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"], errors="coerce")
     
             return df_temp
+
+        def procesar_retiros_validos(df, iniciadores_validos):
+            df["FechaHora"] = pd.to_datetime(df["Fecha"].astype(str) + " " + df["Hora"].astype(str), errors="coerce")
+        
+            df_retiros_validos = df[
+                (df["Tipo"].str.lower() == "out") & df["Iniciador"].isin(iniciadores_validos)
+            ].copy()
+        
+            df_cargas = df[df["Tipo"].str.lower() == "in"].copy()
+            df_cargas["FechaHora"] = pd.to_datetime(df_cargas["Fecha"].astype(str) + " " + df_cargas["Hora"].astype(str), errors="coerce")
+        
+            df_retiros_validos["Clave"] = df_retiros_validos["Jugador"] + df_retiros_validos["Retiro"].astype(str)
+            df_cargas["Clave"] = df_cargas["Jugador"] + df_cargas["Monto"].astype(str)
+        
+            claves_cargas = df_cargas.set_index("Clave")["FechaHora"].to_dict()
+        
+            indices_a_excluir = []
+            for i, row in df_retiros_validos.iterrows():
+                clave = row["Clave"]
+                if clave in claves_cargas:
+                    delta = row["FechaHora"] - claves_cargas[clave]
+                    if pd.notnull(delta) and delta.total_seconds() <= 120:
+                        indices_a_excluir.append(i)
+        
+            df_retiros_validos = df_retiros_validos.drop(index=indices_a_excluir)
+            return df_retiros_validos
     
         df_historial = limpiar_dataframe(df_historial)
+
     
         if "Fecha" in df_historial.columns:
             df_historial["Fecha"] = pd.to_datetime(df_historial["Fecha"], errors="coerce")
@@ -1400,7 +1439,7 @@ elif auth_status:
                 for jugador in jugadores:
                     historial = df[df["Jugador"] == jugador].sort_values("Fecha")
                     cargas = historial[historial["Tipo"].str.lower() == "in"]
-                    retiros = historial[historial["Tipo"].str.lower() == "out"]
+                    retiros = procesar_retiros_validos(historial, ["subagente01", "subagente03", "sub_agent06", "sub_agent11", "sub_agent012"])
         
                     cargas_hl = cargas[cargas["Del usuario"].isin(valores_hl)]
                     cargas_wagger = cargas[cargas["Del usuario"].isin(valores_wagger)]
