@@ -2366,7 +2366,7 @@ elif auth_status:
                 df_cargas = df[df["Tipo"] == "in"]
                 df_retiros = df[df["Tipo"] == "out"]
     
-                # Agrupaciones
+                # Agrupaciones optimizadas
                 cargas_agg = df_cargas.groupby("Jugador").agg({
                     "Monto": "sum",
                     "Fecha": ["min", "max", "count"]
@@ -2379,13 +2379,14 @@ elif auth_status:
                 df_ltv = cargas_agg.merge(retiros_agg, on="Jugador", how="left")
                 df_ltv["Total_Retirado"] = df_ltv["Total_Retirado"].fillna(0)
     
-                # Calcular LTV real
+                # Calcular días activos y LTV
                 df_ltv["Dias_Activo"] = (df_ltv["Fecha_Ultima"] - df_ltv["Fecha_Inicio"]).dt.days + 1
                 df_ltv["Costo_Adquisicion"] = 5.10
                 df_ltv["LTV"] = df_ltv["Total_Cargado"] - df_ltv["Total_Retirado"] - df_ltv["Costo_Adquisicion"]
     
-                hoy = pd.to_datetime(datetime.date.today())
-                df_ltv["Días_Sin_Cargar"] = (hoy - df_ltv["Fecha_Ultima"]).dt.days
+                # 🟡 Inactividad según el último día del archivo, no la fecha actual
+                fecha_final_reporte = df["Fecha"].max()
+                df_ltv["Días_Sin_Cargar"] = (fecha_final_reporte - df_ltv["Fecha_Ultima"]).dt.days
                 df_ltv["Estado"] = df_ltv["Días_Sin_Cargar"].apply(lambda x: "Activo" if x <= 5 else "Inactivo")
     
                 # Mostrar resultados
@@ -2399,5 +2400,5 @@ elif auth_status:
     
             except Exception as e:
                 st.error(f"❌ Error al procesar el archivo: {e}")
-
+    
 
