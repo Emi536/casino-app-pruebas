@@ -2479,10 +2479,10 @@ elif auth_status:
                 
                 st.markdown("#### 📈 Promedios Generales (Lifetime Value)")
                 col1, col2, col3, col4 = st.columns(4)
-                col1.metric("💰 Total Cargado", f"${promedio_cargado:,.2f}")
-                col2.metric("🔁 Veces que Cargó", f"{promedio_veces:.2f}")
-                col3.metric("📤 Total Retirado", f"${promedio_retirado:,.2f}")
-                col4.metric("📅 Días Activo", f"{promedio_dias_activo:.2f}")
+                col1.metric(" Total Cargado", f"${promedio_cargado:,.2f}")
+                col2.metric(" Veces que Cargó", f"{promedio_veces:.2f}")
+                col3.metric(" Total Retirado", f"${promedio_retirado:,.2f}")
+                col4.metric(" Días Activo", f"{promedio_dias_activo:.2f}")
     
                 df_ltv.to_excel("ltv_temporal.xlsx", index=False)
                 with open("ltv_temporal.xlsx", "rb") as f:
