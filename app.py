@@ -2460,9 +2460,9 @@ elif auth_status:
     
                 # Cálculos
                 df_ltv["Dias_Activo"] = (df_ltv["Fecha_Ultima"] - df_ltv["Fecha_Inicio"]).dt.days + 1
-                df_ltv["Costo_Adquisicion"] = 5.10
-                df_ltv["LTV"] = df_ltv["Total_Cargado"] - df_ltv["Total_Retirado"] - df_ltv["Costo_Adquisicion"]
-    
+                costo_adquisicion = 5.10
+                df_ltv["LTV"] = df_ltv["Total_Cargado"] - df_ltv["Total_Retirado"] - costo_adquisicion
+
                 fecha_final_reporte = df["Fecha"].max()
                 df_ltv["Días_Sin_Cargar"] = (fecha_final_reporte - df_ltv["Fecha_Ultima"]).dt.days
                 df_ltv["Estado"] = df_ltv["Días_Sin_Cargar"].apply(lambda x: "Activo" if x <= 5 else "Inactivo")
