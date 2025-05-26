@@ -2370,7 +2370,7 @@ elif auth_status:
         st.header("📊 Análisis Temporal de Jugadores")
     
         tipo_analisis = st.selectbox("📌 Elegí el tipo de análisis a realizar:", ["Lifetime Value"], index=0)
-        archivo_temporal = st.file_uploader("📥 Pegá o subí aquí tus reportes combinados de 3 meses (CSV o Excel)", type=["csv", "xlsx", "xls"])
+        archivo_temporal = st.file_uploader("📥 Pegá o subí aquí tus reportes", type=["csv", "xlsx", "xls"])
     
         if archivo_temporal and tipo_analisis == "Lifetime Value":
             try:
