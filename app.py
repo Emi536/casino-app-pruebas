@@ -2324,12 +2324,24 @@ elif auth_status:
         if archivo_temporal and tipo_analisis == "Lifetime Value":
             try:
                 df = pd.read_csv(archivo_temporal) if archivo_temporal.name.endswith(".csv") else pd.read_excel(archivo_temporal)
+    
+                # 🔁 Renombrar columnas clave para el análisis
+                df = df.rename(columns={
+                    "operación": "Tipo",
+                    "Depositar": "Monto",
+                    "Retirar": "Retiro",
+                    "Fecha": "Fecha",
+                    "Al usuario": "Jugador"
+                })
+    
+                # 🧹 Limpieza y normalización
                 df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
                 df["Monto"] = pd.to_numeric(df["Monto"], errors="coerce").fillna(0)
                 df["Retiro"] = pd.to_numeric(df.get("Retiro", 0), errors="coerce").fillna(0)
                 df["Jugador"] = df["Jugador"].astype(str).str.strip().str.lower()
                 df["Tipo"] = df["Tipo"].str.lower()
     
+                # 🧩 Separar y agrupar
                 df_cargas = df[df["Tipo"] == "in"]
                 df_retiros = df[df["Tipo"] == "out"]
     
@@ -2345,6 +2357,7 @@ elif auth_status:
                 df_ltv = cargas_agg.merge(retiros_agg, on="Jugador", how="left")
                 df_ltv["Total_Retirado"] = df_ltv["Total_Retirado"].fillna(0)
     
+                # 🎯 Calcular métricas de vida y LTV
                 df_ltv["Dias_Activo"] = (df_ltv["Fecha_Ultima"] - df_ltv["Fecha_Inicio"]).dt.days + 1
                 df_ltv["Costo_Adquisicion"] = 5.10
                 df_ltv["LTV"] = df_ltv["Total_Cargado"] - df_ltv["Total_Retirado"] - df_ltv["Costo_Adquisicion"]
@@ -2355,6 +2368,7 @@ elif auth_status:
     
                 st.success("✅ Análisis Lifetime Value generado correctamente.")
                 st.dataframe(df_ltv)
+    
                 df_ltv.to_excel("ltv_temporal.xlsx", index=False)
                 with open("ltv_temporal.xlsx", "rb") as f:
                     st.download_button("📥 Descargar Excel", f, file_name="ltv_temporal.xlsx")
