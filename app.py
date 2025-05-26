@@ -2440,7 +2440,7 @@ elif auth_status:
                 )
     
                 merged["dif_segundos"] = (merged["DateTime_out"] - merged["DateTime_in"]).dt.total_seconds()
-                errores = merged[merged["dif_segundos"] <= 120][["Jugador", "DateTime_out"]]
+                errores = merged[merged["dif_segundos"] <= 300][["Jugador", "DateTime_out"]]
                 df_retiros = df_retiros[~df_retiros.set_index(["Jugador", "DateTime"]).index.isin(errores.set_index(["Jugador", "DateTime_out"]).index)]
     
                 # 🔄 Agrupaciones
