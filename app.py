@@ -2178,7 +2178,7 @@ elif auth_status:
     
                 if dias_inactivo <= 3:
                     riesgo = "🟢 Bajo"
-                elif dias_inactivo <= 5:
+                elif dias_inactivo <= 19:
                     riesgo = "🟡 Medio"
                 else:
                     riesgo = "🔴 Alto"
@@ -2258,7 +2258,7 @@ elif auth_status:
     
                 if dias_inactivo <= 3:
                     riesgo = "🟢 Bajo"
-                elif dias_inactivo <= 5:
+                elif dias_inactivo <= 19:
                     riesgo = "🟡 Medio"
                 else:
                     riesgo = "🔴 Alto"
@@ -2338,7 +2338,7 @@ elif auth_status:
     
                 if dias_inactivo <= 3:
                     riesgo = "🟢 Bajo"
-                elif dias_inactivo <= 5:
+                elif dias_inactivo <= 19:
                     riesgo = "🟡 Medio"
                 else:
                     riesgo = "🔴 Alto"
@@ -2465,7 +2465,7 @@ elif auth_status:
 
                 fecha_final_reporte = df["Fecha"].max()
                 df_ltv["Días_Sin_Cargar"] = (fecha_final_reporte - df_ltv["Fecha_Ultima"]).dt.days
-                df_ltv["Estado"] = df_ltv["Días_Sin_Cargar"].apply(lambda x: "Activo" if x <= 5 else "Inactivo")
+                df_ltv["Estado"] = df_ltv["Días_Sin_Cargar"].apply(lambda x: "Activo" if x <= 19 else "Inactivo")
     
                 # Mostrar resultados
                 st.success("✅ Análisis Lifetime Value generado correctamente.")
