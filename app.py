@@ -2325,7 +2325,7 @@ elif auth_status:
             try:
                 df = pd.read_csv(archivo_temporal) if archivo_temporal.name.endswith(".csv") else pd.read_excel(archivo_temporal)
     
-                # 🔁 Renombrar columnas clave para el análisis
+                # 🔁 Renombrar columnas clave
                 df = df.rename(columns={
                     "operación": "Tipo",
                     "Depositar": "Monto",
@@ -2334,17 +2334,39 @@ elif auth_status:
                     "Al usuario": "Jugador"
                 })
     
-                # 🧹 Limpieza y normalización
+                # 🧹 Limpieza
                 df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
                 df["Monto"] = pd.to_numeric(df["Monto"], errors="coerce").fillna(0)
                 df["Retiro"] = pd.to_numeric(df.get("Retiro", 0), errors="coerce").fillna(0)
                 df["Jugador"] = df["Jugador"].astype(str).str.strip().str.lower()
                 df["Tipo"] = df["Tipo"].str.lower()
     
-                # 🧩 Separar y agrupar
+                # 🔎 Filtrar por plataformas válidas (HL y Wagger)
+                valores_hl = ["hl_casinofenix", "hl_erosonline", "hl_betargento", "hall_atenea"]
+                valores_wagger = [
+                    "Fenix_Wagger30", "Fenix_Wagger40", "Fenix_Wagger50", "Fenix_Wagger100",
+                    "Fenix_Wagger150", "Fenix_Wagger200",
+                    "Eros_wagger30%", "Eros_wagger40%", "Eros_wagger50%", "Eros_wagger100%",
+                    "Eros_wagger150%", "Eros_wagger200%",
+                    "Argento_Wager30", "Argento_Wager40", "Argento_Wager50", "Argento_Wager100",
+                    "Argento_Wager150", "Argento_Wager200",
+                    "spirita_wagger30%", "spirita_wagger40%", "spirita_wagger50%", "spirita_wagger100%",
+                    "spirita_wagger150%", "spirita_wagger200%"
+                ]
+                plataformas_validas = valores_hl + valores_wagger
+    
+                if "Del usuario" in df.columns:
+                    df["Del usuario"] = df["Del usuario"].astype(str).str.strip()
+                    df = df[df["Del usuario"].isin(plataformas_validas)]
+                else:
+                    st.warning("❗ No se encontró la columna 'Del usuario'. No se puede filtrar por plataformas válidas.")
+                    st.stop()
+    
+                # Filtrar operaciones de carga y retiro
                 df_cargas = df[df["Tipo"] == "in"]
                 df_retiros = df[df["Tipo"] == "out"]
     
+                # Agrupaciones
                 cargas_agg = df_cargas.groupby("Jugador").agg({
                     "Monto": "sum",
                     "Fecha": ["min", "max", "count"]
@@ -2357,7 +2379,7 @@ elif auth_status:
                 df_ltv = cargas_agg.merge(retiros_agg, on="Jugador", how="left")
                 df_ltv["Total_Retirado"] = df_ltv["Total_Retirado"].fillna(0)
     
-                # 🎯 Calcular métricas de vida y LTV
+                # Calcular LTV real
                 df_ltv["Dias_Activo"] = (df_ltv["Fecha_Ultima"] - df_ltv["Fecha_Inicio"]).dt.days + 1
                 df_ltv["Costo_Adquisicion"] = 5.10
                 df_ltv["LTV"] = df_ltv["Total_Cargado"] - df_ltv["Total_Retirado"] - df_ltv["Costo_Adquisicion"]
@@ -2366,9 +2388,11 @@ elif auth_status:
                 df_ltv["Días_Sin_Cargar"] = (hoy - df_ltv["Fecha_Ultima"]).dt.days
                 df_ltv["Estado"] = df_ltv["Días_Sin_Cargar"].apply(lambda x: "Activo" if x <= 5 else "Inactivo")
     
+                # Mostrar resultados
                 st.success("✅ Análisis Lifetime Value generado correctamente.")
                 st.dataframe(df_ltv)
     
+                # Descargar Excel
                 df_ltv.to_excel("ltv_temporal.xlsx", index=False)
                 with open("ltv_temporal.xlsx", "rb") as f:
                     st.download_button("📥 Descargar Excel", f, file_name="ltv_temporal.xlsx")
