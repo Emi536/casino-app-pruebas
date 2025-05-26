@@ -2331,17 +2331,20 @@ elif auth_status:
                     "Depositar": "Monto",
                     "Retirar": "Retiro",
                     "Fecha": "Fecha",
-                    "Al usuario": "Jugador"
+                    "Tiempo": "Hora",
+                    "Al usuario": "Jugador",
+                    "Iniciador": "Iniciador"
                 })
     
-                # 🧹 Limpieza
+                # 🧹 Limpieza general
                 df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
-                df["Monto"] = pd.to_numeric(df["Monto"], errors="coerce").fillna(0)
+                df["Hora"] = pd.to_datetime(df["Hora"], errors="coerce").dt.time
+                df["Monto"] = pd.to_numeric(df.get("Monto", 0), errors="coerce").fillna(0)
                 df["Retiro"] = pd.to_numeric(df.get("Retiro", 0), errors="coerce").fillna(0)
                 df["Jugador"] = df["Jugador"].astype(str).str.strip().str.lower()
                 df["Tipo"] = df["Tipo"].str.lower()
     
-                # 🔎 Filtrar por plataformas válidas (HL y Wagger)
+                # 🔎 Filtrar por plataformas válidas
                 valores_hl = ["hl_casinofenix", "hl_erosonline", "hl_betargento", "hall_atenea"]
                 valores_wagger = [
                     "Fenix_Wagger30", "Fenix_Wagger40", "Fenix_Wagger50", "Fenix_Wagger100",
@@ -2362,16 +2365,41 @@ elif auth_status:
                     st.warning("❗ No se encontró la columna 'Del usuario'. No se puede filtrar por plataformas válidas.")
                     st.stop()
     
-                # Filtrar operaciones de carga y retiro
-                df_cargas = df[df["Tipo"] == "in"]
-                df_retiros = df[df["Tipo"] == "out"]
+                # ✅ Cargas y Retiros
+                df_cargas = df[df["Tipo"] == "in"].copy()
+                df_retiros = df[df["Tipo"] == "out"].copy()
     
-                # Agrupaciones optimizadas
+                # ✅ Filtro de iniciadores válidos
+                iniciadores_validos = [
+                    "DemonGOD", "DaniGOD", "NahueGOD", "CajeroJuancho", "JuanpiCajero", "FlorGOD", "SebaGOD",
+                    "subagente01", "subagente03", "sub_agent06", "sub_agent11", "sub_agent012"
+                ]
+                df_retiros = df_retiros[df_retiros["Iniciador"].isin(iniciadores_validos)].copy()
+    
+                # ❌ Excluir "out" que ocurren dentro de los 2 minutos del mismo "in"
+                df_cargas["DateTime"] = df_cargas["Fecha"] + pd.to_timedelta(df_cargas["Hora"].astype(str))
+                df_retiros["DateTime"] = df_retiros["Fecha"] + pd.to_timedelta(df_retiros["Hora"].astype(str))
+    
+                merged = pd.merge(
+                    df_cargas[["Jugador", "Monto", "DateTime"]],
+                    df_retiros[["Jugador", "Retiro", "DateTime"]],
+                    left_on=["Jugador", "Monto"],
+                    right_on=["Jugador", "Retiro"],
+                    suffixes=("_in", "_out")
+                )
+    
+                merged["dif_segundos"] = (merged["DateTime_out"] - merged["DateTime_in"]).dt.total_seconds()
+                errores = merged[merged["dif_segundos"] <= 120][["Jugador", "DateTime_out"]]
+                df_retiros = df_retiros[~df_retiros.set_index(["Jugador", "DateTime"]).index.isin(errores.set_index(["Jugador", "DateTime_out"]).index)]
+    
+                # 🔄 Agrupaciones
                 cargas_agg = df_cargas.groupby("Jugador").agg({
                     "Monto": "sum",
-                    "Fecha": ["min", "max", "count"]
-                }).reset_index()
-                cargas_agg.columns = ["Jugador", "Total_Cargado", "Fecha_Inicio", "Fecha_Ultima", "Veces_Que_Cargo"]
+                    "Fecha": ["min", "max"],
+                    "Jugador": "count"
+                })
+                cargas_agg.columns = ["Total_Cargado", "Fecha_Inicio", "Fecha_Ultima", "Veces_Que_Cargo"]
+                cargas_agg.reset_index(inplace=True)
     
                 retiros_agg = df_retiros.groupby("Jugador")["Retiro"].sum().reset_index()
                 retiros_agg.columns = ["Jugador", "Total_Retirado"]
@@ -2379,12 +2407,11 @@ elif auth_status:
                 df_ltv = cargas_agg.merge(retiros_agg, on="Jugador", how="left")
                 df_ltv["Total_Retirado"] = df_ltv["Total_Retirado"].fillna(0)
     
-                # Calcular días activos y LTV
+                # Cálculos
                 df_ltv["Dias_Activo"] = (df_ltv["Fecha_Ultima"] - df_ltv["Fecha_Inicio"]).dt.days + 1
                 df_ltv["Costo_Adquisicion"] = 5.10
                 df_ltv["LTV"] = df_ltv["Total_Cargado"] - df_ltv["Total_Retirado"] - df_ltv["Costo_Adquisicion"]
     
-                # 🟡 Inactividad según el último día del archivo, no la fecha actual
                 fecha_final_reporte = df["Fecha"].max()
                 df_ltv["Días_Sin_Cargar"] = (fecha_final_reporte - df_ltv["Fecha_Ultima"]).dt.days
                 df_ltv["Estado"] = df_ltv["Días_Sin_Cargar"].apply(lambda x: "Activo" if x <= 5 else "Inactivo")
@@ -2393,12 +2420,12 @@ elif auth_status:
                 st.success("✅ Análisis Lifetime Value generado correctamente.")
                 st.dataframe(df_ltv)
     
-                # Descargar Excel
                 df_ltv.to_excel("ltv_temporal.xlsx", index=False)
                 with open("ltv_temporal.xlsx", "rb") as f:
                     st.download_button("📥 Descargar Excel", f, file_name="ltv_temporal.xlsx")
     
             except Exception as e:
                 st.error(f"❌ Error al procesar el archivo: {e}")
+
     
 
