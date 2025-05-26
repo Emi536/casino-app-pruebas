@@ -2320,7 +2320,7 @@ elif auth_status:
     
         tipo_analisis = st.selectbox("Seleccioná el tipo de análisis a realizar:", ["Lifetime Value"])
     
-        texto_pegar = st.text_area("📋 Pegá aquí el reporte combinado (3 meses)", height=300)
+        texto_pegar = st.text_area("📋 Pegá aquí el reporte", height=300)
     
         if texto_pegar:
             try:
