@@ -2314,4 +2314,91 @@ elif auth_status:
         else:
             st.info("⚠️ No se encontraron coincidencias entre jugadores nuevos y el historial de BetArgento.")
 
+    # Sección: Análisis Temporal
+    elif "📊 Análisis Temporal" in seccion:
+        st.header("📊 Análisis Temporal de Jugadores")
+    
+        tipo_analisis = st.selectbox("Seleccioná el tipo de análisis a realizar:", ["Lifetime Value"])
+    
+        texto_pegar = st.text_area("📋 Pegá aquí el reporte combinado (3 meses)", height=300)
+    
+        if texto_pegar:
+            try:
+                sep_detectado = "\t" if "\t" in texto_pegar else ";" if ";" in texto_pegar else ","
+                lineas = texto_pegar.strip().splitlines()
+                encabezados = lineas[0].split(sep_detectado)
+                cantidad_columnas = len(encabezados)
+    
+                contenido_limpio = [sep_detectado.join(encabezados)]
+                for fila in lineas[1:]:
+                    columnas = fila.split(sep_detectado)
+                    if len(columnas) < cantidad_columnas:
+                        columnas += [""] * (cantidad_columnas - len(columnas))
+                    elif len(columnas) > cantidad_columnas:
+                        columnas = columnas[:cantidad_columnas]
+                    contenido_limpio.append(sep_detectado.join(columnas))
+    
+                archivo_limpio = StringIO("\n".join(contenido_limpio))
+                df = pd.read_csv(archivo_limpio, sep=sep_detectado, dtype=str, encoding="utf-8")
+                df = df.loc[:, ~df.columns.str.contains("^Unnamed")]
+    
+                # Normalización y limpieza
+                df = df.rename(columns={
+                    "operación": "Tipo",
+                    "Depositar": "Monto",
+                    "Retirar": "Retiro",
+                    "Fecha": "Fecha",
+                    "Tiempo": "Hora",
+                    "Al usuario": "Jugador"
+                })
+                df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
+                df["Monto"] = pd.to_numeric(df["Monto"], errors="coerce").fillna(0)
+                df["Retiro"] = pd.to_numeric(df.get("Retiro", 0), errors="coerce").fillna(0)
+                df["Jugador"] = df["Jugador"].astype(str).str.strip().str.lower()
+    
+                hoy = pd.to_datetime(datetime.date.today())
+                resumen = []
+                jugadores = df["Jugador"].dropna().unique()
+    
+                for jugador in jugadores:
+                    historial = df[df["Jugador"] == jugador].sort_values("Fecha")
+                    cargas = historial[historial["Tipo"].str.lower() == "in"]
+                    retiros = historial[historial["Tipo"].str.lower() == "out"]
+    
+                    if cargas.empty:
+                        continue
+    
+                    monto_cargado = cargas["Monto"].sum()
+                    monto_retirado = retiros["Retiro"].sum()
+                    primera_fecha = cargas["Fecha"].min()
+                    ultima_fecha = cargas["Fecha"].max()
+                    dias_vida = (ultima_fecha - primera_fecha).days
+                    dias_inactivo = (hoy - ultima_fecha).days
+                    estado = "Activo" if dias_inactivo <= 5 else "Inactivo"
+                    costo_adq = 5.10
+                    ltv = monto_cargado - monto_retirado - costo_adq
+    
+                    resumen.append({
+                        "Jugador": jugador,
+                        "Fecha 1ra carga": primera_fecha.date(),
+                        "Última carga": ultima_fecha.date(),
+                        "Días de vida": dias_vida,
+                        "Estado": estado,
+                        "Cargado ($)": monto_cargado,
+                        "Retirado ($)": monto_retirado,
+                        "Costo Adq. ($)": costo_adq,
+                        "LTV ($)": ltv
+                    })
+    
+                df_ltv = pd.DataFrame(resumen).sort_values("LTV ($)", ascending=False)
+                st.success("✅ Análisis Lifetime Value generado correctamente")
+                st.dataframe(df_ltv, use_container_width=True)
+    
+                df_ltv.to_excel("analisis_ltv.xlsx", index=False)
+                with open("analisis_ltv.xlsx", "rb") as f:
+                    st.download_button("📅 Descargar Excel", f, file_name="analisis_ltv.xlsx")
+    
+            except Exception as e:
+                st.error(f"❌ Error al procesar el análisis: {e}")
+
 
