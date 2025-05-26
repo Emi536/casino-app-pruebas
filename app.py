@@ -282,7 +282,7 @@ elif auth_status:
                 clave = row["Clave"]
                 if clave in claves_cargas:
                     delta = row["FechaHora"] - claves_cargas[clave]
-                    if pd.notnull(delta) and delta.total_seconds() <= 120:
+                    if pd.notnull(delta) and delta.total_seconds() <= 300:
                         indices_a_excluir.append(i)
             df_retiros_validos = df_retiros_validos.drop(index=indices_a_excluir)
             return df_retiros_validos
