@@ -2470,6 +2470,19 @@ elif auth_status:
                 # Mostrar resultados
                 st.success("✅ Análisis Lifetime Value generado correctamente.")
                 st.dataframe(df_ltv)
+
+                # 📊 Mostrar promedios de métricas clave debajo de la tabla
+                promedio_cargado = df_ltv["Total_Cargado"].mean()
+                promedio_retirado = df_ltv["Total_Retirado"].mean()
+                promedio_veces = df_ltv["Veces_Que_Cargo"].mean()
+                promedio_dias_activo = df_ltv["Dias_Activo"].mean()
+                
+                st.markdown("#### 📈 Promedios Generales (Lifetime Value)")
+                col1, col2, col3, col4 = st.columns(4)
+                col1.metric("💰 Total Cargado", f"${promedio_cargado:,.2f}")
+                col2.metric("🔁 Veces que Cargó", f"{promedio_veces:.2f}")
+                col3.metric("📤 Total Retirado", f"${promedio_retirado:,.2f}")
+                col4.metric("📅 Días Activo", f"{promedio_dias_activo:.2f}")
     
                 df_ltv.to_excel("ltv_temporal.xlsx", index=False)
                 with open("ltv_temporal.xlsx", "rb") as f:
