@@ -3,7 +3,7 @@ pandas>=1.5
 matplotlib
 openpyxl
 xlsxwriter
-xlrd
+xlrd==1.2.0
 plotly
 gspread 
 pytz
