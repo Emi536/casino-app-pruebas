@@ -2370,8 +2370,8 @@ elif auth_status:
         st.header("📊 Análisis Temporal de Jugadores")
     
         tarea = st.selectbox("📌 ¿Qué deseás hacer?", [
-            "📦 Unificar múltiples reportes de jugadores",
-            "📈 Analizar Lifetime Value (LTV)"
+            "📈 Analizar Lifetime Value (LTV)",
+            "📦 Unificar múltiples reportes de jugadores"
         ])
 
         if tarea == "📈 Analizar Lifetime Value (LTV)":
