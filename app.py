@@ -2521,21 +2521,30 @@ elif auth_status:
                         if file_name.endswith((".xlsx", ".xls")):
                             full_path = os.path.join(root, file_name)
                             try:
-                                # Detectar el motor correcto según la extensión
                                 extension = os.path.splitext(full_path)[-1].lower()
                                 engine = "xlrd" if extension == ".xls" else "openpyxl"
-                
-                                # Leer el nombre del jugador desde la hoja "Información" celda B2 (fila 1, columna 1)
-                                info = pd.read_excel(full_path, sheet_name="Información", engine=engine)
+                            
+                                # 👀 Mostrar qué archivo se está leyendo
+                                st.write(f"Procesando archivo: {file_name}")
+                            
+                                # Verificamos las hojas disponibles
+                                xl = pd.ExcelFile(full_path, engine=engine)
+                                st.write("Hojas disponibles:", xl.sheet_names)
+                            
+                                if "Información" not in xl.sheet_names or "Historia" not in xl.sheet_names:
+                                    st.warning(f"❌ El archivo {file_name} no contiene las hojas requeridas.")
+                                    continue
+                            
+                                info = xl.parse("Información")
                                 jugador = info.iloc[1, 1] if info.shape[0] > 1 and info.shape[1] > 1 else "Desconocido"
-                
-                                # Leer el historial
-                                historia = pd.read_excel(full_path, sheet_name="Historia", engine=engine)
+                            
+                                historia = xl.parse("Historia")
                                 historia["Jugador"] = jugador
                                 historiales.append(historia)
-                
+                            
                             except Exception as e:
-                                st.warning(f"⚠️ No se pudo procesar {file_name}: {e}")
+                                st.warning(f"⚠️ Error en {file_name}: {e}")
+
                 
                 # Unir y mostrar resultados
                 if historiales:
