@@ -2514,33 +2514,40 @@ elif auth_status:
                     with zipfile.ZipFile(zip_path, "r") as zip_ref:
                         zip_ref.extractall(tmpdir)
         
-                    historiales = []
-                    for file_name in os.listdir(tmpdir):
+                historiales = []
+                
+                for root, _, files in os.walk(tmpdir):
+                    for file_name in files:
                         if file_name.endswith((".xlsx", ".xls")):
-                            full_path = os.path.join(tmpdir, file_name)
+                            full_path = os.path.join(root, file_name)
                             try:
+                                # Detectar el motor correcto según la extensión
                                 extension = os.path.splitext(full_path)[-1].lower()
                                 engine = "xlrd" if extension == ".xls" else "openpyxl"
-        
+                
+                                # Leer el nombre del jugador desde la hoja "Información" celda B2 (fila 1, columna 1)
                                 info = pd.read_excel(full_path, sheet_name="Información", engine=engine)
-                                jugador = info.iloc[1, 1] if not info.empty else "Desconocido"
-        
+                                jugador = info.iloc[1, 1] if info.shape[0] > 1 and info.shape[1] > 1 else "Desconocido"
+                
+                                # Leer el historial
                                 historia = pd.read_excel(full_path, sheet_name="Historia", engine=engine)
                                 historia["Jugador"] = jugador
                                 historiales.append(historia)
-        
+                
                             except Exception as e:
                                 st.warning(f"⚠️ No se pudo procesar {file_name}: {e}")
-        
-                    if historiales:
-                        df_historial = pd.concat(historiales, ignore_index=True)
-                        st.success("✅ Historial unificado generado correctamente.")
-                        st.dataframe(df_historial)
-        
-                        df_historial.to_excel("historial_unificado.xlsx", index=False)
-                        with open("historial_unificado.xlsx", "rb") as f:
-                            st.download_button("📥 Descargar historial_unificado.xlsx", f, file_name="historial_unificado.xlsx")
-                    else:
-                        st.error("❌ No se pudo generar el historial unificado. Verificá que los archivos contengan las hojas 'Información' y 'Historia'.")
+                
+                # Unir y mostrar resultados
+                if historiales:
+                    df_historial = pd.concat(historiales, ignore_index=True)
+                    st.success("✅ Historial unificado generado correctamente.")
+                    st.dataframe(df_historial)
+                
+                    df_historial.to_excel("historial_unificado.xlsx", index=False)
+                    with open("historial_unificado.xlsx", "rb") as f:
+                        st.download_button("📥 Descargar historial_unificado.xlsx", f, file_name="historial_unificado.xlsx")
+                else:
+                    st.error("❌ No se pudo generar el historial unificado. Verificá que los archivos contengan las hojas 'Información' y 'Historia'.")
+
         
 
