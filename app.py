@@ -2523,7 +2523,7 @@ elif auth_status:
                                 try:
                                     df_categorias = pd.read_excel(path_catalogo)
                                     df_categorias.columns = df_categorias.columns.str.strip()
-                                    df_categorias = df_categorias.rename(columns={"Game Name": "Juego", "category": "Categoría"})
+                                    df_categorias = df_categorias.rename(columns={"Game Name": "Juego", "Category": "Categoría"})
                                     df_categorias["Categoría"] = df_categorias["Categoría"].str.lower().replace({
                                         "fishing game": "fishing",
                                         "fishing games": "fishing"
