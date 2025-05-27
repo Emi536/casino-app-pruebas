@@ -2529,8 +2529,13 @@ elif auth_status:
                                         continue
             
                                     info = xl.parse("Información")
-                                    jugador = info.iloc[1, 1] if info.shape[0] > 1 and info.shape[1] > 1 else "Desconocido"
-            
+                                    try:
+                                        jugador = str(info.iloc[1, 1]).strip()
+                                        if jugador.lower() in ["", "nan", "none"]:
+                                            jugador = "Desconocido"
+                                    except Exception:
+                                        jugador = "Desconocido"
+                                                
                                     historia = xl.parse("Historia")
                                     historia["Jugador"] = jugador
                                     historiales.append(historia)
