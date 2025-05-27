@@ -2507,27 +2507,44 @@ elif auth_status:
                     zip_path = os.path.join(tmpdir, "reportes.zip")
                     with open(zip_path, "wb") as f:
                         f.write(archivo_zip.read())
-        
+
                     with zipfile.ZipFile(zip_path, "r") as zip_ref:
                         zip_ref.extractall(tmpdir)
-        
+
                     historiales = []
                     errores = []
-        
+                    df_categorias = None
+
+                    # Buscar archivo GameListFenixCasino.xlsx para categorías
                     for root, _, files in os.walk(tmpdir):
                         for file_name in files:
-                            if file_name.endswith((".xlsx", ".xls")):
+                            if "GameListFenixCasino.xlsx" in file_name:
+                                path_catalogo = os.path.join(root, file_name)
+                                try:
+                                    df_categorias = pd.read_excel(path_catalogo)
+                                    df_categorias.columns = df_categorias.columns.str.strip()
+                                    df_categorias = df_categorias.rename(columns={"Game Name": "Juego", "category": "Categoría"})
+                                    df_categorias["Categoría"] = df_categorias["Categoría"].str.lower().replace({
+                                        "fishing game": "fishing",
+                                        "fishing games": "fishing"
+                                    })
+                                except Exception as e:
+                                    errores.append(f"No se pudo leer GameListFenixCasino.xlsx: {e}")
+
+                    # Procesar historiales de jugadores
+                    for root, _, files in os.walk(tmpdir):
+                        for file_name in files:
+                            if file_name.endswith((".xlsx", ".xls")) and "GameListFenixCasino.xlsx" not in file_name:
                                 full_path = os.path.join(root, file_name)
                                 try:
                                     extension = os.path.splitext(full_path)[-1].lower()
                                     engine = "xlrd" if extension == ".xls" else "openpyxl"
-        
                                     xl = pd.ExcelFile(full_path, engine=engine)
-        
+
                                     if "Información" not in xl.sheet_names or "Historia" not in xl.sheet_names:
                                         errores.append(f"{file_name} no contiene ambas hojas requeridas.")
                                         continue
-        
+
                                     info = xl.parse("Información", header=None)
                                     try:
                                         jugador = info[info[0] == "Usuario"].iloc[0, 1]
@@ -2536,24 +2553,34 @@ elif auth_status:
                                             jugador = "Desconocido"
                                     except Exception:
                                         jugador = "Desconocido"
-                                                
+
                                     historia = xl.parse("Historia")
                                     historia["Jugador"] = jugador
                                     historiales.append(historia)
-        
+
                                 except Exception as e:
                                     errores.append(f"{file_name}: {e}")
-        
+
+                    # Unificación y asignación de categoría
                     if historiales:
                         df_historial = pd.concat(historiales, ignore_index=True)
                         df_historial = df_historial.sort_values(by="Jugador").reset_index(drop=True)
+
+                        if df_categorias is not None and "Nombre del juego" in df_historial.columns:
+                            df_historial = df_historial.merge(
+                                df_categorias,
+                                how="left",
+                                left_on="Nombre del juego",
+                                right_on="Juego"
+                            )
+
                         st.success("✅ Historial unificado generado correctamente.")
                         st.dataframe(df_historial)
-        
+
                         df_historial.to_excel("historial_unificado.xlsx", index=False)
                         with open("historial_unificado.xlsx", "rb") as f:
                             st.download_button("📥 Descargar historial_unificado.xlsx", f, file_name="historial_unificado.xlsx")
-        
+
                         if errores:
                             st.warning("⚠️ Algunos archivos no se pudieron procesar:")
                             for e in errores:
