@@ -13,7 +13,9 @@ import hashlib
 import streamlit_authenticator as stauth
 import json
 import copy
-import pickle 
+import pickle
+import zipfile
+import tempfile 
 
 
 # Leer credenciales y configuración de cookies desde secrets.toml
