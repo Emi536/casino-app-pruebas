@@ -2498,41 +2498,42 @@ elif auth_status:
 
 
         elif tarea == "📦 Unificar múltiples reportes de jugadores":
-        archivo_zip = st.file_uploader("📥 Subí un archivo ZIP con reportes individuales (.xlsx)", type=["zip"])
-
-        if archivo_zip:
-            import zipfile, tempfile, os
-
-            with tempfile.TemporaryDirectory() as tmpdir:
-                zip_path = os.path.join(tmpdir, "reportes.zip")
-                with open(zip_path, "wb") as f:
-                    f.write(archivo_zip.read())
-
-                with zipfile.ZipFile(zip_path, "r") as zip_ref:
-                    zip_ref.extractall(tmpdir)
-
-                historiales = []
-                for file_name in os.listdir(tmpdir):
-                    if file_name.endswith(".xlsx"):
-                        full_path = os.path.join(tmpdir, file_name)
-                        try:
-                            info = pd.read_excel(full_path, sheet_name="Información", engine="openpyxl")
-                            jugador = info.iloc[0, 0] if not info.empty else "Desconocido"
-
-                            historia = pd.read_excel(full_path, sheet_name="Historia", engine="openpyxl")
-                            historia["Jugador"] = jugador
-                            historiales.append(historia)
-
-                        except Exception as e:
-                            st.warning(f"⚠️ No se pudo procesar {file_name}: {e}")
-
-                if historiales:
-                    df_historial = pd.concat(historiales, ignore_index=True)
-                    st.success("✅ Historial unificado generado correctamente.")
-                    st.dataframe(df_historial)
-
-                    df_historial.to_excel("historial_unificado.xlsx", index=False)
-                    with open("historial_unificado.xlsx", "rb") as f:
-                        st.download_button("📥 Descargar historial_unificado.xlsx", f, file_name="historial_unificado.xlsx")
+            archivo_zip = st.file_uploader("📥 Subí un archivo ZIP con reportes individuales (.xlsx)", type=["zip"])
+    
+            if archivo_zip:
+                import zipfile, tempfile, os
+                import pandas as pd
+    
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    zip_path = os.path.join(tmpdir, "reportes.zip")
+                    with open(zip_path, "wb") as f:
+                        f.write(archivo_zip.read())
+    
+                    with zipfile.ZipFile(zip_path, "r") as zip_ref:
+                        zip_ref.extractall(tmpdir)
+    
+                    historiales = []
+                    for file_name in os.listdir(tmpdir):
+                        if file_name.endswith(".xlsx"):
+                            full_path = os.path.join(tmpdir, file_name)
+                            try:
+                                info = pd.read_excel(full_path, sheet_name="Información", engine="openpyxl")
+                                jugador = info.iloc[0, 0] if not info.empty else "Desconocido"
+    
+                                historia = pd.read_excel(full_path, sheet_name="Historia", engine="openpyxl")
+                                historia["Jugador"] = jugador
+                                historiales.append(historia)
+    
+                            except Exception as e:
+                                st.warning(f"⚠️ No se pudo procesar {file_name}: {e}")
+    
+                    if historiales:
+                        df_historial = pd.concat(historiales, ignore_index=True)
+                        st.success("✅ Historial unificado generado correctamente.")
+                        st.dataframe(df_historial)
+    
+                        df_historial.to_excel("historial_unificado.xlsx", index=False)
+                        with open("historial_unificado.xlsx", "rb") as f:
+                            st.download_button("📥 Descargar historial_unificado.xlsx", f, file_name="historial_unificado.xlsx")
         
 
