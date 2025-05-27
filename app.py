@@ -2499,43 +2499,48 @@ elif auth_status:
                     st.error(f"❌ Error al procesar el archivo: {e}")
 
 
-        elif tarea == "📦 Unificar múltiples reportes de jugadores":
-            archivo_zip = st.file_uploader("📥 Subí un archivo ZIP con reportes individuales (.xlsx)", type=["zip"])
+    elif tarea == "📦 Unificar múltiples reportes de jugadores":
+        archivo_zip = st.file_uploader("📥 Subí un archivo ZIP con reportes individuales (.xlsx o .xls)", type=["zip"])
     
-            if archivo_zip:
-                import zipfile, tempfile, os
-                import pandas as pd
+        if archivo_zip:
+            import zipfile, tempfile, os
+            import pandas as pd
     
-                with tempfile.TemporaryDirectory() as tmpdir:
-                    zip_path = os.path.join(tmpdir, "reportes.zip")
-                    with open(zip_path, "wb") as f:
-                        f.write(archivo_zip.read())
+            with tempfile.TemporaryDirectory() as tmpdir:
+                zip_path = os.path.join(tmpdir, "reportes.zip")
+                with open(zip_path, "wb") as f:
+                    f.write(archivo_zip.read())
     
-                    with zipfile.ZipFile(zip_path, "r") as zip_ref:
-                        zip_ref.extractall(tmpdir)
+                with zipfile.ZipFile(zip_path, "r") as zip_ref:
+                    zip_ref.extractall(tmpdir)
     
-                    historiales = []
-                    for file_name in os.listdir(tmpdir):
-                        if file_name.endswith(".xlsx"):
-                            full_path = os.path.join(tmpdir, file_name)
-                            try:
-                                info = pd.read_excel(full_path, sheet_name="Información", engine="openpyxl")
-                                jugador = info.iloc[0, 0] if not info.empty else "Desconocido"
+                historiales = []
+                for file_name in os.listdir(tmpdir):
+                    if file_name.endswith((".xlsx", ".xls")):
+                        full_path = os.path.join(tmpdir, file_name)
+                        try:
+                            extension = os.path.splitext(full_path)[-1].lower()
+                            engine = "xlrd" if extension == ".xls" else "openpyxl"
     
-                                historia = pd.read_excel(full_path, sheet_name="Historia", engine="openpyxl")
-                                historia["Jugador"] = jugador
-                                historiales.append(historia)
+                            info = pd.read_excel(full_path, sheet_name="Información", engine=engine)
+                            jugador = info.iloc[1, 1] if not info.empty else "Desconocido"
     
-                            except Exception as e:
-                                st.warning(f"⚠️ No se pudo procesar {file_name}: {e}")
+                            historia = pd.read_excel(full_path, sheet_name="Historia", engine=engine)
+                            historia["Jugador"] = jugador
+                            historiales.append(historia)
     
-                    if historiales:
-                        df_historial = pd.concat(historiales, ignore_index=True)
-                        st.success("✅ Historial unificado generado correctamente.")
-                        st.dataframe(df_historial)
+                        except Exception as e:
+                            st.warning(f"⚠️ No se pudo procesar {file_name}: {e}")
     
-                        df_historial.to_excel("historial_unificado.xlsx", index=False)
-                        with open("historial_unificado.xlsx", "rb") as f:
-                            st.download_button("📥 Descargar historial_unificado.xlsx", f, file_name="historial_unificado.xlsx")
+                if historiales:
+                    df_historial = pd.concat(historiales, ignore_index=True)
+                    st.success("✅ Historial unificado generado correctamente.")
+                    st.dataframe(df_historial)
+    
+                    df_historial.to_excel("historial_unificado.xlsx", index=False)
+                    with open("historial_unificado.xlsx", "rb") as f:
+                        st.download_button("📥 Descargar historial_unificado.xlsx", f, file_name="historial_unificado.xlsx")
+                else:
+                    st.error("❌ No se pudo generar el historial unificado. Verificá que los archivos contengan las hojas 'Información' y 'Historia'.")
         
 
