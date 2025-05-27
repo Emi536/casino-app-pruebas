@@ -2546,6 +2546,7 @@ elif auth_status:
         
                     if historiales:
                         df_historial = pd.concat(historiales, ignore_index=True)
+                        df_historial = df_historial.sort_values(by="Jugador").reset_index(drop=True)
                         st.success("✅ Historial unificado generado correctamente.")
                         st.dataframe(df_historial)
         
