@@ -2501,62 +2501,58 @@ elif auth_status:
 
         elif tarea == "📦 Unificar múltiples reportes de jugadores":
             archivo_zip = st.file_uploader("📥 Subí un archivo ZIP con reportes individuales (.xlsx o .xls)", type=["zip"])
-        
+            
             if archivo_zip:
-                import zipfile, tempfile, os
-                import pandas as pd
-        
                 with tempfile.TemporaryDirectory() as tmpdir:
                     zip_path = os.path.join(tmpdir, "reportes.zip")
                     with open(zip_path, "wb") as f:
                         f.write(archivo_zip.read())
-        
+            
                     with zipfile.ZipFile(zip_path, "r") as zip_ref:
                         zip_ref.extractall(tmpdir)
-        
-                historiales = []
-                
-                for root, _, files in os.walk(tmpdir):
-                    for file_name in files:
-                        if file_name.endswith((".xlsx", ".xls")):
-                            full_path = os.path.join(root, file_name)
-                            try:
-                                extension = os.path.splitext(full_path)[-1].lower()
-                                engine = "xlrd" if extension == ".xls" else "openpyxl"
-                            
-                                # 👀 Mostrar qué archivo se está leyendo
-                                st.write(f"Procesando archivo: {file_name}")
-                            
-                                # Verificamos las hojas disponibles
-                                xl = pd.ExcelFile(full_path, engine=engine)
-                                st.write("Hojas disponibles:", xl.sheet_names)
-                            
-                                if "Información" not in xl.sheet_names or "Historia" not in xl.sheet_names:
-                                    st.warning(f"❌ El archivo {file_name} no contiene las hojas requeridas.")
-                                    continue
-                            
-                                info = xl.parse("Información")
-                                jugador = info.iloc[1, 1] if info.shape[0] > 1 and info.shape[1] > 1 else "Desconocido"
-                            
-                                historia = xl.parse("Historia")
-                                historia["Jugador"] = jugador
-                                historiales.append(historia)
-                            
-                            except Exception as e:
-                                st.warning(f"⚠️ Error en {file_name}: {e}")
-
-                
-                # Unir y mostrar resultados
-                if historiales:
-                    df_historial = pd.concat(historiales, ignore_index=True)
-                    st.success("✅ Historial unificado generado correctamente.")
-                    st.dataframe(df_historial)
-                
-                    df_historial.to_excel("historial_unificado.xlsx", index=False)
-                    with open("historial_unificado.xlsx", "rb") as f:
-                        st.download_button("📥 Descargar historial_unificado.xlsx", f, file_name="historial_unificado.xlsx")
-                else:
-                    st.error("❌ No se pudo generar el historial unificado. Verificá que los archivos contengan las hojas 'Información' y 'Historia'.")
+            
+                    historiales = []
+                    errores = []
+            
+                    for root, _, files in os.walk(tmpdir):
+                        for file_name in files:
+                            if file_name.endswith((".xlsx", ".xls")):
+                                full_path = os.path.join(root, file_name)
+                                try:
+                                    extension = os.path.splitext(full_path)[-1].lower()
+                                    engine = "xlrd" if extension == ".xls" else "openpyxl"
+            
+                                    xl = pd.ExcelFile(full_path, engine=engine)
+            
+                                    if "Información" not in xl.sheet_names or "Historia" not in xl.sheet_names:
+                                        errores.append(f"{file_name} no contiene ambas hojas requeridas.")
+                                        continue
+            
+                                    info = xl.parse("Información")
+                                    jugador = info.iloc[1, 1] if info.shape[0] > 1 and info.shape[1] > 1 else "Desconocido"
+            
+                                    historia = xl.parse("Historia")
+                                    historia["Jugador"] = jugador
+                                    historiales.append(historia)
+            
+                                except Exception as e:
+                                    errores.append(f"{file_name}: {e}")
+            
+                    if historiales:
+                        df_historial = pd.concat(historiales, ignore_index=True)
+                        st.success("✅ Historial unificado generado correctamente.")
+                        st.dataframe(df_historial)
+            
+                        df_historial.to_excel("historial_unificado.xlsx", index=False)
+                        with open("historial_unificado.xlsx", "rb") as f:
+                            st.download_button("📥 Descargar historial_unificado.xlsx", f, file_name="historial_unificado.xlsx")
+            
+                        if errores:
+                            st.warning("⚠️ Algunos archivos no se pudieron procesar:")
+                            for e in errores:
+                                st.text(f"• {e}")
+                    else:
+                        st.error("❌ No se pudo generar el historial unificado. Verificá que los archivos contengan las hojas 'Información' y 'Historia'.")
 
         
 
