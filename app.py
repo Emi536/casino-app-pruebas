@@ -2369,129 +2369,170 @@ elif auth_status:
     elif seccion == "📊 Análisis Temporal":
         st.header("📊 Análisis Temporal de Jugadores")
     
-        tipo_analisis = st.selectbox("📌 Elegí el tipo de análisis a realizar:", ["Lifetime Value"], index=0)
-        archivo_temporal = st.file_uploader("📥 Pegá o subí aquí tus reportes", type=["csv", "xlsx", "xls"])
-    
-        if archivo_temporal and tipo_analisis == "Lifetime Value":
-            try:
-                df = pd.read_csv(archivo_temporal) if archivo_temporal.name.endswith(".csv") else pd.read_excel(archivo_temporal)
-    
-                # 🔁 Renombrar columnas clave
-                df = df.rename(columns={
-                    "operación": "Tipo",
-                    "Depositar": "Monto",
-                    "Retirar": "Retiro",
-                    "Fecha": "Fecha",
-                    "Tiempo": "Hora",
-                    "Al usuario": "Jugador",
-                    "Iniciador": "Iniciador"
-                })
-    
-                # 🧹 Limpieza general
-                df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
-                df["Hora"] = pd.to_datetime(df["Hora"], errors="coerce").dt.time
-                df["Monto"] = pd.to_numeric(df.get("Monto", 0), errors="coerce").fillna(0)
-                df["Retiro"] = pd.to_numeric(df.get("Retiro", 0), errors="coerce").fillna(0)
-                df["Jugador"] = df["Jugador"].astype(str).str.strip().str.lower()
-                df["Tipo"] = df["Tipo"].str.lower()
-    
-                # 🔎 Filtrar por plataformas válidas
-                valores_hl = ["hl_casinofenix", "hl_erosonline", "hl_betargento", "hall_atenea"]
-                valores_wagger = [
-                    "Fenix_Wagger30", "Fenix_Wagger40", "Fenix_Wagger50", "Fenix_Wagger100",
-                    "Fenix_Wagger150", "Fenix_Wagger200",
-                    "Eros_wagger30%", "Eros_wagger40%", "Eros_wagger50%", "Eros_wagger100%",
-                    "Eros_wagger150%", "Eros_wagger200%",
-                    "Argento_Wager30", "Argento_Wager40", "Argento_Wager50", "Argento_Wager100",
-                    "Argento_Wager150", "Argento_Wager200",
-                    "spirita_wagger30%", "spirita_wagger40%", "spirita_wagger50%", "spirita_wagger100%",
-                    "spirita_wagger150%", "spirita_wagger200%"
-                ]
-                plataformas_validas = valores_hl + valores_wagger
-    
-                if "Del usuario" in df.columns:
-                    df["Del usuario"] = df["Del usuario"].astype(str).str.strip()
-                    df = df[df["Del usuario"].isin(plataformas_validas)]
-                else:
-                    st.warning("❗ No se encontró la columna 'Del usuario'. No se puede filtrar por plataformas válidas.")
-                    st.stop()
-    
-                # ✅ Cargas y Retiros
-                df_cargas = df[df["Tipo"] == "in"].copy()
-                df_retiros = df[df["Tipo"] == "out"].copy()
-    
-                # ✅ Filtro de iniciadores válidos
-                iniciadores_validos = [
-                    "DemonGOD", "DaniGOD", "NahueGOD", "CajeroJuancho", "JuanpiCajero", "FlorGOD", "SebaGOD",
-                    "subagente01", "subagente03", "sub_agent06", "sub_agent11", "sub_agent012"
-                ]
-                df_retiros = df_retiros[df_retiros["Iniciador"].isin(iniciadores_validos)].copy()
-    
-                # ❌ Excluir "out" que ocurren dentro de los 2 minutos del mismo "in"
-                df_cargas["DateTime"] = df_cargas["Fecha"] + pd.to_timedelta(df_cargas["Hora"].astype(str))
-                df_retiros["DateTime"] = df_retiros["Fecha"] + pd.to_timedelta(df_retiros["Hora"].astype(str))
-    
-                merged = pd.merge(
-                    df_cargas[["Jugador", "Monto", "DateTime"]],
-                    df_retiros[["Jugador", "Retiro", "DateTime"]],
-                    left_on=["Jugador", "Monto"],
-                    right_on=["Jugador", "Retiro"],
-                    suffixes=("_in", "_out")
-                )
-    
-                merged["dif_segundos"] = (merged["DateTime_out"] - merged["DateTime_in"]).dt.total_seconds()
-                errores = merged[merged["dif_segundos"] <= 300][["Jugador", "DateTime_out"]]
-                df_retiros = df_retiros[~df_retiros.set_index(["Jugador", "DateTime"]).index.isin(errores.set_index(["Jugador", "DateTime_out"]).index)]
-    
-                # 🔄 Agrupaciones
-                cargas_agg = df_cargas.groupby("Jugador").agg({
-                    "Monto": "sum",
-                    "Fecha": ["min", "max"],
-                    "Jugador": "count"
-                })
-                cargas_agg.columns = ["Total_Cargado", "Fecha_Inicio", "Fecha_Ultima", "Veces_Que_Cargo"]
-                cargas_agg.reset_index(inplace=True)
-    
-                retiros_agg = df_retiros.groupby("Jugador")["Retiro"].sum().reset_index()
-                retiros_agg.columns = ["Jugador", "Total_Retirado"]
-    
-                df_ltv = cargas_agg.merge(retiros_agg, on="Jugador", how="left")
-                df_ltv["Total_Retirado"] = df_ltv["Total_Retirado"].fillna(0)
-    
-                # Cálculos
-                df_ltv["Dias_Activo"] = (df_ltv["Fecha_Ultima"] - df_ltv["Fecha_Inicio"]).dt.days + 1
-                costo_adquisicion = 5.10
-                df_ltv["LTV"] = df_ltv["Total_Cargado"] - df_ltv["Total_Retirado"] - costo_adquisicion
+        tarea = st.selectbox("📌 ¿Qué deseás hacer?", [
+            "📦 Unificar múltiples reportes de jugadores",
+            "📈 Analizar Lifetime Value (LTV)"
+        ])
 
-                fecha_final_reporte = df["Fecha"].max()
-                df_ltv["Días_Sin_Cargar"] = (fecha_final_reporte - df_ltv["Fecha_Ultima"]).dt.days
-                df_ltv["Estado"] = df_ltv["Días_Sin_Cargar"].apply(lambda x: "Activo" if x <= 19 else "Inactivo")
+        if tarea == "📈 Analizar Lifetime Value (LTV)":
+            archivo_temporal = st.file_uploader("📥 Pegá o subí aquí tus reportes", type=["csv", "xlsx", "xls"])
+        
+            if archivo_temporal and tipo_analisis == "Lifetime Value":
+                try:
+                    df = pd.read_csv(archivo_temporal) if archivo_temporal.name.endswith(".csv") else pd.read_excel(archivo_temporal)
+        
+                    # 🔁 Renombrar columnas clave
+                    df = df.rename(columns={
+                        "operación": "Tipo",
+                        "Depositar": "Monto",
+                        "Retirar": "Retiro",
+                        "Fecha": "Fecha",
+                        "Tiempo": "Hora",
+                        "Al usuario": "Jugador",
+                        "Iniciador": "Iniciador"
+                    })
+        
+                    # 🧹 Limpieza general
+                    df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
+                    df["Hora"] = pd.to_datetime(df["Hora"], errors="coerce").dt.time
+                    df["Monto"] = pd.to_numeric(df.get("Monto", 0), errors="coerce").fillna(0)
+                    df["Retiro"] = pd.to_numeric(df.get("Retiro", 0), errors="coerce").fillna(0)
+                    df["Jugador"] = df["Jugador"].astype(str).str.strip().str.lower()
+                    df["Tipo"] = df["Tipo"].str.lower()
+        
+                    # 🔎 Filtrar por plataformas válidas
+                    valores_hl = ["hl_casinofenix", "hl_erosonline", "hl_betargento", "hall_atenea"]
+                    valores_wagger = [
+                        "Fenix_Wagger30", "Fenix_Wagger40", "Fenix_Wagger50", "Fenix_Wagger100",
+                        "Fenix_Wagger150", "Fenix_Wagger200",
+                        "Eros_wagger30%", "Eros_wagger40%", "Eros_wagger50%", "Eros_wagger100%",
+                        "Eros_wagger150%", "Eros_wagger200%",
+                        "Argento_Wager30", "Argento_Wager40", "Argento_Wager50", "Argento_Wager100",
+                        "Argento_Wager150", "Argento_Wager200",
+                        "spirita_wagger30%", "spirita_wagger40%", "spirita_wagger50%", "spirita_wagger100%",
+                        "spirita_wagger150%", "spirita_wagger200%"
+                    ]
+                    plataformas_validas = valores_hl + valores_wagger
+        
+                    if "Del usuario" in df.columns:
+                        df["Del usuario"] = df["Del usuario"].astype(str).str.strip()
+                        df = df[df["Del usuario"].isin(plataformas_validas)]
+                    else:
+                        st.warning("❗ No se encontró la columna 'Del usuario'. No se puede filtrar por plataformas válidas.")
+                        st.stop()
+        
+                    # ✅ Cargas y Retiros
+                    df_cargas = df[df["Tipo"] == "in"].copy()
+                    df_retiros = df[df["Tipo"] == "out"].copy()
+        
+                    # ✅ Filtro de iniciadores válidos
+                    iniciadores_validos = [
+                        "DemonGOD", "DaniGOD", "NahueGOD", "CajeroJuancho", "JuanpiCajero", "FlorGOD", "SebaGOD",
+                        "subagente01", "subagente03", "sub_agent06", "sub_agent11", "sub_agent012"
+                    ]
+                    df_retiros = df_retiros[df_retiros["Iniciador"].isin(iniciadores_validos)].copy()
+        
+                    # ❌ Excluir "out" que ocurren dentro de los 2 minutos del mismo "in"
+                    df_cargas["DateTime"] = df_cargas["Fecha"] + pd.to_timedelta(df_cargas["Hora"].astype(str))
+                    df_retiros["DateTime"] = df_retiros["Fecha"] + pd.to_timedelta(df_retiros["Hora"].astype(str))
+        
+                    merged = pd.merge(
+                        df_cargas[["Jugador", "Monto", "DateTime"]],
+                        df_retiros[["Jugador", "Retiro", "DateTime"]],
+                        left_on=["Jugador", "Monto"],
+                        right_on=["Jugador", "Retiro"],
+                        suffixes=("_in", "_out")
+                    )
+        
+                    merged["dif_segundos"] = (merged["DateTime_out"] - merged["DateTime_in"]).dt.total_seconds()
+                    errores = merged[merged["dif_segundos"] <= 300][["Jugador", "DateTime_out"]]
+                    df_retiros = df_retiros[~df_retiros.set_index(["Jugador", "DateTime"]).index.isin(errores.set_index(["Jugador", "DateTime_out"]).index)]
+        
+                    # 🔄 Agrupaciones
+                    cargas_agg = df_cargas.groupby("Jugador").agg({
+                        "Monto": "sum",
+                        "Fecha": ["min", "max"],
+                        "Jugador": "count"
+                    })
+                    cargas_agg.columns = ["Total_Cargado", "Fecha_Inicio", "Fecha_Ultima", "Veces_Que_Cargo"]
+                    cargas_agg.reset_index(inplace=True)
+        
+                    retiros_agg = df_retiros.groupby("Jugador")["Retiro"].sum().reset_index()
+                    retiros_agg.columns = ["Jugador", "Total_Retirado"]
+        
+                    df_ltv = cargas_agg.merge(retiros_agg, on="Jugador", how="left")
+                    df_ltv["Total_Retirado"] = df_ltv["Total_Retirado"].fillna(0)
+        
+                    # Cálculos
+                    df_ltv["Dias_Activo"] = (df_ltv["Fecha_Ultima"] - df_ltv["Fecha_Inicio"]).dt.days + 1
+                    costo_adquisicion = 5.10
+                    df_ltv["LTV"] = df_ltv["Total_Cargado"] - df_ltv["Total_Retirado"] - costo_adquisicion
     
-                # Mostrar resultados
-                st.success("✅ Análisis Lifetime Value generado correctamente.")
-                st.dataframe(df_ltv)
+                    fecha_final_reporte = df["Fecha"].max()
+                    df_ltv["Días_Sin_Cargar"] = (fecha_final_reporte - df_ltv["Fecha_Ultima"]).dt.days
+                    df_ltv["Estado"] = df_ltv["Días_Sin_Cargar"].apply(lambda x: "Activo" if x <= 19 else "Inactivo")
+        
+                    # Mostrar resultados
+                    st.success("✅ Análisis Lifetime Value generado correctamente.")
+                    st.dataframe(df_ltv)
+    
+                    # 📊 Mostrar promedios de métricas clave debajo de la tabla
+                    promedio_cargado = df_ltv["Total_Cargado"].mean()
+                    promedio_retirado = df_ltv["Total_Retirado"].mean()
+                    promedio_veces = df_ltv["Veces_Que_Cargo"].mean()
+                    promedio_dias_activo = df_ltv["Dias_Activo"].mean()
+                    
+                    st.markdown("#### 📈 Promedios Generales (Lifetime Value)")
+                    col1, col2, col3, col4 = st.columns(4)
+                    col1.metric(" Total Cargado", f"${promedio_cargado:,.2f}")
+                    col2.metric(" Veces que Cargó", f"{promedio_veces:.2f}")
+                    col3.metric(" Total Retirado", f"${promedio_retirado:,.2f}")
+                    col4.metric(" Días Activo", f"{promedio_dias_activo:.2f}")
+        
+                    df_ltv.to_excel("ltv_temporal.xlsx", index=False)
+                    with open("ltv_temporal.xlsx", "rb") as f:
+                        st.download_button("📥 Descargar Excel", f, file_name="ltv_temporal.xlsx")
+        
+                except Exception as e:
+                    st.error(f"❌ Error al procesar el archivo: {e}")
 
-                # 📊 Mostrar promedios de métricas clave debajo de la tabla
-                promedio_cargado = df_ltv["Total_Cargado"].mean()
-                promedio_retirado = df_ltv["Total_Retirado"].mean()
-                promedio_veces = df_ltv["Veces_Que_Cargo"].mean()
-                promedio_dias_activo = df_ltv["Dias_Activo"].mean()
-                
-                st.markdown("#### 📈 Promedios Generales (Lifetime Value)")
-                col1, col2, col3, col4 = st.columns(4)
-                col1.metric(" Total Cargado", f"${promedio_cargado:,.2f}")
-                col2.metric(" Veces que Cargó", f"{promedio_veces:.2f}")
-                col3.metric(" Total Retirado", f"${promedio_retirado:,.2f}")
-                col4.metric(" Días Activo", f"{promedio_dias_activo:.2f}")
-    
-                df_ltv.to_excel("ltv_temporal.xlsx", index=False)
-                with open("ltv_temporal.xlsx", "rb") as f:
-                    st.download_button("📥 Descargar Excel", f, file_name="ltv_temporal.xlsx")
-    
-            except Exception as e:
-                st.error(f"❌ Error al procesar el archivo: {e}")
 
+        elif tarea == "📦 Unificar múltiples reportes de jugadores":
+        archivo_zip = st.file_uploader("📥 Subí un archivo ZIP con reportes individuales (.xlsx)", type=["zip"])
 
-    
+        if archivo_zip:
+            import zipfile, tempfile, os
+
+            with tempfile.TemporaryDirectory() as tmpdir:
+                zip_path = os.path.join(tmpdir, "reportes.zip")
+                with open(zip_path, "wb") as f:
+                    f.write(archivo_zip.read())
+
+                with zipfile.ZipFile(zip_path, "r") as zip_ref:
+                    zip_ref.extractall(tmpdir)
+
+                historiales = []
+                for file_name in os.listdir(tmpdir):
+                    if file_name.endswith(".xlsx"):
+                        full_path = os.path.join(tmpdir, file_name)
+                        try:
+                            info = pd.read_excel(full_path, sheet_name="Información", engine="openpyxl")
+                            jugador = info.iloc[0, 0] if not info.empty else "Desconocido"
+
+                            historia = pd.read_excel(full_path, sheet_name="Historia", engine="openpyxl")
+                            historia["Jugador"] = jugador
+                            historiales.append(historia)
+
+                        except Exception as e:
+                            st.warning(f"⚠️ No se pudo procesar {file_name}: {e}")
+
+                if historiales:
+                    df_historial = pd.concat(historiales, ignore_index=True)
+                    st.success("✅ Historial unificado generado correctamente.")
+                    st.dataframe(df_historial)
+
+                    df_historial.to_excel("historial_unificado.xlsx", index=False)
+                    with open("historial_unificado.xlsx", "rb") as f:
+                        st.download_button("📥 Descargar historial_unificado.xlsx", f, file_name="historial_unificado.xlsx")
         
 
