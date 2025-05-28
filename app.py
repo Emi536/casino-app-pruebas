@@ -16,9 +16,7 @@ import copy
 import pickle
 import zipfile
 import tempfile 
-from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor
-import numpy as np
+
 
 
 # Leer credenciales y configuración de cookies desde secrets.toml
@@ -2503,148 +2501,144 @@ elif auth_status:
 
 
         elif tarea == "📦 Unificar múltiples reportes de jugadores":
-            archivo_zip = st.file_uploader("📥 Subí un archivo ZIP con reportes individuales (.xlsx o .xls)", type=["zip"])
-        
-            if archivo_zip:
-                with st.spinner('Procesando archivos...'):
-                    with tempfile.TemporaryDirectory() as tmpdir:
-                        zip_path = os.path.join(tmpdir, "reportes.zip")
-                        with open(zip_path, "wb") as f:
-                            f.write(archivo_zip.getbuffer())
-        
-                        with zipfile.ZipFile(zip_path, "r") as zip_ref:
-                            zip_ref.extractall(tmpdir)
-        
-                        historiales = []
-                        errores = []
-                        df_categorias = None
-        
-                        # Leer catálogo de juegos si existe
-                        catalog_files = [f for f in Path(tmpdir).rglob('*GameListFenixCasino.xlsx*')]
-                        if catalog_files:
-                            try:
-                                df_categorias = pd.read_excel(catalog_files[0])
-                                df_categorias = (
-                                    df_categorias
-                                    .rename(columns=lambda x: x.strip())
-                                    .rename(columns={"Game Name": "Juego", "Category": "Categoría"})
-                                    .assign(
-                                        Categoría=lambda x: x["Categoría"].str.lower().str.strip()
-                                            .replace({"fishing game": "fishing", "fishing games": "fishing"})
+                    archivo_zip = st.file_uploader("📥 Subí un archivo ZIP con reportes individuales (.xlsx o .xls)", type=["zip"])
+                    
+                    if archivo_zip:
+                        with tempfile.TemporaryDirectory() as tmpdir:
+                            zip_path = os.path.join(tmpdir, "reportes.zip")
+                            with open(zip_path, "wb") as f:
+                                f.write(archivo_zip.read())
+                
+                            with zipfile.ZipFile(zip_path, "r") as zip_ref:
+                                zip_ref.extractall(tmpdir)
+                
+                            historiales = []
+                            errores = []
+                            df_categorias = None
+                
+                            # Buscar archivo GameListFenixCasino.xlsx
+                            for root, _, files in os.walk(tmpdir):
+                                for file_name in files:
+                                    if "GameListFenixCasino.xlsx" in file_name:
+                                        path_catalogo = os.path.join(root, file_name)
+                                        try:
+                                            df_categorias = pd.read_excel(path_catalogo)
+                                            df_categorias.columns = df_categorias.columns.str.strip()
+                                            df_categorias = df_categorias.rename(columns={"Game Name": "Juego", "Category": "Categoría"})
+                                            df_categorias["Categoría"] = df_categorias["Categoría"].str.lower().replace({
+                                                "fishing game": "fishing",
+                                                "fishing games": "fishing"
+                                            })
+                                        except Exception as e:
+                                            errores.append(f"No se pudo leer GameListFenixCasino.xlsx: {e}")
+                
+                            # Leer historiales individuales
+                            for root, _, files in os.walk(tmpdir):
+                                for file_name in files:
+                                    if file_name.endswith((".xlsx", ".xls")) and "GameListFenixCasino.xlsx" not in file_name:
+                                        full_path = os.path.join(root, file_name)
+                                        try:
+                                            extension = os.path.splitext(full_path)[-1].lower()
+                                            engine = "xlrd" if extension == ".xls" else "openpyxl"
+                                            xl = pd.ExcelFile(full_path, engine=engine)
+                
+                                            if "Información" not in xl.sheet_names or "Historia" not in xl.sheet_names:
+                                                errores.append(f"{file_name} no contiene ambas hojas requeridas.")
+                                                continue
+                
+                                            info = xl.parse("Información", header=None)
+                                            try:
+                                                jugador = info[info[0] == "Usuario"].iloc[0, 1]
+                                                jugador = str(jugador).strip()
+                                                if jugador.lower() in ["", "nan", "none"]:
+                                                    jugador = "Desconocido"
+                                            except Exception:
+                                                jugador = "Desconocido"
+                
+                                            historia = xl.parse("Historia")
+                
+                                            # Conversión segura de columnas numéricas
+                                            for col in ["Apuesta", "Ganancias", "Ganar"]:
+                                                if col in historia.columns:
+                                                    historia[col] = (
+                                                        historia[col]
+                                                        .astype(str)
+                                                        .str.replace(",", "", regex=False)
+                                                        .str.replace(" ", "", regex=False)
+                                                    )
+                                                    historia[col] = pd.to_numeric(historia[col], errors="coerce")
+                
+                                            historia["Jugador"] = jugador
+                                            historiales.append(historia)
+                
+                                        except Exception as e:
+                                            errores.append(f"{file_name}: {e}")
+                
+                            # Unificación y análisis
+                            if historiales:
+                                df_historial = pd.concat(historiales, ignore_index=True)
+                                df_historial = df_historial.sort_values(by="Jugador").reset_index(drop=True)
+                
+                                # Merge con categorías
+                                if df_categorias is not None and "Nombre del juego" in df_historial.columns:
+                                    df_historial = df_historial.merge(
+                                        df_categorias,
+                                        how="left",
+                                        left_on="Nombre del juego",
+                                        right_on="Juego"
                                     )
-                                )
-                            except Exception as e:
-                                errores.append(f"Error en catálogo: {str(e)}")
-        
-                        # Función para procesar un archivo individual
-                        def procesar_archivo(file_path):
-                            try:
-                                file_name = os.path.basename(file_path)
-                                engine = "openpyxl" if file_path.endswith('.xlsx') else "xlrd"
-        
-                                with pd.ExcelFile(file_path, engine=engine) as xl:
-                                    if not {"Información", "Historia"}.issubset(set(xl.sheet_names)):
-                                        return None, f"{file_name}: Faltan hojas requeridas"
-        
-                                    try:
-                                        info = pd.read_excel(xl, "Información", header=None)
-                                        jugador_row = info[info[0] == "Usuario"]
-                                        jugador = str(jugador_row.iloc[0, 1]).strip() if not jugador_row.empty else "Desconocido"
-                                    except Exception:
-                                        jugador = "Desconocido"
-        
-                                    historia = pd.read_excel(xl, "Historia")
-        
-                                    numeric_cols = ["Apuesta", "Ganancias", "Ganar"]
-                                    for col in numeric_cols:
-                                        if col in historia.columns:
-                                            historia[col] = (
-                                                historia[col].astype(str)
-                                                .str.replace(r"[^\d.-]", "", regex=True)
-                                                .replace(["", "nan", "None"], np.nan)
-                                                .astype(float)
-                                            )
-        
-                                    historia["Jugador"] = jugador
-                                    return historia, None
-                            except Exception as e:
-                                return None, f"{file_name}: {str(e)}"
-        
-                        # Recolectar archivos Excel
-                        excel_files = [f for f in Path(tmpdir).rglob('*') if f.suffix.lower() in ('.xlsx', '.xls') and "GameListFenixCasino" not in f.name]
-        
-                        # Procesamiento paralelo
-                        with ThreadPoolExecutor() as executor:
-                            futures = {executor.submit(procesar_archivo, path): path for path in excel_files}
-                            for future in as_completed(futures):
-                                try:
-                                    result, error = future.result()
-                                    if error:
-                                        errores.append(error)
-                                    elif result is not None:
-                                        historiales.append(result)
-                                except Exception as e:
-                                    errores.append(f"{futures[future].name}: Error inesperado: {str(e)}")
-        
-                        # Análisis y exportación
-                        if historiales:
-                            df_historial = pd.concat(historiales, ignore_index=True)
-                            df_historial = df_historial.sort_values(by="Jugador").reset_index(drop=True)
-        
-                            if df_categorias is not None and "Nombre del juego" in df_historial.columns:
-                                df_historial = df_historial.merge(
-                                    df_categorias[["Juego", "Categoría"]],
-                                    how="left",
-                                    left_on="Nombre del juego",
-                                    right_on="Juego"
-                                ).drop(columns="Juego")
-        
-                            if "Fecha" not in df_historial.columns and "Hora de apertura" in df_historial.columns:
-                                df_historial["Fecha"] = pd.to_datetime(
-                                    df_historial["Hora de apertura"], errors="coerce").dt.date
-        
-                            st.success(f"✅ Procesados {len(historiales)} archivos correctamente")
-        
-                            col1, col2, col3 = st.columns(3)
-                            with col1:
-                                st.metric("👥 Jugadores únicos", df_historial["Jugador"].nunique())
-                            with col2:
-                                st.metric("💰 Apuesta total", f"${df_historial['Apuesta'].sum():,.2f}")
-                            with col3:
-                                st.metric("📊 Apuesta promedio", f"${df_historial['Apuesta'].mean():,.2f}")
-        
-                            st.subheader("📅 Evolución temporal")
-                            if "Fecha" in df_historial.columns:
-                                temporal_data = df_historial.groupby("Fecha").agg(
-                                    Apuesta_total=("Apuesta", "sum"),
-                                    Jugadores_unicos=("Jugador", "nunique")
-                                ).reset_index()
-                                fig = px.line(temporal_data, x="Fecha", y="Apuesta_total", title="Apuesta total por día")
-                                st.plotly_chart(fig, use_container_width=True)
-        
-                            tab1, tab2 = st.tabs(["Vista previa", "Datos completos"])
-                            with tab1:
-                                st.dataframe(df_historial.head(50))
-                            with tab2:
+                
+                                # Análisis global de actividad
+                                if "Apuesta" in df_historial.columns and "Nombre del juego" in df_historial.columns and "Categoría" in df_historial.columns:
+                                    if "Fecha" not in df_historial.columns and "Hora de apertura" in df_historial.columns:
+                                        df_historial["Fecha"] = pd.to_datetime(df_historial["Hora de apertura"], errors="coerce").dt.date
+                                    df_historial["Fecha"] = pd.to_datetime(df_historial["Fecha"], errors="coerce")
+                
+                                    # 🎯 Juego más jugado por frecuencia
+                                    frecuencias = df_historial["Nombre del juego"].value_counts().reset_index()
+                                    frecuencias.columns = ["Nombre del juego", "Frecuencia"]
+                                    juego_top_frecuencia = frecuencias.iloc[0]
+                
+                                    # 🧩 Categoría más jugada por volumen de apuesta
+                                    categoria_top = (
+                                        df_historial.groupby("Categoría")["Apuesta"]
+                                        .sum()
+                                        .sort_values(ascending=False)
+                                        .reset_index()
+                                        .iloc[0]
+                                    )
+                
+                                    # 🕒 Inactividad promedio
+                                    fecha_final = df_historial["Fecha"].max()
+                                    inactividad = (
+                                        df_historial.groupby("Jugador")["Fecha"]
+                                        .max()
+                                        .apply(lambda x: (fecha_final - x).days)
+                                    )
+                                    promedio_inactividad = inactividad.mean()
+                
+                                    st.subheader("📊 Análisis global de actividad VIP")
+                                    col1, col2, col3 = st.columns(3)
+                                    with col1:
+                                        st.metric("🎯 Juego más jugado", juego_top_frecuencia["Nombre del juego"], f"{juego_top_frecuencia['Frecuencia']} veces")
+                                    with col2:
+                                        st.metric("🧩 Categoría más jugada", categoria_top["Categoría"], f"${categoria_top['Apuesta']:,.2f}")
+                                    with col3:
+                                        st.metric("🕒 Inactividad promedio", f"{promedio_inactividad:.2f} días")
+                
+                                st.success("✅ Historial unificado generado correctamente.")
                                 st.dataframe(df_historial)
-        
-                            export_format = st.radio("Formato de exportación:", ["Excel", "CSV", "JSON"])
-                            output_buffer = io.BytesIO()
-                            if export_format == "Excel":
-                                df_historial.to_excel(output_buffer, index=False)
-                                st.download_button("📥 Descargar como Excel", output_buffer.getvalue(), file_name="historial_unificado.xlsx", mime="application/vnd.ms-excel")
-                            elif export_format == "CSV":
-                                output_buffer.write(df_historial.to_csv(index=False).encode("utf-8"))
-                                st.download_button("📥 Descargar como CSV", output_buffer.getvalue(), file_name="historial_unificado.csv", mime="text/csv")
+                
+                                df_historial.to_excel("historial_unificado.xlsx", index=False)
+                                with open("historial_unificado.xlsx", "rb") as f:
+                                    st.download_button("📥 Descargar historial_unificado.xlsx", f, file_name="historial_unificado.xlsx")
+                
+                                if errores:
+                                    st.warning("⚠️ Algunos archivos no se pudieron procesar:")
+                                    for e in errores:
+                                        st.text(f"• {e}")
                             else:
-                                output_buffer.write(df_historial.to_json(orient="records").encode("utf-8"))
-                                st.download_button("📥 Descargar como JSON", output_buffer.getvalue(), file_name="historial_unificado.json", mime="application/json")
-        
-                        if errores:
-                            st.warning(f"⚠️ {len(errores)} archivos con problemas:")
-                            with st.expander("Ver detalles de errores"):
-                                for error in errores:
-                                    st.code(error, language='text')
+                                st.error("❌ No se pudo generar el historial unificado. Verificá que los archivos contengan las hojas 'Información' y 'Historia'.")
 
 
     # === SECCIÓN: 🏢 Oficina VIP ===
