@@ -2645,25 +2645,26 @@ elif auth_status:
     
     elif "🏢 Oficina VIP" in seccion:
         st.header("🏢 Oficina VIP")
-    
+
         st.markdown("Esta sección permite individualizar a los jugadores según su comportamiento y actividad reciente.")
-    
+
         archivo = st.file_uploader("📂 Subí el historial de actividad unificado (formato .xlsx)", type=["xlsx"], key="vip_uploader")
-    
+
         if archivo:
             try:
                 import pandas as pd
-                from datetime import datetime
+                from datetime import datetime, timedelta
                 from io import BytesIO
-    
+
                 df = pd.read_excel(archivo)
-    
+
                 # LIMPIEZA Y CONVERSIÓN
                 df["Apuesta"] = pd.to_numeric(df["Apuesta"], errors="coerce").fillna(0)
                 df["Hora de apertura"] = pd.to_datetime(df["Hora de apertura"], errors="coerce")
                 df["Hora de ultima actividad"] = pd.to_datetime(df["Hora de ultima actividad"], errors="coerce")
                 df["Fecha"] = df["Hora de apertura"].dt.date
-    
+                df["Hora"] = df["Hora de apertura"].dt.hour
+
                 # JUEGO MÁS JUGADO (por frecuencia)
                 juego_frecuente = (
                     df.groupby(["Jugador", "Nombre del juego"])
@@ -2673,7 +2674,7 @@ elif auth_status:
                     .drop_duplicates("Jugador")
                     .rename(columns={"Nombre del juego": "Juego más jugado"})
                 )
-    
+
                 # Obtener tipo de juego y proveedor desde el juego más jugado
                 juego_frecuente = juego_frecuente.merge(
                     df[["Nombre del juego", "Categoría", "Sello"]].drop_duplicates(),
@@ -2681,57 +2682,101 @@ elif auth_status:
                     right_on="Nombre del juego",
                     how="left"
                 ).drop(columns=["Nombre del juego"])
-    
+
                 juego_frecuente = juego_frecuente.rename(columns={
                     "Categoría": "Tipo de juego",
                     "Sello": "Proveedor"
                 })
-    
+
                 # MÉTRICAS INDIVIDUALES
                 fecha_maxima = df["Fecha"].max()
-    
+
                 resumen = df.groupby("Jugador").agg({
                     "Apuesta": "sum",
                     "Fecha": pd.Series.nunique,
                     "Hora de ultima actividad": "max"
                 }).reset_index()
-    
+
                 resumen = resumen.rename(columns={
                     "Apuesta": "Monto total apostado",
                     "Fecha": "Días activos",
                     "Hora de ultima actividad": "Última actividad"
                 })
-    
+
                 resumen["Días inactivos"] = (
                     (pd.to_datetime(fecha_maxima).normalize() - resumen["Última actividad"].dt.normalize())
                 ).dt.days
 
-    
+                # HORA MÁS FRECUENTE
+                hora_frecuente_raw = df.groupby(["Jugador", "Hora"]).size().reset_index(name="Frecuencia")
+                max_frecuencia = hora_frecuente_raw.groupby("Jugador")["Frecuencia"].transform("max")
+                hora_frecuente_filtrada = hora_frecuente_raw[hora_frecuente_raw["Frecuencia"] == max_frecuencia]
+                hora_frecuente_final = hora_frecuente_filtrada.groupby("Jugador")["Hora"].apply(
+                    lambda x: ", ".join(str(h) for h in sorted(x))
+                ).reset_index().rename(columns={"Hora": "Hora(s) más frecuente(s)"})
+
+                # FRANJA HORARIA
+                def detectar_franja(hora_str):
+                    horas = [int(h) for h in hora_str.split(",")]
+                    franjas = set()
+                    for h in horas:
+                        if 0 <= h < 6:
+                            franjas.add("Madrugada")
+                        elif 6 <= h < 12:
+                            franjas.add("Mañana")
+                        elif 12 <= h < 18:
+                            franjas.add("Tarde")
+                        else:
+                            franjas.add("Noche")
+                    return ", ".join(sorted(franjas))
+
+                hora_frecuente_final["Franja horaria predominante"] = hora_frecuente_final["Hora(s) más frecuente(s)"].apply(detectar_franja)
+
+                # RACHA MÁXIMA DE DÍAS CONSECUTIVOS ACTIVOS
+                def calcular_racha_maxima(fechas):
+                    fechas_ordenadas = sorted(set(fechas))
+                    racha = max_racha = 1
+                    for i in range(1, len(fechas_ordenadas)):
+                        if fechas_ordenadas[i] == fechas_ordenadas[i - 1] + timedelta(days=1):
+                            racha += 1
+                            max_racha = max(max_racha, racha)
+                        else:
+                            racha = 1
+                    return max_racha
+
+                racha_df = df.groupby("Jugador")["Fecha"].apply(calcular_racha_maxima).reset_index()
+                racha_df = racha_df.rename(columns={"Fecha": "Racha máxima de días consecutivos"})
+
                 # UNIFICAR TODO
                 df_final = resumen.merge(juego_frecuente, on="Jugador", how="left")
+                df_final = df_final.merge(hora_frecuente_final, on="Jugador", how="left")
+                df_final = df_final.merge(racha_df, on="Jugador", how="left")
+
                 df_final = df_final[[
-                    "Jugador", "Monto total apostado", "Juego más jugado",
-                    "Tipo de juego", "Proveedor", "Días activos", "Días inactivos"
+                    "Jugador", "Monto total apostado", "Juego más jugado", "Tipo de juego", "Proveedor",
+                    "Días activos", "Días inactivos", "Hora(s) más frecuente(s)",
+                    "Franja horaria predominante", "Racha máxima de días consecutivos"
                 ]].sort_values(by="Monto total apostado", ascending=False)
-    
+
                 st.subheader("📊 Tabla de jugadores individualizados")
                 st.dataframe(df_final, use_container_width=True)
-    
+
                 # Descargar como Excel usando BytesIO
                 output = BytesIO()
                 with pd.ExcelWriter(output, engine="openpyxl") as writer:
                     df_final.to_excel(writer, index=False, sheet_name="Oficina VIP")
                 output.seek(0)
-    
+
                 st.download_button(
                     "📥 Descargar Excel",
                     data=output,
                     file_name="oficina_vip_individualizada.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
-    
+
             except Exception as e:
                 st.error(f"❌ Error al procesar el archivo: {e}")
+
 
 
 
