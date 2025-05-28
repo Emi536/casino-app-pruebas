@@ -2529,7 +2529,7 @@ elif auth_status:
                                     .assign(
                                         Categoría=lambda x: x["Categoría"].str.lower().str.strip()
                                             .replace({"fishing game": "fishing", "fishing games": "fishing"})
-                                    )
+                                    ))
                             except Exception as e:
                                 errores.append(f"Error en catálogo: {str(e)}")
                         
