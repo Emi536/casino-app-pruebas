@@ -2640,32 +2640,47 @@ elif auth_status:
                             else:
                                 st.error("❌ No se pudo generar el historial unificado. Verificá que los archivos contengan las hojas 'Información' y 'Historia'.")
 
-
-    # === SECCIÓN: 🏢 Oficina VIP ===
     
-    elif "🏢 Oficina VIP" in seccion:
-        st.header("🏢 Oficina VIP")
-
-        st.markdown("Esta sección permite individualizar a los jugadores según su comportamiento y actividad reciente.")
-
-        archivo = st.file_uploader("📂 Subí el historial de actividad unificado (formato .xlsx)", type=["xlsx"], key="vip_uploader")
-
+    # === SECCIÓN: 🏢 Oficina VIP Grilla ===
+    elif "🏢 Oficina VIP Grilla" in seccion:
+        st.header("🏢 Oficina VIP - Vista Grilla")
+        st.markdown("Visualización de jugadores en formato de tarjetas con acceso a métricas detalladas.")
+    
+        archivo = st.file_uploader("📂 Subí el historial de actividad unificado (formato .xlsx)", type=["xlsx"], key="vip_grilla")
+    
         if archivo:
             try:
-                import pandas as pd
-                from datetime import datetime, timedelta
-                from io import BytesIO
-
                 df = pd.read_excel(archivo)
-
-                # LIMPIEZA Y CONVERSIÓN
+    
                 df["Apuesta"] = pd.to_numeric(df["Apuesta"], errors="coerce").fillna(0)
+                df["Ganancias"] = pd.to_numeric(df["Ganancias"], errors="coerce").fillna(0)
                 df["Hora de apertura"] = pd.to_datetime(df["Hora de apertura"], errors="coerce")
                 df["Hora de ultima actividad"] = pd.to_datetime(df["Hora de ultima actividad"], errors="coerce")
                 df["Fecha"] = df["Hora de apertura"].dt.date
                 df["Hora"] = df["Hora de apertura"].dt.hour
-
-                # JUEGO MÁS JUGADO (por frecuencia)
+    
+                fecha_maxima = df["Fecha"].max()
+    
+                resumen = df.groupby("Jugador").agg({
+                    "Apuesta": "sum",
+                    "Ganancias": "sum",
+                    "Fecha": pd.Series.nunique,
+                    "Hora de ultima actividad": "max"
+                }).reset_index()
+    
+                resumen = resumen.rename(columns={
+                    "Apuesta": "Monto total apostado",
+                    "Ganancias": "Ganancia total",
+                    "Fecha": "Días activos",
+                    "Hora de ultima actividad": "Última actividad"
+                })
+    
+                resumen["Días inactivos"] = (
+                    (pd.to_datetime(fecha_maxima).normalize() - resumen["Última actividad"].dt.normalize())
+                ).dt.days
+    
+                resumen["Monto perdido"] = resumen["Monto total apostado"] - resumen["Ganancia total"]
+    
                 juego_frecuente = (
                     df.groupby(["Jugador", "Nombre del juego"])
                     .size()
@@ -2674,48 +2689,26 @@ elif auth_status:
                     .drop_duplicates("Jugador")
                     .rename(columns={"Nombre del juego": "Juego más jugado"})
                 )
-
-                # Obtener tipo de juego y proveedor desde el juego más jugado
+    
                 juego_frecuente = juego_frecuente.merge(
                     df[["Nombre del juego", "Categoría", "Sello"]].drop_duplicates(),
                     left_on="Juego más jugado",
                     right_on="Nombre del juego",
                     how="left"
                 ).drop(columns=["Nombre del juego"])
-
+    
                 juego_frecuente = juego_frecuente.rename(columns={
                     "Categoría": "Tipo de juego",
                     "Sello": "Proveedor"
                 })
-
-                # MÉTRICAS INDIVIDUALES
-                fecha_maxima = df["Fecha"].max()
-
-                resumen = df.groupby("Jugador").agg({
-                    "Apuesta": "sum",
-                    "Fecha": pd.Series.nunique,
-                    "Hora de ultima actividad": "max"
-                }).reset_index()
-
-                resumen = resumen.rename(columns={
-                    "Apuesta": "Monto total apostado",
-                    "Fecha": "Días activos",
-                    "Hora de ultima actividad": "Última actividad"
-                })
-
-                resumen["Días inactivos"] = (
-                    (pd.to_datetime(fecha_maxima).normalize() - resumen["Última actividad"].dt.normalize())
-                ).dt.days
-
-                # HORA MÁS FRECUENTE
+    
                 hora_frecuente_raw = df.groupby(["Jugador", "Hora"]).size().reset_index(name="Frecuencia")
                 max_frecuencia = hora_frecuente_raw.groupby("Jugador")["Frecuencia"].transform("max")
                 hora_frecuente_filtrada = hora_frecuente_raw[hora_frecuente_raw["Frecuencia"] == max_frecuencia]
                 hora_frecuente_final = hora_frecuente_filtrada.groupby("Jugador")["Hora"].apply(
                     lambda x: ", ".join(str(h) for h in sorted(x))
                 ).reset_index().rename(columns={"Hora": "Hora(s) más frecuente(s)"})
-
-                # FRANJA HORARIA
+    
                 def detectar_franja(hora_str):
                     horas = [int(h) for h in hora_str.split(",")]
                     franjas = set()
@@ -2729,10 +2722,9 @@ elif auth_status:
                         else:
                             franjas.add("Noche")
                     return ", ".join(sorted(franjas))
-
+    
                 hora_frecuente_final["Franja horaria predominante"] = hora_frecuente_final["Hora(s) más frecuente(s)"].apply(detectar_franja)
-
-                # RACHA MÁXIMA DE DÍAS CONSECUTIVOS ACTIVOS
+    
                 def calcular_racha_maxima(fechas):
                     fechas_ordenadas = sorted(set(fechas))
                     racha = max_racha = 1
@@ -2743,39 +2735,41 @@ elif auth_status:
                         else:
                             racha = 1
                     return max_racha
-
+    
                 racha_df = df.groupby("Jugador")["Fecha"].apply(calcular_racha_maxima).reset_index()
                 racha_df = racha_df.rename(columns={"Fecha": "Racha máxima de días consecutivos"})
-
-                # UNIFICAR TODO
+    
                 df_final = resumen.merge(juego_frecuente, on="Jugador", how="left")
                 df_final = df_final.merge(hora_frecuente_final, on="Jugador", how="left")
                 df_final = df_final.merge(racha_df, on="Jugador", how="left")
-
-                df_final = df_final[[
-                    "Jugador", "Monto total apostado", "Juego más jugado", "Tipo de juego", "Proveedor",
-                    "Días activos", "Días inactivos", "Hora(s) más frecuente(s)",
-                    "Franja horaria predominante", "Racha máxima de días consecutivos"
-                ]].sort_values(by="Monto total apostado", ascending=False)
-
-                st.subheader("📊 Tabla de jugadores individualizados")
-                st.dataframe(df_final, use_container_width=True)
-
-                # Descargar como Excel usando BytesIO
-                output = BytesIO()
-                with pd.ExcelWriter(output, engine="openpyxl") as writer:
-                    df_final.to_excel(writer, index=False, sheet_name="Oficina VIP")
-                output.seek(0)
-
-                st.download_button(
-                    "📥 Descargar Excel",
-                    data=output,
-                    file_name="oficina_vip_individualizada.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
-
+    
+                jugadores = df_final["Jugador"].tolist()
+                jugador_seleccionado = st.selectbox("Seleccioná un jugador para ver su perfil:", jugadores)
+    
+                if jugador_seleccionado:
+                    perfil = df_final[df_final["Jugador"] == jugador_seleccionado].iloc[0]
+    
+                    st.subheader(f"🔑 Perfil de: {jugador_seleccionado}")
+                    col1, col2 = st.columns(2)
+    
+                    with col1:
+                        st.metric("Monto total apostado", f"${perfil['Monto total apostado']:.2f}")
+                        st.metric("Monto perdido", f"${perfil['Monto perdido']:.2f}")
+                        st.metric("Días activos", perfil["Días activos"])
+                        st.metric("Días inactivos", perfil["Días inactivos"])
+    
+                    with col2:
+                        st.metric("Juego más jugado", perfil["Juego más jugado"])
+                        st.metric("Tipo de juego", perfil["Tipo de juego"])
+                        st.metric("Proveedor", perfil["Proveedor"])
+                        st.metric("Franja horaria", perfil["Franja horaria predominante"])
+    
+                    st.metric("Racha máxima de días consecutivos activos", perfil["Racha máxima de días consecutivos"])
+                    st.metric("Hora(s) más frecuente(s)", perfil["Hora(s) más frecuente(s)"])
+    
             except Exception as e:
                 st.error(f"❌ Error al procesar el archivo: {e}")
+
 
 
 
