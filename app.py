@@ -2690,7 +2690,10 @@ elif auth_status:
                     "Hora de ultima actividad": "Última actividad"
                 })
     
-                resumen["Días inactivos"] = (pd.to_datetime(fecha_maxima) - resumen["Última actividad"]).dt.days
+                resumen["Días inactivos"] = (
+                    (pd.to_datetime(fecha_maxima).normalize() - resumen["Última actividad"].dt.normalize())
+                ).dt.days
+
     
                 # UNIFICAR TODO
                 df_final = resumen.merge(juego_frecuente, on="Jugador", how="left")
