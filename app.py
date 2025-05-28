@@ -2507,15 +2507,15 @@ elif auth_status:
                     zip_path = os.path.join(tmpdir, "reportes.zip")
                     with open(zip_path, "wb") as f:
                         f.write(archivo_zip.read())
-
+        
                     with zipfile.ZipFile(zip_path, "r") as zip_ref:
                         zip_ref.extractall(tmpdir)
-
+        
                     historiales = []
                     errores = []
                     df_categorias = None
-
-                    # Buscar archivo GameListFenixCasino.xlsx para categorías
+        
+                    # Buscar archivo GameListFenixCasino.xlsx
                     for root, _, files in os.walk(tmpdir):
                         for file_name in files:
                             if "GameListFenixCasino.xlsx" in file_name:
@@ -2530,8 +2530,8 @@ elif auth_status:
                                     })
                                 except Exception as e:
                                     errores.append(f"No se pudo leer GameListFenixCasino.xlsx: {e}")
-
-                    # Procesar historiales de jugadores
+        
+                    # Leer historiales individuales
                     for root, _, files in os.walk(tmpdir):
                         for file_name in files:
                             if file_name.endswith((".xlsx", ".xls")) and "GameListFenixCasino.xlsx" not in file_name:
@@ -2540,11 +2540,11 @@ elif auth_status:
                                     extension = os.path.splitext(full_path)[-1].lower()
                                     engine = "xlrd" if extension == ".xls" else "openpyxl"
                                     xl = pd.ExcelFile(full_path, engine=engine)
-
+        
                                     if "Información" not in xl.sheet_names or "Historia" not in xl.sheet_names:
                                         errores.append(f"{file_name} no contiene ambas hojas requeridas.")
                                         continue
-
+        
                                     info = xl.parse("Información", header=None)
                                     try:
                                         jugador = info[info[0] == "Usuario"].iloc[0, 1]
@@ -2553,67 +2553,20 @@ elif auth_status:
                                             jugador = "Desconocido"
                                     except Exception:
                                         jugador = "Desconocido"
-
+        
                                     historia = xl.parse("Historia")
                                     historia["Jugador"] = jugador
                                     historiales.append(historia)
-
+        
                                 except Exception as e:
                                     errores.append(f"{file_name}: {e}")
-
-                    # Unificación y asignación de categoría
+        
+                    # Unificación y análisis
                     if historiales:
                         df_historial = pd.concat(historiales, ignore_index=True)
                         df_historial = df_historial.sort_values(by="Jugador").reset_index(drop=True)
-
-                        if "Apuesta" in df_historial.columns and "Nombre del juego" in df_historial.columns:
-                            # Extraer fecha desde "Hora de apertura" si no existe la columna Fecha
-                            if "Fecha" not in df_historial.columns and "Hora de apertura" in df_historial.columns:
-                                df_historial["Fecha"] = pd.to_datetime(df_historial["Hora de apertura"], errors="coerce").dt.date
-                        
-                            df_historial["Apuesta"] = pd.to_numeric(df_historial["Apuesta"], errors="coerce").fillna(0)
-                            df_historial["Fecha"] = pd.to_datetime(df_historial["Fecha"], errors="coerce")
-                        
-                            # 🎯 Juego más jugado por volumen
-                            juego_top = (
-                                df_historial.groupby("Nombre del juego")["Apuesta"]
-                                .sum()
-                                .sort_values(ascending=False)
-                                .reset_index()
-                                .iloc[0]
-                            )
-                        
-                            # 🧩 Categoría más jugada por volumen
-                            categoria_top = (
-                                df_historial.groupby("Categoría")["Apuesta"]
-                                .sum()
-                                .sort_values(ascending=False)
-                                .reset_index()
-                                .iloc[0]
-                            )
-                        
-                            # 🕒 Promedio de inactividad
-                            fecha_final = df_historial["Fecha"].max()
-                            inactividad = (
-                                df_historial.groupby("Jugador")["Fecha"]
-                                .max()
-                                .apply(lambda x: (fecha_final - x).days)
-                            )
-                            promedio_inactividad = inactividad.mean()
-                        
-                            # Mostrar métricas
-                            st.subheader("📊 Análisis global de actividad VIP")
-                            col1, col2, col3 = st.columns(3)
-                        
-                            with col1:
-                                st.metric("🎯 Juego más jugado", juego_top["Nombre del juego"], f"${juego_top['Apuesta']:,.2f}")
-                        
-                            with col2:
-                                st.metric("🧩 Categoría más jugada", categoria_top["Categoría"], f"${categoria_top['Apuesta']:,.2f}")
-                        
-                            with col3:
-                                st.metric("🕒 Inactividad promedio", f"{promedio_inactividad:.2f} días")
-
+        
+                        # Merge con categorías
                         if df_categorias is not None and "Nombre del juego" in df_historial.columns:
                             df_historial = df_historial.merge(
                                 df_categorias,
@@ -2621,20 +2574,62 @@ elif auth_status:
                                 left_on="Nombre del juego",
                                 right_on="Juego"
                             )
-
+        
+                        # Análisis global de actividad
+                        if "Apuesta" in df_historial.columns and "Nombre del juego" in df_historial.columns and "Categoría" in df_historial.columns:
+                            df_historial["Apuesta"] = pd.to_numeric(df_historial["Apuesta"], errors="coerce").fillna(0)
+        
+                            if "Fecha" not in df_historial.columns and "Hora de apertura" in df_historial.columns:
+                                df_historial["Fecha"] = pd.to_datetime(df_historial["Hora de apertura"], errors="coerce").dt.date
+                            df_historial["Fecha"] = pd.to_datetime(df_historial["Fecha"], errors="coerce")
+        
+                            juego_top = (
+                                df_historial.groupby("Nombre del juego")["Apuesta"]
+                                .sum()
+                                .sort_values(ascending=False)
+                                .reset_index()
+                                .iloc[0]
+                            )
+        
+                            categoria_top = (
+                                df_historial.groupby("Categoría")["Apuesta"]
+                                .sum()
+                                .sort_values(ascending=False)
+                                .reset_index()
+                                .iloc[0]
+                            )
+        
+                            fecha_final = df_historial["Fecha"].max()
+                            inactividad = (
+                                df_historial.groupby("Jugador")["Fecha"]
+                                .max()
+                                .apply(lambda x: (fecha_final - x).days)
+                            )
+                            promedio_inactividad = inactividad.mean()
+        
+                            st.subheader("📊 Análisis global de actividad VIP")
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("🎯 Juego más jugado", juego_top["Nombre del juego"], f"${juego_top['Apuesta']:,.2f}")
+                            with col2:
+                                st.metric("🧩 Categoría más jugada", categoria_top["Categoría"], f"${categoria_top['Apuesta']:,.2f}")
+                            with col3:
+                                st.metric("🕒 Inactividad promedio", f"{promedio_inactividad:.2f} días")
+        
                         st.success("✅ Historial unificado generado correctamente.")
                         st.dataframe(df_historial)
-
+        
                         df_historial.to_excel("historial_unificado.xlsx", index=False)
                         with open("historial_unificado.xlsx", "rb") as f:
                             st.download_button("📥 Descargar historial_unificado.xlsx", f, file_name="historial_unificado.xlsx")
-
+        
                         if errores:
                             st.warning("⚠️ Algunos archivos no se pudieron procesar:")
                             for e in errores:
                                 st.text(f"• {e}")
                     else:
                         st.error("❌ No se pudo generar el historial unificado. Verificá que los archivos contengan las hojas 'Información' y 'Historia'.")
+
 
 
         
