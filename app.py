@@ -16,6 +16,9 @@ import copy
 import pickle
 import zipfile
 import tempfile 
+from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
+import numpy as np
 
 
 # Leer credenciales y configuración de cookies desde secrets.toml
