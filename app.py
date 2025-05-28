@@ -2554,7 +2554,7 @@ elif auth_status:
                                     except Exception:
                                         jugador = "Desconocido"
         
-                                    historia = xl.parse("Historia")
+                                    historia = xl.parse("Historia", dtype=str, keep_default_na=False)
                                     historia["Jugador"] = jugador
                                     historiales.append(historia)
         
@@ -2575,19 +2575,26 @@ elif auth_status:
                                 right_on="Juego"
                             )
         
-                        # Análisis global de actividad
+                        # Análisis global
                         if "Apuesta" in df_historial.columns and "Nombre del juego" in df_historial.columns and "Categoría" in df_historial.columns:
+                            df_historial["Apuesta"] = (
+                                df_historial["Apuesta"]
+                                .astype(str)
+                                .str.replace(",", "", regex=False)
+                                .str.replace(" ", "", regex=False)
+                                .str.strip()
+                            )
                             df_historial["Apuesta"] = pd.to_numeric(df_historial["Apuesta"], errors="coerce").fillna(0)
-                        
+        
                             if "Fecha" not in df_historial.columns and "Hora de apertura" in df_historial.columns:
                                 df_historial["Fecha"] = pd.to_datetime(df_historial["Hora de apertura"], errors="coerce").dt.date
                             df_historial["Fecha"] = pd.to_datetime(df_historial["Fecha"], errors="coerce")
-                        
+        
                             # 🎯 Juego más jugado por frecuencia
                             frecuencias = df_historial["Nombre del juego"].value_counts().reset_index()
                             frecuencias.columns = ["Nombre del juego", "Frecuencia"]
                             juego_top_frecuencia = frecuencias.iloc[0]
-                        
+        
                             # 🧩 Categoría más jugada por volumen de apuesta
                             categoria_top = (
                                 df_historial.groupby("Categoría")["Apuesta"]
@@ -2596,7 +2603,7 @@ elif auth_status:
                                 .reset_index()
                                 .iloc[0]
                             )
-                        
+        
                             # 🕒 Inactividad promedio
                             fecha_final = df_historial["Fecha"].max()
                             inactividad = (
@@ -2605,7 +2612,7 @@ elif auth_status:
                                 .apply(lambda x: (fecha_final - x).days)
                             )
                             promedio_inactividad = inactividad.mean()
-                        
+        
                             st.subheader("📊 Análisis global de actividad VIP")
                             col1, col2, col3 = st.columns(3)
                             with col1:
@@ -2628,6 +2635,7 @@ elif auth_status:
                                 st.text(f"• {e}")
                     else:
                         st.error("❌ No se pudo generar el historial unificado. Verificá que los archivos contengan las hojas 'Información' y 'Historia'.")
+
 
     # === SECCIÓN: 🏢 Oficina VIP ===
     
