@@ -2640,6 +2640,10 @@ elif auth_status:
     
         if archivo:
             try:
+                import pandas as pd
+                from datetime import datetime
+                from io import BytesIO
+    
                 df = pd.read_excel(archivo)
     
                 # LIMPIEZA Y CONVERSIÓN
@@ -2698,12 +2702,22 @@ elif auth_status:
                 st.subheader("📊 Tabla de jugadores individualizados")
                 st.dataframe(df_final, use_container_width=True)
     
-                # Botón de descarga
-                excel_bytes = df_final.to_excel(index=False, engine="openpyxl")
-                st.download_button("📥 Descargar Excel", data=excel_bytes, file_name="oficina_vip_individualizada.xlsx")
+                # Descargar como Excel usando BytesIO
+                output = BytesIO()
+                with pd.ExcelWriter(output, engine="openpyxl") as writer:
+                    df_final.to_excel(writer, index=False, sheet_name="Oficina VIP")
+                output.seek(0)
+    
+                st.download_button(
+                    "📥 Descargar Excel",
+                    data=output,
+                    file_name="oficina_vip_individualizada.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
     
             except Exception as e:
                 st.error(f"❌ Error al procesar el archivo: {e}")
+
 
 
         
