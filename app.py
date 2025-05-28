@@ -2550,8 +2550,8 @@ elif auth_status:
                                     # Extracción de información del jugador
                                     info = pd.read_excel(xl, "Información", header=None)
                                     try:
-                                        jugador_row = info.loc[info[0] == "Usuario", 1]
-                                        jugador = str(jugador_row.iloc[0]).strip() if not jugador_row.empty else "Desconocido"
+                                        jugador_row = info[info[0] == "Usuario"]
+                                        jugador = str(jugador_row.iloc[0, 1]).strip() if not jugador_row.empty else "Desconocido"
                                     except Exception:
                                         jugador = "Desconocido"
                                     jugador = str(jugador).strip() if pd.notna(jugador) else "Desconocido"
