@@ -2554,7 +2554,19 @@ elif auth_status:
                                     except Exception:
                                         jugador = "Desconocido"
         
-                                    historia = xl.parse("Historia", dtype=str, keep_default_na=False)
+                                    historia = xl.parse("Historia")
+        
+                                    # Conversión segura de columnas numéricas
+                                    for col in ["Apuesta", "Ganancias", "Ganar"]:
+                                        if col in historia.columns:
+                                            historia[col] = (
+                                                historia[col]
+                                                .astype(str)
+                                                .str.replace(",", "", regex=False)
+                                                .str.replace(" ", "", regex=False)
+                                            )
+                                            historia[col] = pd.to_numeric(historia[col], errors="coerce")
+        
                                     historia["Jugador"] = jugador
                                     historiales.append(historia)
         
@@ -2575,17 +2587,8 @@ elif auth_status:
                                 right_on="Juego"
                             )
         
-                        # Análisis global
+                        # Análisis global de actividad
                         if "Apuesta" in df_historial.columns and "Nombre del juego" in df_historial.columns and "Categoría" in df_historial.columns:
-                            df_historial["Apuesta"] = (
-                                df_historial["Apuesta"]
-                                .astype(str)
-                                .str.replace(",", "", regex=False)
-                                .str.replace(" ", "", regex=False)
-                                .str.strip()
-                            )
-                            df_historial["Apuesta"] = pd.to_numeric(df_historial["Apuesta"], errors="coerce").fillna(0)
-        
                             if "Fecha" not in df_historial.columns and "Hora de apertura" in df_historial.columns:
                                 df_historial["Fecha"] = pd.to_datetime(df_historial["Hora de apertura"], errors="coerce").dt.date
                             df_historial["Fecha"] = pd.to_datetime(df_historial["Fecha"], errors="coerce")
@@ -2635,6 +2638,7 @@ elif auth_status:
                                 st.text(f"• {e}")
                     else:
                         st.error("❌ No se pudo generar el historial unificado. Verificá que los archivos contengan las hojas 'Información' y 'Historia'.")
+
 
 
     # === SECCIÓN: 🏢 Oficina VIP ===
