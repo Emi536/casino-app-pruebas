@@ -2549,7 +2549,11 @@ elif auth_status:
                                     
                                     # Extracción de información del jugador
                                     info = pd.read_excel(xl, "Información", header=None)
-                                    jugador = info.loc[info[0] == "Usuario", 1].iloc[0] if not info.empty else "Desconocido"
+                                    try:
+                                        jugador_row = info.loc[info[0] == "Usuario", 1]
+                                        jugador = str(jugador_row.iloc[0]).strip() if not jugador_row.empty else "Desconocido"
+                                    except Exception:
+                                        jugador = "Desconocido"
                                     jugador = str(jugador).strip() if pd.notna(jugador) else "Desconocido"
                                     
                                     # Procesamiento del historial
