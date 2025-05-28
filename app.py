@@ -2702,10 +2702,20 @@ elif auth_status:
                 })
     
                 resumen["Días inactivos"] = (
-                    (pd.to_datetime(fecha_maxima).normalize() - resumen["Última actividad"].dt.normalize())
+                    pd.to_datetime(fecha_maxima).normalize() - resumen["Última actividad"].dt.normalize()
                 ).dt.days
     
                 resumen["Monto perdido"] = resumen["Monto total apostado"] - resumen["Monto total ganado"]
+    
+                def clasificar_estado(dias):
+                    if dias <= 15:
+                        return "🟢 Activo"
+                    elif dias <= 45:
+                        return "🟡 Inactivo (15-45 días)"
+                    else:
+                        return "🔴 Inactivo (+45 días)"
+    
+                resumen["Estado"] = resumen["Días inactivos"].apply(clasificar_estado)
     
                 hora_frecuente_raw = df.groupby(["Jugador", "Hora"]).size().reset_index(name="Frecuencia")
                 max_frecuencia = hora_frecuente_raw.groupby("Jugador")["Frecuencia"].transform("max")
@@ -2751,7 +2761,7 @@ elif auth_status:
                 df_final = df_final[[
                     "Jugador", "Monto total apostado", "Monto total ganado", "Monto perdido",
                     "Juego más jugado", "Tipo de juego", "Proveedor",
-                    "Días activos", "Días inactivos",
+                    "Días activos", "Días inactivos", "Estado",
                     "Hora(s) más frecuente(s)", "Franja horaria predominante",
                     "Racha máxima de días consecutivos"
                 ]].sort_values(by="Monto total apostado", ascending=False)
@@ -2773,6 +2783,7 @@ elif auth_status:
                     - **Tipo de juego:** {}
                     - **Días activos:** {}
                     - **Días inactivos:** {}
+                    - **Estado:** {}
                     - **Hora(s) más frecuente(s):** {}
                     - **Franja horaria predominante:** {}
                     - **Racha máxima de días consecutivos activos:** {}
@@ -2787,6 +2798,7 @@ elif auth_status:
                         perfil["Tipo de juego"],
                         perfil["Días activos"],
                         perfil["Días inactivos"],
+                        perfil["Estado"],
                         perfil["Hora(s) más frecuente(s)"],
                         perfil["Franja horaria predominante"],
                         perfil["Racha máxima de días consecutivos"]
@@ -2806,6 +2818,7 @@ elif auth_status:
     
             except Exception as e:
                 st.error(f"❌ Error al procesar el archivo: {e}")
+
 
 
 
