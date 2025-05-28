@@ -2588,7 +2588,7 @@ elif auth_status:
                                 df_historial["Nombre del juego"]
                                 .value_counts()
                                 .reset_index()
-                                .rename(columns={"index": "Juego", "Nombre del juego": "Veces"})
+                                .rename(columns={"index": "Juego", "Nombre del juego": "Frecuencia"})
                                 .iloc[0]
                             )
         
@@ -2611,7 +2611,7 @@ elif auth_status:
                             st.subheader("📊 Análisis global de actividad VIP")
                             col1, col2, col3 = st.columns(3)
                             with col1:
-                                st.metric("🎯 Juego más jugado", juego_top_frecuencia["Juego"], f"{juego_top_frecuencia['Veces']} veces")
+                                st.metric("🎯 Juego más jugado", juego_top_frecuencia["Juego"], f"{juego_top_frecuencia['Frecuencia']} veces")
                             with col2:
                                 st.metric("🧩 Categoría más jugada", categoria_top["Categoría"], f"${categoria_top['Apuesta']:,.2f}")
                             with col3:
