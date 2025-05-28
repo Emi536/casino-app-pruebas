@@ -2566,6 +2566,50 @@ elif auth_status:
                         df_historial = pd.concat(historiales, ignore_index=True)
                         df_historial = df_historial.sort_values(by="Jugador").reset_index(drop=True)
 
+                        if "Monto apostado" in df_historial.columns and "Fecha" in df_historial.columns:
+                            # Asegurar tipo fecha
+                            df_historial["Fecha"] = pd.to_datetime(df_historial["Fecha"], errors="coerce")
+                        
+                            # 🎯 Juego más jugado por volumen
+                            juego_top = (
+                                df_historial.groupby("Nombre del juego")["Monto apostado"]
+                                .sum()
+                                .sort_values(ascending=False)
+                                .reset_index()
+                                .iloc[0]
+                            )
+                        
+                            # 🧩 Categoría más jugada por volumen
+                            categoria_top = (
+                                df_historial.groupby("Categoría")["Monto apostado"]
+                                .sum()
+                                .sort_values(ascending=False)
+                                .reset_index()
+                                .iloc[0]
+                            )
+                        
+                            # 🕒 Promedio de inactividad
+                            fecha_final = df_historial["Fecha"].max()
+                            inactividad = (
+                                df_historial.groupby("Jugador")["Fecha"]
+                                .max()
+                                .apply(lambda x: (fecha_final - x).days)
+                            )
+                            promedio_inactividad = inactividad.mean()
+                        
+                            # Mostrar en la app
+                            st.subheader("📊 Análisis global de actividad VIP")
+                            col1, col2, col3 = st.columns(3)
+                        
+                            with col1:
+                                st.metric("🎯 Juego más jugado", juego_top["Nombre del juego"], f"${juego_top['Monto apostado']:,.2f}")
+                        
+                            with col2:
+                                st.metric("🧩 Categoría más jugada", categoria_top["Categoría"], f"${categoria_top['Monto apostado']:,.2f}")
+                        
+                            with col3:
+                                st.metric("🕒 Inactividad promedio", f"{promedio_inactividad:.2f} días")
+
                         if df_categorias is not None and "Nombre del juego" in df_historial.columns:
                             df_historial = df_historial.merge(
                                 df_categorias,
