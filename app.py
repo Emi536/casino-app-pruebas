@@ -2629,6 +2629,81 @@ elif auth_status:
                     else:
                         st.error("❌ No se pudo generar el historial unificado. Verificá que los archivos contengan las hojas 'Información' y 'Historia'.")
 
+    # === SECCIÓN: 🏢 Oficina VIP ===
+    
+    elif "🏢 Oficina VIP" in seccion:
+        st.header("🏢 Oficina VIP")
+    
+        st.markdown("Esta sección permite individualizar a los jugadores según su comportamiento y actividad reciente.")
+    
+        archivo = st.file_uploader("📂 Subí el historial de actividad unificado (formato .xlsx)", type=["xlsx"], key="vip_uploader")
+    
+        if archivo:
+            try:
+                df = pd.read_excel(archivo)
+    
+                # LIMPIEZA Y CONVERSIÓN
+                df["Apuesta"] = pd.to_numeric(df["Apuesta"], errors="coerce").fillna(0)
+                df["Hora de apertura"] = pd.to_datetime(df["Hora de apertura"], errors="coerce")
+                df["Hora de ultima actividad"] = pd.to_datetime(df["Hora de ultima actividad"], errors="coerce")
+                df["Fecha"] = df["Hora de apertura"].dt.date
+    
+                # JUEGO MÁS JUGADO (por frecuencia)
+                juego_frecuente = (
+                    df.groupby(["Jugador", "Nombre del juego"])
+                    .size()
+                    .reset_index(name="Frecuencia")
+                    .sort_values(["Jugador", "Frecuencia"], ascending=[True, False])
+                    .drop_duplicates("Jugador")
+                    .rename(columns={"Nombre del juego": "Juego más jugado"})
+                )
+    
+                # Obtener tipo de juego y proveedor desde el juego más jugado
+                juego_frecuente = juego_frecuente.merge(
+                    df[["Nombre del juego", "Categoría", "Sello"]].drop_duplicates(),
+                    left_on="Juego más jugado",
+                    right_on="Nombre del juego",
+                    how="left"
+                ).drop(columns=["Nombre del juego"])
+    
+                juego_frecuente = juego_frecuente.rename(columns={
+                    "Categoría": "Tipo de juego",
+                    "Sello": "Proveedor"
+                })
+    
+                # MÉTRICAS INDIVIDUALES
+                fecha_maxima = df["Fecha"].max()
+    
+                resumen = df.groupby("Jugador").agg({
+                    "Apuesta": "sum",
+                    "Fecha": pd.Series.nunique,
+                    "Hora de ultima actividad": "max"
+                }).reset_index()
+    
+                resumen = resumen.rename(columns={
+                    "Apuesta": "Monto total apostado",
+                    "Fecha": "Días activos",
+                    "Hora de ultima actividad": "Última actividad"
+                })
+    
+                resumen["Días inactivos"] = (fecha_maxima - resumen["Última actividad"].dt.date).dt.days
+    
+                # UNIFICAR TODO
+                df_final = resumen.merge(juego_frecuente, on="Jugador", how="left")
+                df_final = df_final[[
+                    "Jugador", "Monto total apostado", "Juego más jugado",
+                    "Tipo de juego", "Proveedor", "Días activos", "Días inactivos"
+                ]].sort_values(by="Monto total apostado", ascending=False)
+    
+                st.subheader("📊 Tabla de jugadores individualizados")
+                st.dataframe(df_final, use_container_width=True)
+    
+                # Botón de descarga
+                excel_bytes = df_final.to_excel(index=False, engine="openpyxl")
+                st.download_button("📥 Descargar Excel", data=excel_bytes, file_name="oficina_vip_individualizada.xlsx")
+    
+            except Exception as e:
+                st.error(f"❌ Error al procesar el archivo: {e}")
 
 
         
