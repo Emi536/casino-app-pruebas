@@ -2587,7 +2587,7 @@ elif auth_status:
                             if isinstance(result, tuple) and result[1] is not None:
                                 errores.append(result[1])
                             elif isinstance(result, tuple) and result[0] is not None:
-                                historiales.append(result[0]))
+                                historiales.append(result[0])
                         
                         # Unificación y análisis
                         if historiales:
