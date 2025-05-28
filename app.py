@@ -2583,11 +2583,11 @@ elif auth_status:
                         with ThreadPoolExecutor() as executor:
                             results = list(executor.map(procesar_archivo, excel_files))
                         
-                        for result, error in results:
-                            if error:
-                                errores.append(error)
-                            elif result is not None:
-                                historiales.append(result)
+                        for result in results:
+                            if isinstance(result, tuple) and result[1] is not None:
+                                errores.append(result[1])
+                            elif isinstance(result, tuple) and result[0] is not None:
+                                historiales.append(result[0]))
                         
                         # Unificación y análisis
                         if historiales:
