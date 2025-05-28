@@ -2583,14 +2583,14 @@ elif auth_status:
                                 df_historial["Fecha"] = pd.to_datetime(df_historial["Hora de apertura"], errors="coerce").dt.date
                             df_historial["Fecha"] = pd.to_datetime(df_historial["Fecha"], errors="coerce")
         
-                            # 🎯 Juego más jugado por frecuencia
-                            juego_top_frecuencia = (
+                            df_juego_frecuencia = (
                                 df_historial["Nombre del juego"]
                                 .value_counts()
                                 .reset_index()
                                 .rename(columns={"index": "Juego", "Nombre del juego": "Frecuencia"})
-                                .iloc[0]
                             )
+                            
+                            juego_top_frecuencia = df_juego_frecuencia.iloc[0]
         
                             categoria_top = (
                                 df_historial.groupby("Categoría")["Apuesta"]
