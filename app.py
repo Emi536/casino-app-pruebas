@@ -2644,7 +2644,6 @@ elif auth_status:
     # === SECCIÓN: 🏢 Oficina VIP Grilla ===
     elif "🏢 Oficina VIP" in seccion:
         st.header("🏢 Oficina VIP")
-    
         st.markdown("Esta sección permite individualizar a los jugadores según su comportamiento y actividad reciente.")
     
         archivo = st.file_uploader("📂 Subí el historial de actividad unificado (formato .xlsx)", type=["xlsx"], key="vip_uploader")
@@ -2652,18 +2651,18 @@ elif auth_status:
         if archivo:
             try:
                 import pandas as pd
-                from datetime import datetime, timedelta
+                from datetime import timedelta
                 from io import BytesIO
     
                 df = pd.read_excel(archivo)
     
                 df["Apuesta"] = pd.to_numeric(df["Apuesta"], errors="coerce").fillna(0)
-                df["Ganancias"] = pd.to_numeric(df["Ganancias"], errors="coerce").fillna(0)
                 df["Hora de apertura"] = pd.to_datetime(df["Hora de apertura"], errors="coerce")
                 df["Hora de ultima actividad"] = pd.to_datetime(df["Hora de ultima actividad"], errors="coerce")
                 df["Fecha"] = df["Hora de apertura"].dt.date
                 df["Hora"] = df["Hora de apertura"].dt.hour
     
+                # Juego más jugado por frecuencia
                 juego_frecuente = (
                     df.groupby(["Jugador", "Nombre del juego"])
                     .size()
@@ -2689,24 +2688,19 @@ elif auth_status:
     
                 resumen = df.groupby("Jugador").agg({
                     "Apuesta": "sum",
-                    "Ganancias": "sum",
                     "Fecha": pd.Series.nunique,
                     "Hora de ultima actividad": "max"
-                }).reset_index()
-    
-                resumen = resumen.rename(columns={
+                }).reset_index().rename(columns={
                     "Apuesta": "Monto total apostado",
-                    "Ganancias": "Monto total ganado",
                     "Fecha": "Días activos",
                     "Hora de ultima actividad": "Última actividad"
                 })
     
                 resumen["Días inactivos"] = (
-                    (pd.to_datetime(fecha_maxima).normalize() - resumen["Última actividad"].dt.normalize())
+                    pd.to_datetime(fecha_maxima) - resumen["Última actividad"].dt.normalize()
                 ).dt.days
     
-                resumen["Monto perdido"] = resumen["Monto total apostado"] - resumen["Monto total ganado"]
-    
+                # Horas más frecuentes
                 hora_frecuente_raw = df.groupby(["Jugador", "Hora"]).size().reset_index(name="Frecuencia")
                 max_frecuencia = hora_frecuente_raw.groupby("Jugador")["Frecuencia"].transform("max")
                 hora_frecuente_filtrada = hora_frecuente_raw[hora_frecuente_raw["Frecuencia"] == max_frecuencia]
@@ -2748,49 +2742,34 @@ elif auth_status:
                 df_final = df_final.merge(hora_frecuente_final, on="Jugador", how="left")
                 df_final = df_final.merge(racha_df, on="Jugador", how="left")
     
-                df_final = df_final[[
-                    "Jugador", "Monto total apostado", "Monto total ganado", "Monto perdido",
-                    "Juego más jugado", "Tipo de juego", "Proveedor",
-                    "Días activos", "Días inactivos",
-                    "Hora(s) más frecuente(s)", "Franja horaria predominante",
-                    "Racha máxima de días consecutivos"
-                ]].sort_values(by="Monto total apostado", ascending=False)
+                df_final["Monto total ganado"] = 0  # Placeholder si querés agregar luego
+                df_final["Monto perdido"] = df_final["Monto total apostado"]  # Suponemos que no ganó nada
     
-                st.subheader("🔢 Tabla de jugadores individualizados")
-                st.dataframe(df_final, use_container_width=True)
+                st.subheader("🎯 Selección visual de jugadores")
+                cols = st.columns(3)
+                for idx, row in df_final.iterrows():
+                    with cols[idx % 3]:
+                        if st.button(f"👤 {row['Jugador']}", key=f"btn_{idx}"):
+                            st.session_state['jugador_seleccionado'] = row['Jugador']
     
-                jugador_seleccionado = st.selectbox("Seleccioná un jugador para ver su perfil individual:", df_final["Jugador"].unique())
-    
-                if jugador_seleccionado:
-                    perfil = df_final[df_final["Jugador"] == jugador_seleccionado].iloc[0]
-                    st.markdown("""
-                    ### 📈 Perfil del jugador seleccionado
-                    - **Monto total apostado:** ${:,.2f}
-                    - **Monto total ganado:** ${:,.2f}
-                    - **Monto perdido:** ${:,.2f}
-                    - **Juego más jugado:** {}
-                    - **Proveedor:** {}
-                    - **Tipo de juego:** {}
-                    - **Días activos:** {}
-                    - **Días inactivos:** {}
-                    - **Hora(s) más frecuente(s):** {}
-                    - **Franja horaria predominante:** {}
-                    - **Racha máxima de días consecutivos activos:** {}
+                if 'jugador_seleccionado' in st.session_state:
+                    perfil = df_final[df_final["Jugador"] == st.session_state['jugador_seleccionado']].iloc[0]
+                    st.markdown(f"""
+                    ### 📈 Perfil de {perfil["Jugador"]}
+                    - **Monto total apostado:** ${perfil["Monto total apostado"]:,.2f}
+                    - **Monto total ganado:** ${perfil["Monto total ganado"]:,.2f}
+                    - **Monto perdido:** ${perfil["Monto perdido"]:,.2f}
+                    - **Juego más jugado:** {perfil["Juego más jugado"]}
+                    - **Proveedor:** {perfil["Proveedor"]}
+                    - **Tipo de juego:** {perfil["Tipo de juego"]}
+                    - **Días activos:** {perfil["Días activos"]}
+                    - **Días inactivos:** {perfil["Días inactivos"]}
+                    - **Hora(s) más frecuente(s):** {perfil["Hora(s) más frecuente(s)"]}
+                    - **Franja horaria predominante:** {perfil["Franja horaria predominante"]}
+                    - **Racha máxima de días consecutivos activos:** {perfil["Racha máxima de días consecutivos"]}
                     - **Racha de depósitos:** Sin información
                     - **Patrón de juego:** En desarrollo
-                    """.format(
-                        perfil["Monto total apostado"],
-                        perfil["Monto total ganado"],
-                        perfil["Monto perdido"],
-                        perfil["Juego más jugado"],
-                        perfil["Proveedor"],
-                        perfil["Tipo de juego"],
-                        perfil["Días activos"],
-                        perfil["Días inactivos"],
-                        perfil["Hora(s) más frecuente(s)"],
-                        perfil["Franja horaria predominante"],
-                        perfil["Racha máxima de días consecutivos"]
-                    ))
+                    """)
     
                 output = BytesIO()
                 with pd.ExcelWriter(output, engine="openpyxl") as writer:
@@ -2798,7 +2777,7 @@ elif auth_status:
                 output.seek(0)
     
                 st.download_button(
-                    "📅 Descargar Excel",
+                    "📥 Descargar Excel",
                     data=output,
                     file_name="oficina_vip_individualizada.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
