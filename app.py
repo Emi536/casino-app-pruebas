@@ -203,6 +203,13 @@ elif auth_status:
         try:
             if tabla == "transacciones_crudas":
                 df = limpiar_transacciones(df)
+    
+            elif tabla == "bonos_crudos":
+                df.columns = df.columns.str.strip()
+                if "USUARIO" in df.columns:
+                    df = df.drop_duplicates(subset=["USUARIO"], keep="last")
+                    st.info(f"🧹 Se eliminaron duplicados. Registros únicos por usuario: {len(df)}")
+    
             else:
                 df = limpiar_columnas_numericas(df)
     
@@ -214,7 +221,6 @@ elif auth_status:
             st.success(f"✅ {len(df)} registros cargados correctamente en la tabla `{tabla}`.")
         except SQLAlchemyError as e:
             st.error(f"❌ Error al subir datos a `{tabla}`: {e}")
-
 
 
 
