@@ -20,7 +20,6 @@ import tempfile
 from sqlalchemy import create_engine
 import psycopg2
 
-
 # Leer credenciales y configuración de cookies desde secrets.toml
 credentials = dict(st.secrets["credentials"])
 cookie = st.secrets["cookie"]
@@ -132,8 +131,6 @@ elif auth_status:
             "IP": "Extra"
         })
         return df
-  
-
 
     # --- SECCION 1: METRICAS DE JUGADORES ---
     if seccion == "🔝 Métricas de jugadores":
@@ -2646,9 +2643,8 @@ elif auth_status:
                                 st.error("❌ No se pudo generar el historial unificado. Verificá que los archivos contengan las hojas 'Información' y 'Historia'.")
 
         elif tarea == "📊 Jugadores VIP":
-            st.title("📊 Gestión de jugadores VIP y carga de reportes")
-        
-            # Conexión a Supabase
+            st.title("🔌 Test de conexión a Supabase")
+            
             try:
                 engine = create_engine(st.secrets["DB_URL"])
                 with engine.connect() as conn:
@@ -2657,17 +2653,6 @@ elif auth_status:
                     st.dataframe(df)
             except Exception as e:
                 st.error(f"❌ Error de conexión: {e}")
-        
-            st.divider()
-            st.subheader("📥 Subir archivo Excel o ZIP para almacenar en la base")
-        
-            archivo = st.file_uploader("📁 Seleccioná un archivo .xlsx o .zip", type=["xlsx", "zip"])
-        
-            if archivo:
-                if archivo.name.endswith(".xlsx"):
-                    procesar_y_subir_excel(archivo, engine)
-                elif archivo.name.endswith(".zip"):
-                    procesar_y_subir_zip(archivo, engine)
 
 
     
@@ -2856,4 +2841,3 @@ elif auth_status:
 
 
         
-
