@@ -134,12 +134,12 @@ elif auth_status:
         return df
 
     def convertir_columna_tiempo(df):
-        """Convierte valores numéricos como 235959.0 a objetos datetime.time (23:59:59)."""
-        import datetime
-    
+        """Convierte valores numéricos como 235959.0 o strings tipo '23:59:59' a objetos time."""
         def convertir(valor):
             try:
-                valor_str = str(int(valor)).zfill(6)
+                if isinstance(valor, datetime.time):
+                    return valor
+                valor_str = str(int(float(valor))).zfill(6)  # Acepta floats como 235959.0 o strings
                 hora = int(valor_str[0:2])
                 minuto = int(valor_str[2:4])
                 segundo = int(valor_str[4:6])
@@ -150,7 +150,41 @@ elif auth_status:
         if "Tiempo" in df.columns:
             df["Tiempo"] = df["Tiempo"].apply(convertir)
         return df
-            
+    
+    def limpiar_columnas_numericas(df):
+        """Limpia y convierte columnas numéricas con posibles símbolos y formatos regionales."""
+        for col in df.columns:
+            if df[col].dtype == object:
+                try:
+                    df[col] = (
+                        df[col]
+                        .astype(str)
+                        .str.replace(r"[^\d,.\-]", "", regex=True)  # Elimina símbolos como $ y espacios
+                        .str.replace(",", ".", regex=False)  # Usa punto decimal
+                    )
+                    df[col] = pd.to_numeric(df[col], errors='coerce')
+                except:
+                    pass
+        return df
+    
+    def limpiar_transacciones(df):
+        """Limpia columnas específicas de la tabla transacciones_crudas."""
+        df = limpiar_columnas_numericas(df)
+    
+        # Convertir columnas de fecha y hora
+        if "Fecha" in df.columns:
+            df["Fecha"] = pd.to_datetime(df["Fecha"], errors='coerce').dt.date
+    
+        df = convertir_columna_tiempo(df)
+    
+        # Forzar columnas de texto como string y evitar floats (por ejemplo: nombres que parecen números)
+        columnas_texto = ["ID", "operación", "Límites", "Iniciador", "Del usuario", "Sistema", "Al usuario", "IP"]
+        for col in columnas_texto:
+            if col in df.columns:
+                df[col] = df[col].astype(str)
+    
+        return df
+    
     def detectar_tabla(df):
         columnas = set(col.lower().strip() for col in df.columns)
     
@@ -167,31 +201,13 @@ elif auth_status:
         else:
             return None
     
-    
-    def limpiar_columnas_numericas(df):
-        """Limpia y convierte columnas numéricas con posibles símbolos y formatos regionales."""
-        for col in df.columns:
-            if df[col].dtype == object:
-                try:
-                    df[col] = (
-                        df[col]
-                        .astype(str)
-                        .str.replace(r"[^\d,.\-]", "", regex=True)  # Elimina símbolos como $ y espacios
-                        .str.replace(",", ".", regex=False)  # Usa punto decimal
-                    )
-                    df[col] = pd.to_numeric(df[col], errors='coerce')  # Convierte, NaN si falla
-                except Exception:
-                    pass
-        return df
-        
-    
     def subir_a_supabase(df, tabla, engine):
         try:
-            df = limpiar_columnas_numericas(df)
-    
-            # Solo convertir "Tiempo" si la tabla lo requiere
+            # Procesamiento especial por tabla
             if tabla == "transacciones_crudas":
-                df = convertir_columna_tiempo(df)
+                df = limpiar_transacciones(df)
+            else:
+                df = limpiar_columnas_numericas(df)
     
             df.to_sql(tabla, con=engine, if_exists='append', index=False)
             st.success(f"✅ Datos cargados correctamente en la tabla `{tabla}`.")
@@ -2719,10 +2735,12 @@ elif auth_status:
                 with engine.connect() as conn:
                     st.success("✅ Conectado a Supabase correctamente")
         
-                    # Mostrar primeros datos de la tabla jugadores_vip
-                    df_preview = pd.read_sql("SELECT * FROM jugadores_vip LIMIT 5", conn)
-                    st.subheader("👀 Vista previa de jugadores VIP")
-                    st.dataframe(df_preview)
+                    st.subheader("👀 Vista previa de tabla jugadores_vip (5 registros)")
+                    try:
+                        df_preview = pd.read_sql("SELECT * FROM jugadores_vip LIMIT 5", conn)
+                        st.dataframe(df_preview)
+                    except Exception:
+                        st.info("ℹ️ La tabla `jugadores_vip` aún no contiene datos o no está creada.")
         
                     st.markdown("---")
                     st.subheader("📤 Subí un archivo para guardar en la base de datos")
@@ -2744,7 +2762,7 @@ elif auth_status:
                                 st.info(f"📌 El archivo será cargado en la tabla `{tabla}`.")
                                 subir_a_supabase(df, tabla, engine)
                             else:
-                                st.warning("⚠️ No se pudo detectar a qué tabla pertenece el archivo.")
+                                st.warning("⚠️ No se pudo detectar a qué tabla pertenece el archivo. Verificá las columnas.")
                         except Exception as e:
                             st.error(f"❌ Error al procesar el archivo: {e}")
         
