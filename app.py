@@ -185,18 +185,18 @@ elif auth_status:
         return df
         
     
-        def subir_a_supabase(df, tabla, engine):
-            try:
-                df = limpiar_columnas_numericas(df)
-        
-                # Solo convertir "Tiempo" si la tabla lo requiere
-                if tabla == "transacciones_crudas":
-                    df = convertir_columna_tiempo(df)
-        
-                df.to_sql(tabla, con=engine, if_exists='append', index=False)
-                st.success(f"✅ Datos cargados correctamente en la tabla `{tabla}`.")
-            except SQLAlchemyError as e:
-                st.error(f"❌ Error al subir datos a `{tabla}`: {e}")
+    def subir_a_supabase(df, tabla, engine):
+        try:
+            df = limpiar_columnas_numericas(df)
+    
+            # Solo convertir "Tiempo" si la tabla lo requiere
+            if tabla == "transacciones_crudas":
+                df = convertir_columna_tiempo(df)
+    
+            df.to_sql(tabla, con=engine, if_exists='append', index=False)
+            st.success(f"✅ Datos cargados correctamente en la tabla `{tabla}`.")
+        except SQLAlchemyError as e:
+            st.error(f"❌ Error al subir datos a `{tabla}`: {e}")
 
 
 
