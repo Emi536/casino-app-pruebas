@@ -222,6 +222,15 @@ elif auth_status:
         except SQLAlchemyError as e:
             st.error(f"❌ Error al subir datos a `{tabla}`: {e}")
 
+    def agregar_columna_casino(df, casino):
+        """
+        Asegura que el DataFrame tenga la columna 'casino' y la llena con el valor seleccionado.
+        Si ya existe, la sobrescribe.
+        """
+        df.columns = df.columns.str.strip()
+        df["casino"] = casino
+        return df
+
 
 
     # --- SECCION 1: METRICAS DE JUGADORES ---
@@ -2753,18 +2762,21 @@ elif auth_status:
                         st.info("ℹ️ La tabla `jugadores_vip` aún no contiene datos.")
         
                     st.markdown("---")
+                    casino = st.selectbox("🏷️ Seleccioná el casino al que pertenece este archivo", ["Fenix", "Eros", "Bet Argento", "Spirita"])
+        
                     st.subheader("📤 Subí un archivo para cargar en las tablas base")
                     archivo = st.file_uploader("📎 Subí tu archivo (.csv o .xlsx)", type=["csv", "xlsx"])
         
                     if archivo:
                         try:
-                            # Cargar archivo y limpiar columnas
                             if archivo.name.endswith(".csv"):
                                 df = pd.read_csv(archivo)
                             else:
                                 df = pd.read_excel(archivo)
         
-                            df.columns = df.columns.str.strip()  # Limpiar nombres de columnas
+                            df.columns = df.columns.str.strip()
+                            df["casino"] = casino  # Agregar columna casino automáticamente
+        
                             st.write("📄 Vista previa del archivo cargado:")
                             st.dataframe(df.head())
         
