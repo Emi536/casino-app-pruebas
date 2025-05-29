@@ -8,3 +8,5 @@ plotly
 gspread 
 pytz
 streamlit_authenticator==0.2.3
+sqlalchemy
+psycopg2-binary
