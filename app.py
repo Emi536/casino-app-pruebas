@@ -211,6 +211,15 @@ elif auth_status:
                     df = df.drop_duplicates(subset=["USUARIO"], keep="last")
                     st.info(f"🧹 Se eliminaron duplicados. Registros únicos por usuario: {len(df)}")
     
+            elif tabla == "actividad_jugador_cruda":
+                columnas_validas = [
+                    "casino", "ID", "Sesión", "Usuario", "Sistema de juegos", "Sello",
+                    "Nombre del juego", "Balance", "Divisa", "Apuesta", "Ganar",
+                    "Ganancias", "Hora de apertura", "Hora de cierre", "Hora de ultima actividad"
+                ]
+                df.columns = df.columns.str.strip()
+                df = df[[col for col in df.columns if col in columnas_validas]]
+    
             else:
                 df = limpiar_columnas_numericas(df)
     
@@ -220,6 +229,7 @@ elif auth_status:
     
             df.to_sql(tabla, con=engine, if_exists='append', index=False)
             st.success(f"✅ {len(df)} registros cargados correctamente en la tabla `{tabla}`.")
+    
         except SQLAlchemyError as e:
             st.error(f"❌ Error al subir datos a `{tabla}`: {e}")
 
