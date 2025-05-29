@@ -2641,6 +2641,21 @@ elif auth_status:
                             else:
                                 st.error("❌ No se pudo generar el historial unificado. Verificá que los archivos contengan las hojas 'Información' y 'Historia'.")
 
+        elif tarea == "📊 Jugadores VIP":
+            st.title("🎰 Jugadores VIP")
+            
+            from sqlalchemy import create_engine
+        
+            # Crear conexión con la base de datos Supabase
+            engine = create_engine(st.secrets["DB_URL"])
+        
+            # Cargar la tabla de jugadores VIP
+            df = pd.read_sql("SELECT * FROM jugadores_vip", engine)
+        
+            # Mostrar tabla
+            st.dataframe(df)
+
+
     
     # === SECCIÓN: 🏢 Oficina VIP Grilla ===
     elif "🏢 Oficina VIP" in seccion:
