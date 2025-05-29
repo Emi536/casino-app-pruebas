@@ -19,6 +19,7 @@ import tempfile
 
 from sqlalchemy import create_engine
 import psycopg2
+from sqlalchemy.exc import SQLAlchemyError
 
 # Leer credenciales y configuración de cookies desde secrets.toml
 credentials = dict(st.secrets["credentials"])
@@ -131,6 +132,48 @@ elif auth_status:
             "IP": "Extra"
         })
         return df
+        
+        def detectar_tabla(df):
+            columnas = set(df.columns.str.lower())
+        
+            if {"usuario", "casino", "total_apostado", "riesgo_abandono"}.issubset(columnas):
+                return "jugadores_vip"
+            elif {"sesión", "usuario", "nombre del juego", "hora de apertura"}.issubset(columnas):
+                return "actividad_jugador_cruda"
+            elif {"operación", "depositar", "retirar", "fecha", "del usuario"}.issubset(columnas):
+                return "transacciones_crudas"
+            elif {"usuario", "funnel", "bonos usados", "% de conversion"}.issubset(columnas):
+                return "bonos_crudos"
+            elif {"game name", "label", "category", "type"}.issubset(columnas):
+                return "catalogo_juegos"
+            else:
+                return None
+        
+        
+        def limpiar_columnas_numericas(df):
+            """Convierte strings como '1.200,00' o '$3,500' a float estándar."""
+            for col in df.columns:
+                if df[col].dtype == object:
+                    try:
+                        df[col] = df[col].astype(str).str.replace('$', '', regex=False)
+                        df[col] = df[col].str.replace('.', '', regex=False)
+                        df[col] = df[col].str.replace(',', '.', regex=False)
+                        df[col] = pd.to_numeric(df[col], errors='ignore')
+                    except:
+                        pass
+            return df
+        
+        
+        def subir_a_supabase(df, tabla, engine):
+            try:
+                df = limpiar_columnas_numericas(df)
+                df.to_sql(tabla, con=engine, if_exists='append', index=False)
+                st.success(f"✅ Datos cargados correctamente en la tabla `{tabla}`.")
+            except SQLAlchemyError as e:
+                st.error(f"❌ Error al subir datos a `{tabla}`: {e}")
+
+
+
 
     # --- SECCION 1: METRICAS DE JUGADORES ---
     if seccion == "🔝 Métricas de jugadores":
@@ -2643,14 +2686,41 @@ elif auth_status:
                                 st.error("❌ No se pudo generar el historial unificado. Verificá que los archivos contengan las hojas 'Información' y 'Historia'.")
 
         elif tarea == "📊 Jugadores VIP":
-            st.title("🔌 Test de conexión a Supabase")
+            st.title("📊 Carga y visualización de jugadores VIP")
             
             try:
                 engine = create_engine(st.secrets["DB_URL"])
                 with engine.connect() as conn:
                     st.success("✅ Conectado a Supabase correctamente")
-                    df = pd.read_sql("SELECT * FROM jugadores_vip LIMIT 5", conn)
-                    st.dataframe(df)
+        
+                    # Mostrar primeros datos de la tabla jugadores_vip
+                    df_preview = pd.read_sql("SELECT * FROM jugadores_vip LIMIT 5", conn)
+                    st.subheader("👀 Vista previa de jugadores VIP")
+                    st.dataframe(df_preview)
+        
+                    st.markdown("---")
+                    st.subheader("📤 Subí un archivo para guardar en la base de datos")
+                    archivo = st.file_uploader("📎 Subí tu archivo (.csv o .xlsx)", type=["csv", "xlsx"])
+        
+                    if archivo:
+                        try:
+                            if archivo.name.endswith(".csv"):
+                                df = pd.read_csv(archivo)
+                            else:
+                                df = pd.read_excel(archivo)
+        
+                            st.write("📄 Vista previa del archivo cargado:")
+                            st.dataframe(df.head())
+        
+                            tabla = detectar_tabla(df)
+                            if tabla:
+                                st.info(f"📌 El archivo será cargado en la tabla `{tabla}`.")
+                                subir_a_supabase(df, tabla, engine)
+                            else:
+                                st.warning("⚠️ No se pudo detectar a qué tabla pertenece el archivo.")
+                        except Exception as e:
+                            st.error(f"❌ Error al procesar el archivo: {e}")
+        
             except Exception as e:
                 st.error(f"❌ Error de conexión: {e}")
 
