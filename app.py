@@ -15,7 +15,8 @@ import json
 import copy
 import pickle
 import zipfile
-import tempfile 
+import tempfile
+from pathlib import Path 
 
 from sqlalchemy import create_engine
 import psycopg2
