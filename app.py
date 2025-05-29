@@ -2645,9 +2645,6 @@ elif auth_status:
         elif tarea == "📊 Jugadores VIP":
             st.title("🎰 Jugadores VIP")
             
-            from sqlalchemy import create_engine
-        
-            # Crear conexión con la base de datos Supabase
             engine = create_engine(st.secrets["DB_URL"])
         
             # Cargar la tabla de jugadores VIP
