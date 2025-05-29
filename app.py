@@ -134,7 +134,7 @@ elif auth_status:
         return df
         
     def detectar_tabla(df):
-        columnas = set(df.columns.str.lower())
+        columnas = set(col.lower().strip() for col in df.columns)
     
         if {"usuario", "casino", "total_apostado", "riesgo_abandono"}.issubset(columnas):
             return "jugadores_vip"
@@ -151,18 +151,21 @@ elif auth_status:
     
     
     def limpiar_columnas_numericas(df):
-        """Convierte strings como '1.200,00' o '$3,500' a float estándar."""
+        """Limpia y convierte columnas numéricas con posibles símbolos y formatos regionales."""
         for col in df.columns:
             if df[col].dtype == object:
                 try:
-                    df[col] = df[col].astype(str).str.replace('$', '', regex=False)
-                    df[col] = df[col].str.replace('.', '', regex=False)
-                    df[col] = df[col].str.replace(',', '.', regex=False)
-                    df[col] = pd.to_numeric(df[col], errors='ignore')
-                except:
+                    df[col] = (
+                        df[col]
+                        .astype(str)
+                        .str.replace(r"[^\d,.\-]", "", regex=True)  # Elimina símbolos como $ y espacios
+                        .str.replace(",", ".", regex=False)  # Usa punto decimal
+                    )
+                    df[col] = pd.to_numeric(df[col], errors='coerce')  # Convierte, NaN si falla
+                except Exception:
                     pass
         return df
-    
+        
     
     def subir_a_supabase(df, tabla, engine):
         try:
@@ -2687,7 +2690,7 @@ elif auth_status:
 
         elif tarea == "📊 Jugadores VIP":
             st.title("📊 Carga y visualización de jugadores VIP")
-            
+        
             try:
                 engine = create_engine(st.secrets["DB_URL"])
                 with engine.connect() as conn:
@@ -2713,6 +2716,7 @@ elif auth_status:
                             st.dataframe(df.head())
         
                             tabla = detectar_tabla(df)
+        
                             if tabla:
                                 st.info(f"📌 El archivo será cargado en la tabla `{tabla}`.")
                                 subir_a_supabase(df, tabla, engine)
@@ -2723,7 +2727,6 @@ elif auth_status:
         
             except Exception as e:
                 st.error(f"❌ Error de conexión: {e}")
-
 
     
     # === SECCIÓN: 🏢 Oficina VIP Grilla ===
