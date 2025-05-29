@@ -2762,7 +2762,7 @@ elif auth_status:
                         st.info("ℹ️ La tabla `jugadores_vip` aún no contiene datos.")
         
                     st.markdown("---")
-                    casino = st.selectbox("🏷️ Seleccioná el casino al que pertenece este archivo", ["Fenix", "Eros", "Bet Argento", "Spirita"])
+                    casino = st.selectbox("🏷️ Seleccioná el casino al que pertenece este archivo", ["Fenix", "Eros", "Bet Argento", "Atlantis"])
         
                     st.subheader("📤 Subí un archivo para cargar en las tablas base")
                     archivo = st.file_uploader("📎 Subí tu archivo (.csv o .xlsx)", type=["csv", "xlsx"])
