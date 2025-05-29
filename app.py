@@ -133,17 +133,17 @@ elif auth_status:
         })
         return df
 
+    # ✅ Convierte correctamente la columna "Tiempo"
     def convertir_columna_tiempo(df):
-        """Convierte valores numéricos como 235959.0 o strings tipo '23:59:59' a objetos time."""
         def convertir(valor):
             try:
                 if isinstance(valor, datetime.time):
                     return valor
-                valor_str = str(int(float(valor))).zfill(6)  # Acepta floats como 235959.0 o strings
-                hora = int(valor_str[0:2])
-                minuto = int(valor_str[2:4])
-                segundo = int(valor_str[4:6])
-                return datetime.time(hora, minuto, segundo)
+                if isinstance(valor, str) and ":" in valor:
+                    return datetime.datetime.strptime(valor, "%H:%M:%S").time()
+                valor_str = str(int(float(valor))).zfill(6)
+                h, m, s = int(valor_str[0:2]), int(valor_str[2:4]), int(valor_str[4:6])
+                return datetime.time(h, m, s)
             except:
                 return None
     
@@ -151,66 +151,67 @@ elif auth_status:
             df["Tiempo"] = df["Tiempo"].apply(convertir)
         return df
     
+    # ✅ Limpia columnas numéricas específicas
     def limpiar_columnas_numericas(df):
-        """Limpia y convierte columnas numéricas con posibles símbolos y formatos regionales."""
-        for col in df.columns:
-            if df[col].dtype == object:
-                try:
-                    df[col] = (
-                        df[col]
-                        .astype(str)
-                        .str.replace(r"[^\d,.\-]", "", regex=True)  # Elimina símbolos como $ y espacios
-                        .str.replace(",", ".", regex=False)  # Usa punto decimal
-                    )
-                    df[col] = pd.to_numeric(df[col], errors='coerce')
-                except:
-                    pass
+        columnas_numericas = ["Depositar", "Retirar", "Wager", "Balance antes de operación"]
+        for col in columnas_numericas:
+            if col in df.columns:
+                df[col] = (
+                    df[col]
+                    .astype(str)
+                    .str.replace(r"[^\d,.\-]", "", regex=True)
+                    .str.replace(",", ".", regex=False)
+                )
+                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0)
         return df
     
+    # ✅ Limpieza específica para la tabla de transacciones
     def limpiar_transacciones(df):
-        """Limpia columnas específicas de la tabla transacciones_crudas."""
         df = limpiar_columnas_numericas(df)
     
-        # Convertir columnas de fecha y hora
         if "Fecha" in df.columns:
             df["Fecha"] = pd.to_datetime(df["Fecha"], errors='coerce').dt.date
     
         df = convertir_columna_tiempo(df)
     
-        # Forzar columnas de texto como string y evitar floats (por ejemplo: nombres que parecen números)
-        columnas_texto = ["ID", "operación", "Límites", "Iniciador", "Del usuario", "Sistema", "Al usuario", "IP"]
+        columnas_texto = [
+            "ID", "operación", "Límites", "Iniciador", "Del usuario",
+            "Sistema", "Al usuario", "IP"
+        ]
         for col in columnas_texto:
             if col in df.columns:
-                df[col] = df[col].astype(str)
+                df[col] = df[col].astype(str).fillna("").str.strip()
     
         return df
     
     def detectar_tabla(df):
         columnas = set(col.lower().strip() for col in df.columns)
     
-        if {"usuario", "casino", "total_apostado", "riesgo_abandono"}.issubset(columnas):
-            return "jugadores_vip"
-        elif {"sesión", "usuario", "nombre del juego", "hora de apertura"}.issubset(columnas):
+        if {"sesión", "usuario", "nombre del juego", "hora de apertura"}.issubset(columnas):
             return "actividad_jugador_cruda"
         elif {"operación", "depositar", "retirar", "fecha", "del usuario"}.issubset(columnas):
             return "transacciones_crudas"
-        elif {"usuario", "funnel", "bonos usados", "% de conversion"}.issubset(columnas):
+        elif {"id_usuario", "usuario", "bonos ofrecidos", "bonos usados"}.issubset(columnas):
             return "bonos_crudos"
         elif {"game name", "label", "category", "type"}.issubset(columnas):
             return "catalogo_juegos"
         else:
             return None
-    
+        
+    # ✅ Inserta datos en Supabase (vía SQLAlchemy)
     def subir_a_supabase(df, tabla, engine):
         try:
-            # Procesamiento especial por tabla
             if tabla == "transacciones_crudas":
                 df = limpiar_transacciones(df)
             else:
                 df = limpiar_columnas_numericas(df)
     
+            if df.empty:
+                st.warning("⚠️ El archivo no contiene datos válidos para subir.")
+                return
+    
             df.to_sql(tabla, con=engine, if_exists='append', index=False)
-            st.success(f"✅ Datos cargados correctamente en la tabla `{tabla}`.")
+            st.success(f"✅ {len(df)} registros cargados correctamente en la tabla `{tabla}`.")
         except SQLAlchemyError as e:
             st.error(f"❌ Error al subir datos a `{tabla}`: {e}")
 
@@ -2728,41 +2729,51 @@ elif auth_status:
                                 st.error("❌ No se pudo generar el historial unificado. Verificá que los archivos contengan las hojas 'Información' y 'Historia'.")
 
         elif tarea == "📊 Jugadores VIP":
-            st.title("📊 Carga y visualización de jugadores VIP")
+            st.title("📊 Visualización y análisis de jugadores VIP")
         
             try:
                 engine = create_engine(st.secrets["DB_URL"])
                 with engine.connect() as conn:
                     st.success("✅ Conectado a Supabase correctamente")
         
-                    st.subheader("👀 Vista previa de tabla jugadores_vip (5 registros)")
+                    st.subheader("👀 Vista previa de tabla jugadores_vip (top 10)")
                     try:
-                        df_preview = pd.read_sql("SELECT * FROM jugadores_vip LIMIT 5", conn)
+                        df_preview = pd.read_sql(
+                            "SELECT * FROM jugadores_vip ORDER BY total_apostado DESC LIMIT 10",
+                            conn
+                        )
                         st.dataframe(df_preview)
                     except Exception:
-                        st.info("ℹ️ La tabla `jugadores_vip` aún no contiene datos o no está creada.")
+                        st.info("ℹ️ La tabla `jugadores_vip` aún no contiene datos.")
         
                     st.markdown("---")
-                    st.subheader("📤 Subí un archivo para guardar en la base de datos")
+                    st.subheader("📤 Subí un archivo para cargar en las tablas base")
                     archivo = st.file_uploader("📎 Subí tu archivo (.csv o .xlsx)", type=["csv", "xlsx"])
         
                     if archivo:
                         try:
+                            # Cargar archivo y limpiar columnas
                             if archivo.name.endswith(".csv"):
                                 df = pd.read_csv(archivo)
                             else:
                                 df = pd.read_excel(archivo)
         
+                            df.columns = df.columns.str.strip()  # Limpiar nombres de columnas
                             st.write("📄 Vista previa del archivo cargado:")
                             st.dataframe(df.head())
         
-                            tabla = detectar_tabla(df)
-        
-                            if tabla:
-                                st.info(f"📌 El archivo será cargado en la tabla `{tabla}`.")
-                                subir_a_supabase(df, tabla, engine)
+                            if df.empty:
+                                st.warning("⚠️ El archivo está vacío o malformado.")
                             else:
-                                st.warning("⚠️ No se pudo detectar a qué tabla pertenece el archivo. Verificá las columnas.")
+                                tabla = detectar_tabla(df)
+        
+                                if tabla in {"actividad_jugador_cruda", "transacciones_crudas", "bonos_crudos", "catalogo_juegos"}:
+                                    st.info(f"📌 El archivo será cargado en la tabla `{tabla}`.")
+                                    subir_a_supabase(df, tabla, engine)
+                                elif tabla == "jugadores_vip":
+                                    st.error("❌ No se puede subir directamente a la tabla `jugadores_vip`. Esta tabla es generada automáticamente.")
+                                else:
+                                    st.warning("⚠️ No se pudo detectar a qué tabla pertenece el archivo. Verificá las columnas.")
                         except Exception as e:
                             st.error(f"❌ Error al procesar el archivo: {e}")
         
