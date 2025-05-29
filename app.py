@@ -17,7 +17,8 @@ import pickle
 import zipfile
 import tempfile 
 
-
+from sqlalchemy import create_engine
+import psycopg2
 
 # Leer credenciales y configuración de cookies desde secrets.toml
 credentials = dict(st.secrets["credentials"])
