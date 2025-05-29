@@ -220,6 +220,13 @@ elif auth_status:
                 df.columns = df.columns.str.strip()
                 df = df[[col for col in df.columns if col in columnas_validas]]
     
+                # 🔢 Limpiar columnas numéricas con comas
+                columnas_numericas = ["Balance", "Apuesta", "Ganar", "Ganancias"]
+                for col in columnas_numericas:
+                    if col in df.columns:
+                        df[col] = df[col].astype(str).str.replace(",", "").str.replace("−", "-")  # soporto guión largo también
+                        df[col] = pd.to_numeric(df[col], errors="coerce")
+    
             else:
                 df = limpiar_columnas_numericas(df)
     
@@ -232,6 +239,7 @@ elif auth_status:
     
         except SQLAlchemyError as e:
             st.error(f"❌ Error al subir datos a `{tabla}`: {e}")
+
 
     def agregar_columna_casino(df, casino):
         """
