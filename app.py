@@ -2764,39 +2764,79 @@ elif auth_status:
                     st.markdown("---")
                     casino = st.selectbox("🏷️ Seleccioná el casino al que pertenece este archivo", ["Fenix", "Eros", "Bet Argento", "Atlantis"])
         
-                    st.subheader("📤 Subí un archivo para cargar en las tablas base")
-                    archivo = st.file_uploader("📎 Subí tu archivo (.csv o .xlsx)", type=["csv", "xlsx"])
+                    tipo_archivo = st.radio("📂 Tipo de carga", ["Archivo individual (.csv o .xlsx)", "Archivo ZIP con múltiples historiales"])
         
-                    if archivo:
-                        try:
-                            if archivo.name.endswith(".csv"):
-                                df = pd.read_csv(archivo)
-                            else:
-                                df = pd.read_excel(archivo)
-        
-                            df.columns = df.columns.str.strip()
-                            df["casino"] = casino  # Agregar columna casino automáticamente
-        
-                            st.write("📄 Vista previa del archivo cargado:")
-                            st.dataframe(df.head())
-        
-                            if df.empty:
-                                st.warning("⚠️ El archivo está vacío o malformado.")
-                            else:
-                                tabla = detectar_tabla(df)
-        
-                                if tabla in {"actividad_jugador_cruda", "transacciones_crudas", "bonos_crudos", "catalogo_juegos"}:
-                                    st.info(f"📌 El archivo será cargado en la tabla `{tabla}`.")
-                                    subir_a_supabase(df, tabla, engine)
-                                elif tabla == "jugadores_vip":
-                                    st.error("❌ No se puede subir directamente a la tabla `jugadores_vip`. Esta tabla es generada automáticamente.")
+                    if tipo_archivo == "Archivo individual (.csv o .xlsx)":
+                        archivo = st.file_uploader("📎 Subí tu archivo", type=["csv", "xlsx"])
+                        if archivo:
+                            try:
+                                if archivo.name.endswith(".csv"):
+                                    df = pd.read_csv(archivo)
                                 else:
-                                    st.warning("⚠️ No se pudo detectar a qué tabla pertenece el archivo. Verificá las columnas.")
-                        except Exception as e:
-                            st.error(f"❌ Error al procesar el archivo: {e}")
+                                    df = pd.read_excel(archivo)
+        
+                                df.columns = df.columns.str.strip()
+                                df["casino"] = casino
+        
+                                st.write("📄 Vista previa del archivo cargado:")
+                                st.dataframe(df.head())
+        
+                                if df.empty:
+                                    st.warning("⚠️ El archivo está vacío o malformado.")
+                                else:
+                                    tabla = detectar_tabla(df)
+        
+                                    if tabla in {"actividad_jugador_cruda", "transacciones_crudas", "bonos_crudos", "catalogo_juegos"}:
+                                        st.info(f"📌 El archivo será cargado en la tabla `{tabla}`.")
+                                        subir_a_supabase(df, tabla, engine)
+                                    elif tabla == "jugadores_vip":
+                                        st.error("❌ No se puede subir directamente a la tabla `jugadores_vip`. Esta tabla es generada automáticamente.")
+                                    else:
+                                        st.warning("⚠️ No se pudo detectar a qué tabla pertenece el archivo. Verificá las columnas.")
+                            except Exception as e:
+                                st.error(f"❌ Error al procesar el archivo: {e}")
+        
+                    elif tipo_archivo == "Archivo ZIP con múltiples historiales":
+                        archivo_zip = st.file_uploader("📦 Subí el archivo ZIP", type=["zip"])
+        
+                        if archivo_zip:
+                            with st.spinner("⏳ Procesando ZIP..."):
+                                try:
+                                    with tempfile.TemporaryDirectory() as tmpdir:
+                                        zip_path = os.path.join(tmpdir, "reportes.zip")
+                                        with open(zip_path, "wb") as f:
+                                            f.write(archivo_zip.getbuffer())
+        
+                                        with zipfile.ZipFile(zip_path, "r") as zip_ref:
+                                            zip_ref.extractall(tmpdir)
+        
+                                        archivos_xlsx = list(Path(tmpdir).rglob("*.xlsx"))
+                                        if not archivos_xlsx:
+                                            st.warning("⚠️ No se encontraron archivos .xlsx en el ZIP.")
+                                        else:
+                                            dataframes = []
+                                            for archivo in archivos_xlsx:
+                                                try:
+                                                    df_temp = pd.read_excel(archivo)
+                                                    df_temp.columns = df_temp.columns.str.strip()
+                                                    df_temp["casino"] = casino
+                                                    dataframes.append(df_temp)
+                                                except Exception as e:
+                                                    st.warning(f"No se pudo procesar {archivo.name}: {e}")
+        
+                                            if dataframes:
+                                                df_final = pd.concat(dataframes, ignore_index=True)
+                                                st.success(f"✅ Consolidación completa: {len(df_final)} registros")
+                                                st.dataframe(df_final.head())
+                                                subir_a_supabase(df_final, "actividad_jugador_cruda", engine)
+                                            else:
+                                                st.warning("⚠️ No se pudo consolidar ningún archivo válido.")
+                                except Exception as e:
+                                    st.error(f"❌ Error al procesar el ZIP: {e}")
         
             except Exception as e:
                 st.error(f"❌ Error de conexión: {e}")
+
 
     
     # === SECCIÓN: 🏢 Oficina VIP Grilla ===
