@@ -20,6 +20,58 @@ import tempfile
 from sqlalchemy import create_engine
 import psycopg2
 
+def detectar_tabla_por_columnas(df):
+    columnas = set(df.columns.str.strip())
+
+    tablas = {
+        "actividad_jugador_cruda": {"Nombre del juego", "Apuesta", "Hora de apertura", "Ganancias"},
+        "transacciones_crudas": {"operación", "Depositar", "Retirar", "Iniciador"},
+        "bonos_crudos": {"BONOS OFRECIDOS", "BONOS USADOS", "% DE CONVERSION"},
+        "catalogo_juegos": {"Game Name", "Label", "Category", "Type"}
+    }
+
+    for tabla, columnas_necesarias in tablas.items():
+        if columnas_necesarias.issubset(columnas):
+            return tabla
+
+    return None
+
+def procesar_y_subir_excel(archivo, engine):
+    try:
+        df = pd.read_excel(archivo)
+        tabla_detectada = detectar_tabla_por_columnas(df)
+        if tabla_detectada:
+            df.to_sql(tabla_detectada, engine, if_exists='append', index=False)
+            st.success(f"✅ Datos cargados correctamente en la tabla '{tabla_detectada}'")
+        else:
+            st.warning("⚠️ No se pudo detectar una tabla válida para las columnas del archivo.")
+    except Exception as e:
+        st.error(f"❌ Error al procesar el archivo: {e}")
+
+def procesar_y_subir_zip(archivo_zip, engine):
+    try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = os.path.join(tmpdir, "reportes.zip")
+            with open(zip_path, "wb") as f:
+                f.write(archivo_zip.getbuffer())
+
+            with zipfile.ZipFile(zip_path, "r") as zip_ref:
+                zip_ref.extractall(tmpdir)
+
+            archivos = [f for f in Path(tmpdir).rglob("*.xlsx")]
+            for archivo in archivos:
+                df = pd.read_excel(archivo)
+                tabla_detectada = detectar_tabla_por_columnas(df)
+                if tabla_detectada:
+                    df.to_sql(tabla_detectada, engine, if_exists='append', index=False)
+                    st.success(f"✅ {archivo.name} cargado en '{tabla_detectada}'")
+                else:
+                    st.warning(f"⚠️ {archivo.name}: columnas no coinciden con ninguna tabla conocida.")
+    except Exception as e:
+        st.error(f"❌ Error al procesar el ZIP: {e}")
+
+
+
 # Leer credenciales y configuración de cookies desde secrets.toml
 credentials = dict(st.secrets["credentials"])
 cookie = st.secrets["cookie"]
@@ -2643,8 +2695,9 @@ elif auth_status:
                                 st.error("❌ No se pudo generar el historial unificado. Verificá que los archivos contengan las hojas 'Información' y 'Historia'.")
 
         elif tarea == "📊 Jugadores VIP":
-            st.title("🔌 Test de conexión a Supabase")
-            
+            st.title("📊 Gestión de jugadores VIP y carga de reportes")
+        
+            # Conexión a Supabase
             try:
                 engine = create_engine(st.secrets["DB_URL"])
                 with engine.connect() as conn:
@@ -2653,6 +2706,17 @@ elif auth_status:
                     st.dataframe(df)
             except Exception as e:
                 st.error(f"❌ Error de conexión: {e}")
+        
+            st.divider()
+            st.subheader("📥 Subir archivo Excel o ZIP para almacenar en la base")
+        
+            archivo = st.file_uploader("📁 Seleccioná un archivo .xlsx o .zip", type=["xlsx", "zip"])
+        
+            if archivo:
+                if archivo.name.endswith(".xlsx"):
+                    procesar_y_subir_excel(archivo, engine)
+                elif archivo.name.endswith(".zip"):
+                    procesar_y_subir_zip(archivo, engine)
 
 
     
