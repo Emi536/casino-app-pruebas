@@ -132,7 +132,25 @@ elif auth_status:
             "IP": "Extra"
         })
         return df
-        
+
+    def convertir_columna_tiempo(df):
+        """Convierte valores numéricos como 235959.0 a objetos datetime.time (23:59:59)."""
+        import datetime
+    
+        def convertir(valor):
+            try:
+                valor_str = str(int(valor)).zfill(6)
+                hora = int(valor_str[0:2])
+                minuto = int(valor_str[2:4])
+                segundo = int(valor_str[4:6])
+                return datetime.time(hora, minuto, segundo)
+            except:
+                return None
+    
+        if "Tiempo" in df.columns:
+            df["Tiempo"] = df["Tiempo"].apply(convertir)
+        return df
+            
     def detectar_tabla(df):
         columnas = set(col.lower().strip() for col in df.columns)
     
@@ -167,13 +185,18 @@ elif auth_status:
         return df
         
     
-    def subir_a_supabase(df, tabla, engine):
-        try:
-            df = limpiar_columnas_numericas(df)
-            df.to_sql(tabla, con=engine, if_exists='append', index=False)
-            st.success(f"✅ Datos cargados correctamente en la tabla `{tabla}`.")
-        except SQLAlchemyError as e:
-            st.error(f"❌ Error al subir datos a `{tabla}`: {e}")
+        def subir_a_supabase(df, tabla, engine):
+            try:
+                df = limpiar_columnas_numericas(df)
+        
+                # Solo convertir "Tiempo" si la tabla lo requiere
+                if tabla == "transacciones_crudas":
+                    df = convertir_columna_tiempo(df)
+        
+                df.to_sql(tabla, con=engine, if_exists='append', index=False)
+                st.success(f"✅ Datos cargados correctamente en la tabla `{tabla}`.")
+            except SQLAlchemyError as e:
+                st.error(f"❌ Error al subir datos a `{tabla}`: {e}")
 
 
 
