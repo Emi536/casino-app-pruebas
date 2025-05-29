@@ -2643,15 +2643,16 @@ elif auth_status:
                                 st.error("❌ No se pudo generar el historial unificado. Verificá que los archivos contengan las hojas 'Información' y 'Historia'.")
 
         elif tarea == "📊 Jugadores VIP":
-            st.title("🎰 Jugadores VIP")
+            st.title("🔌 Test de conexión a Supabase")
             
-            engine = create_engine(st.secrets["DB_URL"])
-        
-            # Cargar la tabla de jugadores VIP
-            df = pd.read_sql("SELECT * FROM jugadores_vip", engine)
-        
-            # Mostrar tabla
-            st.dataframe(df)
+            try:
+                engine = create_engine(st.secrets["DB_URL"])
+                with engine.connect() as conn:
+                    st.success("✅ Conectado a Supabase correctamente")
+                    df = pd.read_sql("SELECT * FROM jugadores_vip LIMIT 5", conn)
+                    st.dataframe(df)
+            except Exception as e:
+                st.error(f"❌ Error de conexión: {e}")
 
 
     
