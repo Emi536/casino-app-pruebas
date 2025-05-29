@@ -2375,7 +2375,8 @@ elif auth_status:
     
         tarea = st.selectbox("📌 ¿Qué deseás hacer?", [
             "📈 Analizar Lifetime Value (LTV)",
-            "📦 Unificar múltiples reportes de jugadores"
+            "📦 Unificar múltiples reportes de jugadores",
+            "📊 Jugadores VIP"
         ])
 
         if tarea == "📈 Analizar Lifetime Value (LTV)":
