@@ -250,6 +250,19 @@ elif auth_status:
         df["casino"] = casino
         return df
 
+    def reemplazar_usuario_por_nombre(df_historia, df_info):
+        """
+        Reemplaza en df_historia la columna 'Usuario' por el nombre real usando la hoja de información.
+        """
+        df_info.columns = df_info.columns.str.strip()
+        df_historia.columns = df_historia.columns.str.strip()
+    
+        if "ID" in df_info.columns and "Al usuario" in df_info.columns and "Usuario" in df_historia.columns:
+            mapeo = df_info.set_index("ID")["Al usuario"].to_dict()
+            df_historia["Usuario"] = df_historia["Usuario"].map(lambda x: mapeo.get(x, x))
+        
+        return df_historia
+
 
 
     # --- SECCION 1: METRICAS DE JUGADORES ---
@@ -2834,12 +2847,25 @@ elif auth_status:
                                             st.warning("⚠️ No se encontraron archivos .xlsx en el ZIP.")
                                         else:
                                             dataframes = []
+
                                             for archivo in archivos_xlsx:
                                                 try:
-                                                    df_temp = pd.read_excel(archivo)
-                                                    df_temp.columns = df_temp.columns.str.strip()
-                                                    df_temp["casino"] = casino
-                                                    dataframes.append(df_temp)
+                                                    # ✅ Leer hoja "Historia" y "Información"
+                                                    df_historia = pd.read_excel(archivo, sheet_name="Historia")
+                                                    df_info = pd.read_excel(archivo, sheet_name="Información")
+
+                                                    df_historia.columns = df_historia.columns.str.strip()
+                                                    df_info.columns = df_info.columns.str.strip()
+
+                                                    # ✅ Reemplazar ID por nombre real
+                                                    if "Usuario" in df_historia.columns and "ID" in df_info.columns and "Al usuario" in df_info.columns:
+                                                        mapeo = df_info.set_index("ID")["Al usuario"].to_dict()
+                                                        df_historia["Usuario"] = df_historia["Usuario"].map(lambda x: mapeo.get(x, x))
+
+                                                    # ✅ Agregar columna casino
+                                                    df_historia["casino"] = casino
+
+                                                    dataframes.append(df_historia)
                                                 except Exception as e:
                                                     st.warning(f"No se pudo procesar {archivo.name}: {e}")
         
