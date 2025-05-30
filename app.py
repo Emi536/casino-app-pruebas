@@ -16,6 +16,7 @@ import copy
 import pickle
 import zipfile
 import tempfile
+import io
 from pathlib import Path 
 
 from sqlalchemy import create_engine
