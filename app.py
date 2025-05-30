@@ -2786,15 +2786,61 @@ elif auth_status:
                 with engine.connect() as conn:
                     st.success("✅ Conectado a Supabase correctamente")
         
-                    st.subheader("👀 Vista previa de tabla jugadores_vip (top 10)")
+                    st.subheader("👀 Vista de tabla jugadores_vip")
+                    
+                    # 🔘 Selector de vista
+                    opcion_vista = st.radio(
+                        "🔎 ¿Qué datos querés mostrar?",
+                        ["Top 10 por total apostado", "Todos los jugadores"]
+                    )
+                    
+                    # 📥 Consulta según opción elegida
+                    if opcion_vista == "Top 10 por total apostado":
+                        query = "SELECT * FROM jugadores_vip ORDER BY total_apostado DESC LIMIT 10"
+                    else:
+                        query = "SELECT * FROM jugadores_vip ORDER BY total_apostado DESC"
+                    
+                    # 📊 Leer tabla
                     try:
-                        df_preview = pd.read_sql(
-                            "SELECT * FROM jugadores_vip ORDER BY total_apostado DESC LIMIT 10",
-                            conn
-                        )
-                        st.dataframe(df_preview)
-                    except Exception:
-                        st.info("ℹ️ La tabla jugadores_vip aún no contiene datos.")
+                        df_vip = pd.read_sql(query, conn)
+                    
+                        if not df_vip.empty:
+                            # 🔢 KPIs rápidas
+                            total = df_vip["usuario"].nunique()
+                            riesgo_alto = df_vip[df_vip["riesgo_abandono"] == "alto"].shape[0]
+                            riesgo_medio = df_vip[df_vip["riesgo_abandono"] == "medio"].shape[0]
+                            riesgo_bajo = df_vip[df_vip["riesgo_abandono"] == "bajo"].shape[0]
+                            total_apostado = df_vip["total_apostado"].sum()
+                            total_cargado = df_vip["total_cargado"].sum()
+                    
+                            col1, col2, col3 = st.columns(3)
+                            col1.metric("👥 Jugadores VIP", total)
+                            col2.metric("💸 Total Apostado", f"${total_apostado:,.2f}")
+                            col3.metric("💰 Total Cargado", f"${total_cargado:,.2f}")
+                    
+                            col4, col5, col6 = st.columns(3)
+                            col4.metric("🔴 Riesgo Alto", riesgo_alto)
+                            col5.metric("🟠 Riesgo Medio", riesgo_medio)
+                            col6.metric("🟢 Riesgo Bajo", riesgo_bajo)
+                    
+                            # 📄 Mostrar tabla
+                            st.dataframe(df_vip, use_container_width=True)
+                    
+                            # 💾 Descargar como Excel
+                            output = io.BytesIO()
+                            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                                df_vip.to_excel(writer, index=False, sheet_name='jugadores_vip')
+                            st.download_button(
+                                "⬇️ Descargar Excel",
+                                data=output.getvalue(),
+                                file_name="jugadores_vip.xlsx",
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                            )
+                        else:
+                            st.info("ℹ️ La tabla jugadores_vip no contiene registros aún.")
+                    
+                    except Exception as e:
+                        st.error(f"❌ Error al consultar la tabla jugadores_vip: {e}")
         
                     st.markdown("---")
                     casino = st.selectbox("🏷️ Seleccioná el casino al que pertenece este archivo", ["Fenix", "Eros", "Bet Argento", "Atlantis"])
