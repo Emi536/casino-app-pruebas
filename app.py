@@ -2815,14 +2815,9 @@ elif auth_status:
                             total_cargado = df_vip["total_cargado"].sum()
                     
                             col1, col2, col3 = st.columns(3)
-                            col1.metric("👥 Jugadores VIP", total)
-                            col2.metric("💸 Total Apostado", f"${total_apostado:,.2f}")
-                            col3.metric("💰 Total Cargado", f"${total_cargado:,.2f}")
-                    
-                            col4, col5, col6 = st.columns(3)
-                            col4.metric("🔴 Riesgo Alto", riesgo_alto)
-                            col5.metric("🟠 Riesgo Medio", riesgo_medio)
-                            col6.metric("🟢 Riesgo Bajo", riesgo_bajo)
+                            col1.metric("🔴 Riesgo Alto", riesgo_alto)
+                            col2.metric("🟠 Riesgo Medio", riesgo_medio)
+                            col3.metric("🟢 Riesgo Bajo", riesgo_bajo)
                     
                             # 📄 Mostrar tabla
                             st.dataframe(df_vip, use_container_width=True)
