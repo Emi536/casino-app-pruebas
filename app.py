@@ -250,19 +250,22 @@ elif auth_status:
         df["casino"] = casino
         return df
 
-    def reemplazar_usuario_por_nombre(df_historia, df_info):
+    def extraer_nombre_real_desde_info(archivo_path):
         """
-        Reemplaza en df_historia la columna 'Usuario' por el nombre real usando la hoja de información.
+        Intenta leer la hoja 'Información' de un archivo Excel y devuelve el nombre real del usuario (campo 'Usuario').
         """
-        df_info.columns = df_info.columns.str.strip()
-        df_historia.columns = df_historia.columns.str.strip()
-    
-        if "ID" in df_info.columns and "Al usuario" in df_info.columns and "Usuario" in df_historia.columns:
-            mapeo = df_info.set_index("ID")["Al usuario"].to_dict()
-            df_historia["Usuario"] = df_historia["Usuario"].map(lambda x: mapeo.get(x, x))
-        
-        return df_historia
-
+        try:
+            df_info = pd.read_excel(archivo_path, sheet_name="Información", usecols="A:B", nrows=10)
+            df_info.columns = df_info.columns.str.strip()
+            df_info = df_info.dropna()
+            df_info.columns = ["clave", "valor"]
+            df_info["clave"] = df_info["clave"].astype(str).str.strip()
+            df_info["valor"] = df_info["valor"].astype(str).str.strip()
+            fila_usuario = df_info[df_info["clave"] == "Usuario"]
+            if not fila_usuario.empty:
+                return fila_usuario["valor"].values[0]
+        except Exception:
+            return None
 
 
     # --- SECCION 1: METRICAS DE JUGADORES ---
@@ -2791,7 +2794,7 @@ elif auth_status:
                         )
                         st.dataframe(df_preview)
                     except Exception:
-                        st.info("ℹ️ La tabla `jugadores_vip` aún no contiene datos.")
+                        st.info("ℹ️ La tabla jugadores_vip aún no contiene datos.")
         
                     st.markdown("---")
                     casino = st.selectbox("🏷️ Seleccioná el casino al que pertenece este archivo", ["Fenix", "Eros", "Bet Argento", "Atlantis"])
@@ -2819,10 +2822,10 @@ elif auth_status:
                                     tabla = detectar_tabla(df)
         
                                     if tabla in {"actividad_jugador_cruda", "transacciones_crudas", "bonos_crudos", "catalogo_juegos"}:
-                                        st.info(f"📌 El archivo será cargado en la tabla `{tabla}`.")
+                                        st.info(f"📌 El archivo será cargado en la tabla {tabla}.")
                                         subir_a_supabase(df, tabla, engine)
                                     elif tabla == "jugadores_vip":
-                                        st.error("❌ No se puede subir directamente a la tabla `jugadores_vip`. Esta tabla es generada automáticamente.")
+                                        st.error("❌ No se puede subir directamente a la tabla jugadores_vip. Esta tabla es generada automáticamente.")
                                     else:
                                         st.warning("⚠️ No se pudo detectar a qué tabla pertenece el archivo. Verificá las columnas.")
                             except Exception as e:
@@ -2847,24 +2850,16 @@ elif auth_status:
                                             st.warning("⚠️ No se encontraron archivos .xlsx en el ZIP.")
                                         else:
                                             dataframes = []
-
                                             for archivo in archivos_xlsx:
                                                 try:
-                                                    # ✅ Leer hoja "Historia" y "Información"
                                                     df_historia = pd.read_excel(archivo, sheet_name="Historia")
-                                                    df_info = pd.read_excel(archivo, sheet_name="Información")
-
                                                     df_historia.columns = df_historia.columns.str.strip()
-                                                    df_info.columns = df_info.columns.str.strip()
-
-                                                    # ✅ Reemplazar ID por nombre real
-                                                    if "Usuario" in df_historia.columns and "ID" in df_info.columns and "Al usuario" in df_info.columns:
-                                                        mapeo = df_info.set_index("ID")["Al usuario"].to_dict()
-                                                        df_historia["Usuario"] = df_historia["Usuario"].map(lambda x: mapeo.get(x, x))
-
-                                                    # ✅ Agregar columna casino
+        
+                                                    nombre_real = extraer_nombre_real_desde_info(archivo)
+                                                    if nombre_real and "Usuario" in df_historia.columns:
+                                                        df_historia["Usuario"] = nombre_real
+        
                                                     df_historia["casino"] = casino
-
                                                     dataframes.append(df_historia)
                                                 except Exception as e:
                                                     st.warning(f"No se pudo procesar {archivo.name}: {e}")
@@ -2878,10 +2873,8 @@ elif auth_status:
                                                 st.warning("⚠️ No se pudo consolidar ningún archivo válido.")
                                 except Exception as e:
                                     st.error(f"❌ Error al procesar el ZIP: {e}")
-        
             except Exception as e:
                 st.error(f"❌ Error de conexión: {e}")
-
 
     
     # === SECCIÓN: 🏢 Oficina VIP Grilla ===
