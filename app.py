@@ -2519,7 +2519,7 @@ elif auth_status:
         if tarea == "📈 Analizar Lifetime Value (LTV)":
             archivo_temporal = st.file_uploader("📥 Pegá o subí aquí tus reportes", type=["csv", "xlsx", "xls"])
         
-            if archivo_temporal and tipo_analisis == "Lifetime Value":
+            if archivo_temporal and tarea == "📈 Analizar Lifetime Value (LTV)":
                 try:
                     df = pd.read_csv(archivo_temporal) if archivo_temporal.name.endswith(".csv") else pd.read_excel(archivo_temporal)
         
