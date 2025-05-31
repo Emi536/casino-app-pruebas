@@ -102,11 +102,10 @@ elif auth_status:
     
      # Definir qué secciones ve cada rol
     secciones_por_rol = {
-        "admin": ["🏢 Oficina VIP", "📋 Registro Fénix", "📋 Registro Eros", "📋 Registro Bet Argento","📋 Registro Spirita","📋 Registro Atenea","📆 Agenda Fénix","📆 Agenda Eros","📆 Agenda BetArgento","📊 Análisis Temporal","🔝 Métricas de jugadores"],
+        "admin": ["🏢 Oficina VIP", "📋 Registro Fénix", "📋 Registro Eros", "📋 Registro Bet Argento","📋 Registro Spirita","📆 Agenda Fénix","📆 Agenda Eros","📆 Agenda BetArgento","📊 Análisis Temporal","🔝 Métricas de jugadores"],
         "fenix_eros": ["🔝 Métricas de jugadores", "📋 Registro Fénix", "📋 Registro Eros"],
         "bet": ["🔝 Métricas de jugadores","📋 Registro Bet Argento"],
-        "spirita":["🔝 Métricas de jugadores","📋 Registro Spirita"],
-        "atenea":["🔝 Métricas de jugadores","📋 Registro Atenea"]
+        "spirita":["🔝 Métricas de jugadores","📋 Registro Spirita"]
     }
     
     # Obtener lista de secciones según el rol
