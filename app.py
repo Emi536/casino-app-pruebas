@@ -2406,8 +2406,8 @@ elif auth_status:
                 df_historial = pd.concat([df_historial, df_nuevo], ignore_index=True)
                 df_historial.drop_duplicates(subset=["ID"], inplace=True)
     
-                hoja_eros.clear()
-                hoja_eros.update([df_historial.columns.tolist()] + df_historial.astype(str).values.tolist())
+                hoja_atenea.clear()
+                hoja_atenea.update([df_historial.columns.tolist()] + df_historial.astype(str).values.tolist())
     
                 st.success(f"✅ Registros de Eros actualizados correctamente. Total acumulado: {len(df_historial)}")
     
