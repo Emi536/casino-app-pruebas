@@ -2265,7 +2265,7 @@ elif auth_status:
         except Exception as e:
             st.error(f"❌ Error al generar la Tabla Bono Spirita: {e}")
 
-    #SECCIÓN EROS
+    #SECCIÓN ATENEA
     elif "📋 Registro Atenea" in seccion:
         st.header("📋 Registro general de jugadores - Atenea")
     
@@ -2385,7 +2385,7 @@ elif auth_status:
                 df_nuevo["Fecha_Subida"] = fecha_actual
     
                 valores_eros = [
-                    "hl_casinoatenea",
+                    "hl_casinoatenea","remarketing_2033",
                     "hl_casinoatenea30", "hl_casinoatenea40", "hl_casinoatenea50",
                     "hl_casinoatenea100", "hl_casinoatenea150", "hl_casinoatenea200"
                 ]
@@ -2460,7 +2460,7 @@ elif auth_status:
         
             if resumen_actualizado:
                 from collections import Counter
-                valores_hl = ["hl_casinoatenea"]
+                valores_hl = ["hl_casinoatenea","remarketing_2033"]
                 valores_wagger = [
                     "hl_casinoatenea30", "hl_casinoatenea40", "hl_casinoatenea50",
                     "hl_casinoatenea100", "hl_casinoatenea150", "hl_casinoatenea200"
