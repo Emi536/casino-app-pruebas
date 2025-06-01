@@ -105,7 +105,7 @@ elif auth_status:
         "admin": ["🏢 Oficina VIP", "📋 Registro Fénix", "📋 Registro Eros", "📋 Registro Bet Argento","📋 Registro Spirita","📋 Registro Atenea","📆 Agenda Fénix","📆 Agenda Eros","📆 Agenda BetArgento","📊 Análisis Temporal","🔝 Métricas de jugadores"],
         "fenix_eros": ["🔝 Métricas de jugadores", "📋 Registro Fénix", "📋 Registro Eros"],
         "bet": ["🔝 Métricas de jugadores","📋 Registro Bet Argento"],
-        "spirita":["🔝 Métricas de jugadores","📋 Registro Spirita"]
+        "spirita":["🔝 Métricas de jugadores","📋 Registro Spirita"],
         "atenea":["🔝 Métricas de jugadores","📋 Registro Atenea"]
     }
     
