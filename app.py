@@ -1921,7 +1921,7 @@ elif auth_status:
                 df_nuevo["Fecha_Subida"] = fecha_actual
     
                 valores_spirita = [
-                    "hall_atenea"
+                    "hall_atenea","rmk.atenea","spam_spirita"
                 ]
                 if "Del usuario" in df_nuevo.columns:
                     df_nuevo["Del usuario"] = df_nuevo["Del usuario"].astype(str).str.strip()
@@ -1994,7 +1994,7 @@ elif auth_status:
         
             if resumen_actualizado:
                 from collections import Counter
-                valores_hl = ["hall_atenea"]
+                valores_hl = ["hall_atenea","rmk.atenea","spam_spirita"]
                 valores_wagger = [
                     "spirita_wagger30%", "spirita_wagger40%", "spirita_wagger50%",
                     "spirita_wagger100%", "spirita_wagger150%", "spirita_wagger200%"
