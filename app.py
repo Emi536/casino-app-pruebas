@@ -2742,19 +2742,16 @@ elif auth_status:
             try:
                 df = pd.read_excel(archivo)
     
-                # 🔧 Limpiar datos como si fuera transacción cruda
+                # ✅ Limpiar como transacción cruda
                 df = limpiar_transacciones(df)
     
-                # 🔁 Agregar casino
+                # ✅ Agregar columna casino
                 df = agregar_columna_casino(df, casino)
     
-                # 🗄 Conectar a Supabase vía SQLAlchemy
-                from sqlalchemy import create_engine
+                # 🔌 Conectar a Supabase con tu DB_URL
+                engine = create_engine(st.secrets["DB_URL"])
     
-                url_db = st.secrets["supabase_db_url"]  # debe estar en secrets.toml
-                engine = create_engine(url_db)
-    
-                # 📤 Subir directamente a la tabla reportes_jugadores
+                # 🚀 Subir a la tabla deseada
                 subir_a_supabase(df, "reportes_jugadores", engine)
     
             except Exception as e:
