@@ -571,41 +571,37 @@ elif auth_status:
         
             if resumen_actualizado:
                 from collections import Counter
-                valores_hl = set(["hl_casinofenix"])
-                valores_wagger = set([
+
+                valores_hl = ["hl_casinofenix"]
+                valores_wagger = [
                     "Fenix_Wagger100", "Fenix_Wagger40", "Fenix_Wagger30",
                     "Fenix_Wagger50", "Fenix_Wagger150", "Fenix_Wagger200"
-                ])
-                iniciadores_validos = set([
-                    "DemonGOD", "DaniGOD", "NahueGOD", "CajeroJuancho",
-                    "JuanpiCajero", "FlorGOD", "SebaGOD"
-                ])
-                
-                resumen = []
-                df_grouped = df.groupby("Jugador")
-                
-                for jugador, historial in df_grouped:
-                    historial = historial.sort_values("Fecha")
-                    cargas = historial[historial["Tipo"] == "in"]
-                    retiros = procesar_retiros_validos(historial, iniciadores_validos)
-                
+                ]
+                jugadores = df["Jugador"].dropna().unique()
+        
+                for jugador in jugadores:
+                    historial = df[df["Jugador"] == jugador].sort_values("Fecha")
+                    cargas = historial[historial["Tipo"].str.lower() == "in"]
+                    retiros = procesar_retiros_validos(historial, ["DemonGOD", "DaniGOD", "NahueGOD", "CajeroJuancho", "JuanpiCajero", "FlorGOD", "SebaGOD"])
+        
                     cargas_hl = cargas[cargas["Del usuario"].isin(valores_hl)]
                     cargas_wagger = cargas[cargas["Del usuario"].isin(valores_wagger)]
-                
+        
                     hl = cargas_hl["Monto"].sum()
                     wagger = cargas_wagger["Monto"].sum()
                     total_monto = hl + wagger
                     total_retiro = retiros["Retiro"].sum()
                     ganancias_casino = total_monto - total_retiro
-                
+        
                     rango = "Sin datos"
                     if not cargas.empty and "Hora" in cargas.columns:
                         try:
-                            # Vectorizado
-                            cargas["Hora_dt"] = pd.to_datetime(cargas["Hora"], format="%H:%M:%S", errors="coerce")
-                            hora_por_dia = cargas.groupby(cargas["Fecha"].dt.date)["Hora_dt"].median().dt.hour
-                            if not hora_por_dia.empty:
-                                conteo = Counter(hora_por_dia)
+                            cargas["Hora"] = pd.to_datetime(cargas["Hora"], format="%H:%M:%S", errors="coerce")
+                            cargas["Día"] = cargas["Fecha"].dt.date
+                            cargas["Hora_hora"] = cargas["Hora"].dt.hour
+                            hora_por_dia = cargas.groupby("Día")["Hora_hora"].agg(lambda x: int(x.median()))
+                            conteo = Counter(hora_por_dia)
+                            if conteo:
                                 hora_patron, repeticiones = conteo.most_common(1)[0]
                                 if repeticiones >= 2:
                                     if 6 <= hora_patron < 12:
@@ -620,15 +616,14 @@ elif auth_status:
                                 else:
                                     rango = "Actividad dispersa"
                         except:
-                            pass
-                
+                            rango = "Sin datos"
+        
                     if not cargas.empty:
-                        fecha_min = cargas["Fecha"].min()
-                        fecha_max = cargas["Fecha"].max()
+                        ultima_fecha = cargas["Fecha"].max()
                         resumen.append({
                             "Nombre de jugador": jugador,
                             "Tipo de bono": "",
-                            "Fecha que ingresó": fecha_min,
+                            "Fecha que ingresó": cargas["Fecha"].min(),
                             "Veces que cargó": len(cargas),
                             "Hl": hl,
                             "Wagger": wagger,
@@ -636,9 +631,9 @@ elif auth_status:
                             "Cantidad de retiro": total_retiro,
                             "Ganacias casino": ganancias_casino,
                             "Rango horario de juego": rango,
-                            "Última vez que cargó": fecha_max,
-                            "Días inactivo": (pd.to_datetime(datetime.date.today()) - fecha_max).days,
-                            "Racha Activa (Días)": (fecha_max - fecha_min).days,
+                            "Última vez que cargó": ultima_fecha,
+                            "Días inactivo": (pd.to_datetime(datetime.date.today()) - ultima_fecha).days,
+                            "Racha Activa (Días)": (ultima_fecha - cargas["Fecha"].min()).days,
                             "Última vez que se lo contacto": ""
                         })
         
