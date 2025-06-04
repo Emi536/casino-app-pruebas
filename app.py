@@ -2734,48 +2734,28 @@ elif auth_status:
     elif "📋 Registro Padrino" in seccion:
         st.header("📋 Registro general de jugadores - Padrino")
     
-        # Definimos el casino directamente
         casino = "Padrino"
     
         archivo = st.file_uploader("📁 Subí el archivo del reporte de Padrino (.xlsx)", type=["xlsx"], key="reporte_padrino")
     
         if archivo:
             try:
-                # Leer archivo
                 df = pd.read_excel(archivo)
     
-                # Limpiar columnas numéricas
-                def convertir_monto(valor):
-                    if pd.isna(valor): return 0.0
-                    valor = str(valor).replace("\u202f", "").replace("\xa0", "").replace(" ", "").replace(",", "")
-                    try:
-                        return float(valor)
-                    except:
-                        return 0.0
+                # 🔧 Limpiar datos como si fuera transacción cruda
+                df = limpiar_transacciones(df)
     
-                def limpiar_dataframe(df_temp):
-                    df_temp = df_temp.copy()
-                    for col in ["Depositar", "Retirar", "Wager", "Balance antes de operación"]:
-                        if col in df_temp.columns:
-                            df_temp[col] = df_temp[col].apply(convertir_monto)
-                    if "Fecha" in df_temp.columns:
-                        df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"], errors="coerce").dt.date
-                    if "Tiempo" in df_temp.columns:
-                        df_temp["Tiempo"] = pd.to_datetime(df_temp["Tiempo"], errors="coerce").dt.time
-                    return df_temp
+                # 🔁 Agregar casino
+                df = agregar_columna_casino(df, casino)
     
-                df = limpiar_dataframe(df)
-                df["casino"] = casino  # Asignar casino directamente
+                # 🗄 Conectar a Supabase vía SQLAlchemy
+                from sqlalchemy import create_engine
     
-                # Subir a Supabase
-                from supabase import create_client
-                url = st.secrets["supabase_url"]
-                key = st.secrets["supabase_key"]
-                supabase = create_client(url, key)
+                url_db = st.secrets["supabase_db_url"]  # debe estar en secrets.toml
+                engine = create_engine(url_db)
     
-                supabase.table("reportes_jugadores").insert(df.to_dict(orient="records")).execute()
-    
-                st.success(f"✅ {len(df)} registros cargados exitosamente en Supabase para el casino {casino}.")
+                # 📤 Subir directamente a la tabla reportes_jugadores
+                subir_a_supabase(df, "reportes_jugadores", engine)
     
             except Exception as e:
                 st.error(f"❌ Error al procesar o subir el archivo: {e}")
