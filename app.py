@@ -102,7 +102,7 @@ elif auth_status:
     
      # Definir qué secciones ve cada rol
     secciones_por_rol = {
-        "admin": ["🏢 Oficina VIP", "📋 Registro Fénix", "📋 Registro Eros", "📋 Registro Bet Argento","📋 Registro Spirita","📋 Registro Atenea","📋 Registro Padrino","📆 Agenda Fénix","📆 Agenda Eros","📆 Agenda BetArgento","📊 Análisis Temporal","🔝 Métricas de jugadores"],
+        "admin": ["🏢 Oficina VIP", "📋 Registro Fénix", "📋 Registro Eros", "📋 Registro Bet Argento","📋 Registro Spirita","📋 Registro Atenea","📋 Registro Padrino/Tiger","📆 Agenda Fénix","📆 Agenda Eros","📆 Agenda BetArgento","📊 Análisis Temporal","🔝 Métricas de jugadores"],
         "fenix_eros": ["🔝 Métricas de jugadores", "📋 Registro Fénix", "📋 Registro Eros"],
         "bet": ["🔝 Métricas de jugadores","📋 Registro Bet Argento"],
         "spirita":["🔝 Métricas de jugadores","📋 Registro Spirita"],
@@ -2731,12 +2731,15 @@ elif auth_status:
         except Exception as e:
             st.error(f"❌ Error al generar la Tabla Bono Atenea: {e}")
 
-    elif "📋 Registro Padrino" in seccion:
-        st.header("📋 Registro general de jugadores - Padrino")
+    elif "📋 Registro Padrino/Tiger" in seccion:
+        st.header("📋 Registro general de jugadores")
     
-        casino = "Padrino"
+        # 🎛️ Selección del casino
+        casino = st.selectbox("🎰 Seleccioná el casino al que pertenece este reporte", [
+            "Padrino Latino","Tiger"
+        ])
     
-        archivo = st.file_uploader("📁 Subí el archivo del reporte de Padrino (.xlsx)", type=["xlsx"], key="reporte_padrino")
+        archivo = st.file_uploader("📁 Subí el archivo del reporte (.xlsx)", type=["xlsx"], key="reporte_padrino")
     
         if archivo:
             try:
