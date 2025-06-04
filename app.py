@@ -2731,9 +2731,41 @@ elif auth_status:
         except Exception as e:
             st.error(f"❌ Error al generar la Tabla Bono Atenea: {e}")
 
- 
-
-
+    elif "📋 Registro Padrino" in seccion:
+        st.header("📋 Registro general de jugadores - Padrino")
+    
+        casino = "Padrino"  # 🔐 Se usa para marcar a qué casino pertenece el reporte
+    
+        argentina = pytz.timezone("America/Argentina/Buenos_Aires")
+        ahora = datetime.datetime.now(argentina)
+        fecha_actual = ahora.strftime("%d/%m/%Y - %H:%M hs")
+        fecha_actual_date = ahora.date()
+        st.info(f"⏰ Última actualización: {fecha_actual}")
+    
+        responsable = st.text_input("👤 Ingresá tu nombre para registrar quién sube el reporte", value="Anónimo")
+    
+        archivo = st.file_uploader("📁 Subí el archivo del reporte de Padrino (formato .xlsx)", type=["xlsx"], key="reporte_padrino")
+    
+        if archivo:
+            df = pd.read_excel(archivo)
+            
+            # Aplicar las mismas limpiezas que hacés para Fénix/Eros
+            df = limpiar_dataframe(df)
+            df["Responsable"] = responsable
+            df["Fecha_Subida"] = fecha_actual
+            df["casino"] = casino
+    
+            # Guardar en Supabase
+            from supabase import create_client
+            url = st.secrets["supabase_url"]
+            key = st.secrets["supabase_key"]
+            supabase = create_client(url, key)
+    
+            try:
+                supabase.table("reportes_jugadores").insert(df.to_dict(orient="records")).execute()
+                st.success(f"✅ {len(df)} registros cargados correctamente para el casino {casino}.")
+            except Exception as e:
+                st.error(f"❌ Error al subir los datos: {e}")
     
     elif seccion == "📆 Agenda Fénix":
         st.header("📆 Seguimiento de Jugadores Nuevos - Fénix")
