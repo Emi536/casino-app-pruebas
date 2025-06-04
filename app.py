@@ -366,7 +366,7 @@ elif auth_status:
     
     
 
-    # Código optimizado para SECCIÓN FÉNIX
+    # SECCIÓN FÉNIX
     elif "📋 Registro Fénix" in seccion:
         st.header("📋 Registro general de jugadores - Fénix")
     
@@ -377,74 +377,62 @@ elif auth_status:
         st.info(f"⏰ Última actualización: {fecha_actual}")
     
         responsable = st.text_input("👤 Ingresá tu nombre para registrar quién sube el reporte", value="Anónimo")
+    
         texto_pegar = st.text_area("📋 Pegá aquí el reporte copiado (incluí encabezados)", height=300, key="texto_pegar")
+        df_historial = pd.DataFrame()
     
-        # ✅ Función cacheada para cargar historial
-        @st.cache_data(ttl=300)
-        def cargar_historial_fenix():
+        try:
+            hoja_fenix = sh.worksheet("registro_fenix")
+            data_fenix = hoja_fenix.get_all_records()
+            df_historial = pd.DataFrame(data_fenix)
+        except:
+            hoja_fenix = sh.add_worksheet(title="registro_fenix", rows="1000", cols="20")
+            df_historial = pd.DataFrame()
+    
+        def convertir_monto(valor):
+            if pd.isna(valor): return 0.0
+            valor = str(valor)
+            valor = valor.replace("\u202f", "").replace("\xa0", "").replace(" ", "").replace(",", "")
             try:
-                hoja = sh.worksheet("registro_fenix")
-                raw = hoja.get_all_values()
-                df = pd.DataFrame(raw[1:], columns=raw[0])
+                return float(valor)
             except:
-                hoja = sh.add_worksheet(title="registro_fenix", rows="1000", cols="20")
-                df = pd.DataFrame(columns=["Fecha", "Hora", "Jugador", "Monto", "Retiro", "Tipo", "Iniciador", "Del usuario"])
-            return df
+                return 0.0
     
-        # ✅ Limpieza vectorizada
         def limpiar_dataframe(df_temp):
             df_temp = df_temp.copy()
-            cols_str = ["Jugador", "Tipo", "Iniciador", "Del usuario"]
-            for col in cols_str:
-                if col in df_temp.columns:
-                    df_temp[col] = df_temp[col].astype(str).str.strip().str.lower()
+            if "Jugador" in df_temp.columns:
+                df_temp["Jugador"] = df_temp["Jugador"].astype(str).str.strip().str.lower()
             for col in ["Monto", "Retiro", "Balance antes de operación", "Wager"]:
                 if col in df_temp.columns:
-                    df_temp[col] = pd.to_numeric(
-                        df_temp[col].astype(str).str.replace(r"[^\d.]", "", regex=True),
-                        errors="coerce"
-                    ).fillna(0)
+                    df_temp[col] = df_temp[col].apply(convertir_monto)
             if "Fecha" in df_temp.columns:
                 df_temp["Fecha"] = pd.to_datetime(df_temp["Fecha"], errors="coerce")
             return df_temp
     
-        # ✅ Carga y limpieza del historial
-        df_historial = cargar_historial_fenix()
-        df_historial = limpiar_dataframe(df_historial)
-        if "Fecha" in df_historial.columns:
-            df_historial = df_historial[df_historial["Fecha"].notna()]
-            limite = fecha_actual_date - datetime.timedelta(days=30)
-            df_historial = df_historial[df_historial["Fecha"].dt.date >= limite]
-    
-        # ✅ Función cacheada para detectar retiros válidos
-        @st.cache_data(ttl=600)
         def procesar_retiros_validos(df, iniciadores_validos):
-            df = df.copy()
-            if "Hora" not in df.columns:
-                df["Hora"] = "00:00:00"
             df["FechaHora"] = pd.to_datetime(df["Fecha"].astype(str) + " " + df["Hora"].astype(str), errors="coerce")
-    
-            df_retiros = df[(df["Tipo"] == "out") & df["Iniciador"].isin(iniciadores_validos)].copy()
-            df_cargas = df[df["Tipo"] == "in"].copy()
-    
-            df_retiros["Clave"] = df_retiros["Jugador"] + df_retiros["Retiro"].astype(str)
+            df_retiros_validos = df[
+                (df["Tipo"].str.lower() == "out") & df["Iniciador"].isin(iniciadores_validos)
+            ].copy()
+            df_cargas = df[df["Tipo"].str.lower() == "in"].copy()
+            df_retiros_validos["Clave"] = df_retiros_validos["Jugador"] + df_retiros_validos["Retiro"].astype(str)
             df_cargas["Clave"] = df_cargas["Jugador"] + df_cargas["Monto"].astype(str)
             df_cargas["FechaHora"] = pd.to_datetime(df_cargas["Fecha"].astype(str) + " " + df_cargas["Hora"].astype(str), errors="coerce")
-    
-            df_merge = df_retiros.merge(
-                df_cargas[["Clave", "FechaHora"]],
-                on="Clave",
-                suffixes=("_retiro", "_carga")
-            )
-    
-            df_merge["delta"] = (df_merge["FechaHora_retiro"] - df_merge["FechaHora_carga"]).dt.total_seconds()
-            claves_a_excluir = df_merge[df_merge["delta"] <= 300]["Clave"].unique()
-            df_retiros_validos = df_retiros[~df_retiros["Clave"].isin(claves_a_excluir)].copy()
+            claves_cargas = df_cargas.set_index("Clave")["FechaHora"].to_dict()
+            indices_a_excluir = []
+            for i, row in df_retiros_validos.iterrows():
+                clave = row["Clave"]
+                if clave in claves_cargas:
+                    delta = row["FechaHora"] - claves_cargas[clave]
+                    if pd.notnull(delta) and delta.total_seconds() <= 300:
+                        indices_a_excluir.append(i)
+            df_retiros_validos = df_retiros_validos.drop(index=indices_a_excluir)
             return df_retiros_validos
     
-        # Limpieza inicial del historial
         df_historial = limpiar_dataframe(df_historial)
+    
         if "Fecha" in df_historial.columns:
+            df_historial["Fecha"] = pd.to_datetime(df_historial["Fecha"], errors="coerce")
             df_historial = df_historial[df_historial["Fecha"].notna()]
             limite = fecha_actual_date - datetime.timedelta(days=30)
             df_historial = df_historial[df_historial["Fecha"].dt.date >= limite]
@@ -529,7 +517,8 @@ elif auth_status:
 
         if not df_historial.empty:
             st.info(f"📊 Total de registros acumulados: {len(df_historial)}")
-        
+
+            # 🗓️ Filtro por fecha de los registros individuales
             st.markdown("### 📅 Filtrar registros por fecha de actividad")
             col1, col2 = st.columns(2)
             with col1:
@@ -537,16 +526,17 @@ elif auth_status:
             with col2:
                 filtro_hasta = st.date_input("📆 Hasta", value=df_historial["Fecha"].max().date(), key="hasta_historial_filtro")
         
-            df = df_historial[
+            df_historial_filtrado = df_historial[
                 (df_historial["Fecha"].dt.date >= filtro_desde) &
                 (df_historial["Fecha"].dt.date <= filtro_hasta)
             ].copy()
-        
+
+            df = df_historial_filtrado.copy()
             if "Tiempo" in df.columns and "Hora" not in df.columns:
                 df = df.rename(columns={"Tiempo": "Hora"})
         
             def hash_dataframe(df):
-                return hashlib.md5(pd.util.hash_pandas_object(df, index=False).values).hexdigest()
+                return hashlib.md5(pd.util.hash_pandas_object(df, index=True).values).hexdigest()
         
             df_hash = hash_dataframe(df)
             actualizar = st.button("🔄 Recalcular resumen de jugadores")
@@ -571,7 +561,6 @@ elif auth_status:
         
             if resumen_actualizado:
                 from collections import Counter
-
                 valores_hl = ["hl_casinofenix"]
                 valores_wagger = [
                     "Fenix_Wagger100", "Fenix_Wagger40", "Fenix_Wagger30",
