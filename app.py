@@ -2767,6 +2767,36 @@ elif auth_status:
         elif st.session_state.get("archivo_procesado"):
             st.success("✅ El archivo ya fue procesado. Si querés subir uno nuevo, cambiá el casino o recargá la página.")
 
+        # === Visualización de la vista correspondiente ===
+        st.markdown("---")
+        st.subheader(f"🔍 Vista resumen de jugadores - {casino_actual}")
+        
+        # Seleccionar vista según casino
+        nombre_vista = "resumen_padrino_latino" if casino_actual == "Padrino Latino" else "resumen_tiger"
+        
+        try:
+            engine = create_engine(st.secrets["DB_URL"])
+            with engine.connect() as conn:
+                query = f'SELECT * FROM "{nombre_vista}" ORDER BY "Ganacias casino" DESC'
+                df_resumen = pd.read_sql(query, conn)
+        
+                if not df_resumen.empty:
+                    st.dataframe(df_resumen, use_container_width=True)
+        
+                    output = io.BytesIO()
+                    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+                        df_resumen.to_excel(writer, index=False, sheet_name=casino_actual)
+                    st.download_button(
+                        "⬇️ Descargar Excel",
+                        data=output.getvalue(),
+                        file_name=f"{casino_actual.lower().replace(' ', '_')}_resumen.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
+                else:
+                    st.info("ℹ️ La vista aún no tiene datos.")
+        except Exception as e:
+            st.error(f"❌ Error al consultar la vista del casino seleccionado: {e}")
+
     
     elif seccion == "📆 Agenda Fénix":
         st.header("📆 Seguimiento de Jugadores Nuevos - Fénix")
