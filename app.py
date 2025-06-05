@@ -2873,7 +2873,7 @@ elif auth_status:
         st.subheader(f"🎁 Tabla de Bonos - {casino_actual}")
         
         try:
-            sh = autenticar_google_sheet()  # asumimos que tenés esta función ya implementada
+            # 🔄 Reutilizá el objeto 'sh' que ya tenés en tu app
             clave_casino = "padrino" if casino_actual == "Padrino Latino" else "tiger"
             df_bonos = cargar_tabla_bonos(clave_casino, sh)
         
