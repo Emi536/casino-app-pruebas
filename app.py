@@ -102,7 +102,7 @@ elif auth_status:
     
      # Definir qué secciones ve cada rol
     secciones_por_rol = {
-        "admin": ["🏢 Oficina VIP", "📋 Registro Fénix", "📋 Registro Eros", "📋 Registro Bet Argento","📋 Registro Spirita","📋 Registro Atenea","📋 Registro Padrino/Tiger","📆 Agenda Fénix","📆 Agenda Eros","📆 Agenda BetArgento","📊 Análisis Temporal","🔝 Métricas de jugadores"],
+        "admin": ["🏢 Oficina VIP", "📋 Registro Fénix", "📋 Registro Eros", "📋 Registro Bet Argento","📋 Registro Spirita","📋 Registro Atenea","📋 Registro Padrino Latino/Tiger","📆 Agenda Fénix","📆 Agenda Eros","📆 Agenda BetArgento","📊 Análisis Temporal","🔝 Métricas de jugadores"],
         "fenix_eros": ["🔝 Métricas de jugadores", "📋 Registro Fénix", "📋 Registro Eros"],
         "bet": ["🔝 Métricas de jugadores","📋 Registro Bet Argento"],
         "spirita":["🔝 Métricas de jugadores","📋 Registro Spirita"],
@@ -2731,12 +2731,12 @@ elif auth_status:
         except Exception as e:
             st.error(f"❌ Error al generar la Tabla Bono Atenea: {e}")
 
-    elif "📋 Registro Padrino/Tiger" in seccion:
+    elif "📋 Registro Padrino Latino/Tiger" in seccion:
         st.header("📋 Registro general de jugadores")
     
         # 🎰 Selección de casino con control de cambio
         casino_actual = st.selectbox("🎰 Seleccioná el casino al que pertenece este reporte", [
-            "Padrino", "Tiger"
+            "Padrino Latino", "Tiger"
         ], key="casino_selector")
     
         # 🔄 Limpiar archivo si se cambia el casino
