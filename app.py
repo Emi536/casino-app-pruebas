@@ -2734,10 +2734,19 @@ elif auth_status:
     elif "📋 Registro Padrino/Tiger" in seccion:
         st.header("📋 Registro general de jugadores")
     
-        # 🎛️ Selección del casino
-        casino = st.selectbox("🎰 Seleccioná el casino al que pertenece este reporte", [
-            "Padrino Latino","Tiger"
-        ])
+        # 🎰 Selección de casino con control de cambio
+        casino_actual = st.selectbox("🎰 Seleccioná el casino al que pertenece este reporte", [
+            "Padrino", "Tiger"
+        ], key="casino_selector")
+    
+        # 🔄 Limpiar archivo si se cambia el casino
+        if "casino_anterior" not in st.session_state:
+            st.session_state["casino_anterior"] = casino_actual
+    
+        if casino_actual != st.session_state["casino_anterior"]:
+            # Reiniciar el uploader limpiando archivo anterior
+            st.session_state["reporte_padrino"] = None
+            st.session_state["casino_anterior"] = casino_actual
     
         archivo = st.file_uploader("📁 Subí el archivo del reporte (.xlsx)", type=["xlsx"], key="reporte_padrino")
     
@@ -2749,7 +2758,7 @@ elif auth_status:
                 df = limpiar_transacciones(df)
     
                 # ✅ Agregar columna casino
-                df = agregar_columna_casino(df, casino)
+                df = agregar_columna_casino(df, casino_actual)
     
                 # 🔌 Conectar a Supabase con tu DB_URL
                 engine = create_engine(st.secrets["DB_URL"])
