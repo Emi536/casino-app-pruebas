@@ -2734,36 +2734,38 @@ elif auth_status:
     elif "📋 Registro Padrino Latino/Tiger" in seccion:
         st.header("📋 Registro general de jugadores")
     
-        # 🎰 Selección de casino con control de cambio
         casino_actual = st.selectbox("🎰 Seleccioná el casino al que pertenece este reporte", [
             "Padrino Latino", "Tiger"
         ], key="casino_selector")
     
-        # 🔄 Detectar cambio de casino y reiniciar app
         if "casino_anterior" not in st.session_state:
             st.session_state["casino_anterior"] = casino_actual
     
         if casino_actual != st.session_state["casino_anterior"]:
             st.session_state["casino_anterior"] = casino_actual
-            st.experimental_rerun()  # ✅ Evita modificar directamente el estado del file_uploader
+            st.session_state.pop("archivo_procesado", None)
+            st.experimental_rerun()
     
-        # 📁 Carga de archivo
         archivo = st.file_uploader("📁 Subí el archivo del reporte (.xlsx)", type=["xlsx"], key="reporte_padrino")
     
-        if archivo:
+        # ⚠️ Evitar doble procesamiento si ya se subió
+        if archivo and not st.session_state.get("archivo_procesado"):
             try:
                 df = pd.read_excel(archivo)
-    
-                # ✅ Limpieza
                 df = limpiar_transacciones(df)
                 df = agregar_columna_casino(df, casino_actual)
     
-                # 🔌 Conexión y subida
                 engine = create_engine(st.secrets["DB_URL"])
                 subir_a_supabase(df, "reportes_jugadores", engine)
     
+                # ✅ Marcar como procesado
+                st.session_state["archivo_procesado"] = True
+    
             except Exception as e:
                 st.error(f"❌ Error al procesar o subir el archivo: {e}")
+    
+        elif st.session_state.get("archivo_procesado"):
+            st.success("✅ El archivo ya fue procesado. Si querés subir uno nuevo, cambiá el casino o recargá la página.")
     
     elif seccion == "📆 Agenda Fénix":
         st.header("📆 Seguimiento de Jugadores Nuevos - Fénix")
