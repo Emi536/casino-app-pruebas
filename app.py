@@ -2739,31 +2739,27 @@ elif auth_status:
             "Padrino Latino", "Tiger"
         ], key="casino_selector")
     
-        # 🔄 Limpiar archivo si se cambia el casino
+        # 🔄 Detectar cambio de casino y reiniciar app
         if "casino_anterior" not in st.session_state:
             st.session_state["casino_anterior"] = casino_actual
     
         if casino_actual != st.session_state["casino_anterior"]:
-            # Reiniciar el uploader limpiando archivo anterior
-            st.session_state["reporte_padrino"] = None
             st.session_state["casino_anterior"] = casino_actual
+            st.experimental_rerun()  # ✅ Evita modificar directamente el estado del file_uploader
     
+        # 📁 Carga de archivo
         archivo = st.file_uploader("📁 Subí el archivo del reporte (.xlsx)", type=["xlsx"], key="reporte_padrino")
     
         if archivo:
             try:
                 df = pd.read_excel(archivo)
     
-                # ✅ Limpiar como transacción cruda
+                # ✅ Limpieza
                 df = limpiar_transacciones(df)
-    
-                # ✅ Agregar columna casino
                 df = agregar_columna_casino(df, casino_actual)
     
-                # 🔌 Conectar a Supabase con tu DB_URL
+                # 🔌 Conexión y subida
                 engine = create_engine(st.secrets["DB_URL"])
-    
-                # 🚀 Subir a la tabla deseada
                 subir_a_supabase(df, "reportes_jugadores", engine)
     
             except Exception as e:
