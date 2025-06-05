@@ -271,10 +271,10 @@ elif auth_status:
 
     # ✅ Función cacheada y reutilizable para cargar bonos según casino
     @st.cache_data(ttl=300)
-    def cargar_tabla_bonos(casino_key: str, sh):
-        hoja_registro = sh.worksheet(f"registro_bono_{casino_key}")
+    def cargar_tabla_bonos(casino_key: str, _sh):
+        hoja_registro = _sh.worksheet(f"registro_bono_{casino_key}")
         datos_registro = hoja_registro.get_all_values()
-        hoja_bonos = sh.worksheet(f"bonos_ofrecidos_{casino_key}")
+        hoja_bonos = _sh.worksheet(f"bonos_ofrecidos_{casino_key}")
         datos_bonos = hoja_bonos.get_all_values()
     
         def manejar_encabezados_unicos(headers):
