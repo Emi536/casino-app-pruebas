@@ -269,6 +269,80 @@ elif auth_status:
         except Exception:
             return None
 
+    # ✅ Función cacheada y reutilizable para cargar bonos según casino
+    @st.cache_data(ttl=300)
+    def cargar_tabla_bonos(casino_key: str, sh):
+        hoja_registro = sh.worksheet(f"registro_bono_{casino_key}")
+        datos_registro = hoja_registro.get_all_values()
+        hoja_bonos = sh.worksheet(f"bonos_ofrecidos_{casino_key}")
+        datos_bonos = hoja_bonos.get_all_values()
+    
+        def manejar_encabezados_unicos(headers):
+            seen = set()
+            unique = []
+            for h in headers:
+                if h in seen:
+                    i = 1
+                    while f"{h}_{i}" in seen:
+                        i += 1
+                    h = f"{h}_{i}"
+                seen.add(h)
+                unique.append(h)
+            return unique
+    
+        headers_reg = manejar_encabezados_unicos(datos_registro[0])
+        df_registro = pd.DataFrame(datos_registro[1:], columns=headers_reg)
+        df_registro["USUARIO"] = df_registro["USUARIO"].astype(str).str.strip().str.lower()
+        df_registro["USUARIO_NORM"] = df_registro["USUARIO"].str.replace(" ", "").str.replace("_", "")
+        df_registro = df_registro.drop_duplicates(subset=["USUARIO_NORM"], keep="last").drop(columns=["USUARIO_NORM"])
+    
+        headers_bonos = manejar_encabezados_unicos(datos_bonos[0])
+        df_bonos = pd.DataFrame(datos_bonos[1:], columns=headers_bonos)
+        df_bonos["USUARIO"] = df_bonos["USUARIO"].astype(str).str.strip().str.lower()
+        df_bonos["FECHA"] = pd.to_datetime(df_bonos["FECHA"], errors="coerce")
+    
+        df_categorias = (
+            df_bonos.dropna(subset=["CATEGORIA DE BONO"])
+            .sort_values("FECHA")
+            .groupby("USUARIO")
+            .agg({
+                "CATEGORIA DE BONO": "last",
+                "FECHA": "last"
+            })
+            .reset_index()
+            .rename(columns={"FECHA": "FECHA_ULTIMA_ACTUALIZACION"})
+        )
+    
+        df_bono = df_registro.merge(df_categorias, on="USUARIO", how="left")
+    
+        df_bono.rename(columns={
+            "USUARIO": "Usuario",
+            "FUNNEL": "Tipo de Bono",
+            "BONOS OFRECIDOS": "Cuántas veces se le ofreció el bono",
+            "BONOS USADOS": "Cuántas veces cargó con bono",
+            "MONTO TOTAL CARGADO": "Monto total",
+            "% DE CONVERSION": "Conversión",
+            "ULT. ACTUALIZACION": "Fecha del último mensaje",
+            "CATEGORIA DE BONO": "Categoría de Bono",
+            "FECHA_ULTIMA_ACTUALIZACION": "Últ. vez contactado"
+        }, inplace=True)
+    
+        df_bono["Conversión"] = df_bono["Conversión"].astype(str).str.replace("%", "", regex=False)
+        df_bono["Conversión"] = pd.to_numeric(df_bono["Conversión"], errors="coerce").fillna(0)
+        df_bono["Fecha del último mensaje"] = df_bono["Fecha del último mensaje"].replace(
+            ["30/12/1899", "1899-12-30"], "Sin registros"
+        )
+    
+        columnas_finales = [
+            "Usuario", "Tipo de Bono",
+            "Cuántas veces se le ofreció el bono", "Cuántas veces cargó con bono",
+            "Monto total", "Conversión",
+            "Fecha del último mensaje", "Categoría de Bono",
+            "Fecha de última actualización real"
+        ]
+    
+        return df_bono[columnas_finales]
+
 
     # --- SECCION 1: METRICAS DE JUGADORES ---
     if seccion == "🔝 Métricas de jugadores":
@@ -2794,6 +2868,32 @@ elif auth_status:
                     st.info("ℹ️ La vista aún no tiene datos.")
         except Exception as e:
             st.error(f"❌ Error al consultar la vista del casino seleccionado: {e}")
+            
+        st.markdown("----")
+        st.subheader(f"🎁 Tabla de Bonos - {casino_actual}")
+        
+        try:
+            sh = autenticar_google_sheet()  # asumimos que tenés esta función ya implementada
+            clave_casino = "padrino" if casino_actual == "Padrino Latino" else "tiger"
+            df_bonos = cargar_tabla_bonos(clave_casino, sh)
+        
+            if not df_bonos.empty:
+                st.dataframe(df_bonos, use_container_width=True)
+        
+                # Descargar en Excel
+                output_bonos = io.BytesIO()
+                with pd.ExcelWriter(output_bonos, engine="xlsxwriter") as writer:
+                    df_bonos.to_excel(writer, index=False, sheet_name=f"Bonos_{casino_actual}")
+                st.download_button(
+                    "⬇️ Descargar Tabla de Bonos",
+                    data=output_bonos.getvalue(),
+                    file_name=f"{clave_casino}_bonos.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+            else:
+                st.info("ℹ️ No hay datos en la tabla de bonos para este casino.")
+        except Exception as e:
+            st.error(f"❌ Error al cargar tabla de bonos: {e}")
 
     
     elif seccion == "📆 Agenda Fénix":
