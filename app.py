@@ -338,7 +338,7 @@ elif auth_status:
             "Cuántas veces se le ofreció el bono", "Cuántas veces cargó con bono",
             "Monto total", "Conversión",
             "Fecha del último mensaje", "Categoría de Bono",
-            "Fecha de última actualización real"
+            "Últ. vez contactado"
         ]
     
         return df_bono[columnas_finales]
