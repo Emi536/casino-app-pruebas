@@ -2733,56 +2733,54 @@ elif auth_status:
 
     elif "📋 Registro Padrino Latino/Tiger" in seccion:
         st.header("📋 Registro general de jugadores")
-    
+
         casino_actual = st.selectbox("🎰 Seleccioná el casino al que pertenece este reporte", [
             "Padrino Latino", "Tiger"
         ], key="casino_selector")
-    
+
         if "casino_anterior" not in st.session_state:
             st.session_state["casino_anterior"] = casino_actual
-    
+
         if casino_actual != st.session_state["casino_anterior"]:
             st.session_state["casino_anterior"] = casino_actual
             st.session_state.pop("archivo_procesado", None)
             st.experimental_rerun()
-    
+
         archivo = st.file_uploader("📁 Subí el archivo del reporte (.xlsx)", type=["xlsx"], key="reporte_padrino")
-    
-        # ⚠️ Evitar doble procesamiento si ya se subió
+
         if archivo and not st.session_state.get("archivo_procesado"):
             try:
                 df = pd.read_excel(archivo)
                 df = limpiar_transacciones(df)
                 df = agregar_columna_casino(df, casino_actual)
-    
+
                 engine = create_engine(st.secrets["DB_URL"])
                 subir_a_supabase(df, "reportes_jugadores", engine)
-    
-                # ✅ Marcar como procesado
+
                 st.session_state["archivo_procesado"] = True
-    
+                st.success("✅ Archivo subido y procesado correctamente.")
+
             except Exception as e:
                 st.error(f"❌ Error al procesar o subir el archivo: {e}")
-    
+
         elif st.session_state.get("archivo_procesado"):
             st.success("✅ El archivo ya fue procesado. Si querés subir uno nuevo, cambiá el casino o recargá la página.")
 
         # === Visualización de la vista correspondiente ===
         st.markdown("---")
         st.subheader(f"🔍 Vista resumen de jugadores - {casino_actual}")
-        
-        # Seleccionar vista según casino
+
         nombre_vista = "resumen_padrino_latino" if casino_actual == "Padrino Latino" else "resumen_tiger"
-        
+
         try:
             engine = create_engine(st.secrets["DB_URL"])
             with engine.connect() as conn:
                 query = f'SELECT * FROM "{nombre_vista}" ORDER BY "Ganacias casino" DESC'
                 df_resumen = pd.read_sql(query, conn)
-        
+
                 if not df_resumen.empty:
                     st.dataframe(df_resumen, use_container_width=True)
-        
+
                     output = io.BytesIO()
                     with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
                         df_resumen.to_excel(writer, index=False, sheet_name=casino_actual)
