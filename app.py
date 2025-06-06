@@ -2871,6 +2871,24 @@ elif auth_status:
                     (df_resumen["Última vez que cargó"] >= pd.to_datetime(filtro_desde)) &
                     (df_resumen["Última vez que cargó"] <= pd.to_datetime(filtro_hasta))
                 ]
+
+                # 🧼 Rellenar NaN con 'N/A' antes de aplicar filtros
+                df_resumen_filtrado["Tipo de bono"] = df_resumen_filtrado["Tipo de bono"].fillna("N/A")
+                
+                # 🎯 Filtro múltiple por tipo de bono
+                col_filtro, col_orden = st.columns(2)
+                tipos_disponibles = df_resumen_filtrado["Tipo de bono"].dropna().unique().tolist()
+                tipos_disponibles.sort()
+                
+                seleccion_tipos = col_filtro.multiselect(
+                    "🎯 Filtrar por tipo de bono:",
+                    options=tipos_disponibles,
+                    default=tipos_disponibles  # Mostrar todos por defecto
+                )
+                
+                # Aplicar el filtro si hay selección
+                if seleccion_tipos:
+                    df_resumen_filtrado = df_resumen_filtrado[df_resumen_filtrado["Tipo de bono"].isin(seleccion_tipos)]
                 try:
                     clave_casino = "padrino" if casino_actual == "Padrino Latino" else "tiger"
                     df_bonos = cargar_tabla_bonos(clave_casino, sh)
