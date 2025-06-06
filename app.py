@@ -2855,25 +2855,21 @@ elif auth_status:
                     clave_casino = "padrino" if casino_actual == "Padrino Latino" else "tiger"
                     df_bonos = cargar_tabla_bonos(clave_casino, sh)
                 
-                    # Normalizar nombres
-                    df_resumen["Usuario_NORM"] = df_resumen["Nombre de jugador"].astype(str).str.lower().str.replace(" ", "").str.replace("_", "")
-                    df_bonos["Usuario_NORM"] = df_bonos["Usuario"].astype(str).str.lower().str.replace(" ", "").str.replace("_", "")
+                    # 🔹 Crear clave de unión sin agregar columna visible
+                    df_resumen_temp = df_resumen.copy()
+                    df_resumen_temp["__user_key"] = df_resumen_temp["Nombre de jugador"].astype(str).str.lower().str.replace(" ", "").str.replace("_", "")
+                    df_bonos["__user_key"] = df_bonos["Usuario"].astype(str).str.lower().str.replace(" ", "").str.replace("_", "")
                 
-                    # Merge para completar columnas ya existentes
-                    df_enriquecido = df_resumen.merge(
-                        df_bonos[["Usuario_NORM", "Tipo de Bono", "Últ. vez contactado"]],
-                        on="Usuario_NORM", how="left"
-                    )
+                    # 🔄 Crear diccionarios para acceder rápido
+                    dict_tipo_bono = dict(zip(df_bonos["__user_key"], df_bonos["Tipo de Bono"]))
+                    dict_contacto = dict(zip(df_bonos["__user_key"], df_bonos["Últ. vez contactado"]))
                 
-                    # Sobrescribir contenido SOLO en las columnas ya creadas
-                    df_enriquecido["Tipo de bono"] = df_enriquecido["Tipo de bono"].fillna(df_enriquecido["Tipo de Bono"])
-                    df_enriquecido["últ. vez contactado"] = df_enriquecido["últ. vez contactado"].fillna(df_enriquecido["Últ. vez contactado"])
+                    # 🧠 Completar solo si las columnas existen
+                    if "Tipo de bono" in df_resumen.columns:
+                        df_resumen["Tipo de bono"] = df_resumen_temp["__user_key"].map(dict_tipo_bono).fillna(df_resumen["Tipo de bono"])
                 
-                    # Limpiar columnas auxiliares
-                    df_enriquecido.drop(columns=["Usuario_NORM", "Tipo de Bono", "Últ. vez contactado"], inplace=True)
-                
-                    # Reemplazar el dataframe original
-                    df_resumen = df_enriquecido
+                    if "últ. vez contactado" in df_resumen.columns:
+                        df_resumen["últ. vez contactado"] = df_resumen_temp["__user_key"].map(dict_contacto).fillna(df_resumen["últ. vez contactado"])
                 
                 except Exception as e:
                     st.warning(f"⚠️ No se pudo completar con datos de la tabla de bonos: {e}")
