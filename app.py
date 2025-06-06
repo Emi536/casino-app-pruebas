@@ -2869,7 +2869,7 @@ elif auth_status:
                         df_resumen["Tipo de bono"] = df_resumen_temp["__user_key"].map(dict_tipo_bono).fillna(df_resumen["Tipo de bono"])
                 
                     if "últ. vez contactado" in df_resumen.columns:
-                        df_resumen["últ. vez contactado"] = df_resumen_temp["__user_key"].map(dict_contacto).fillna(df_resumen["últ. vez contactado"])
+                        df_resumen["últ. vez contactado"] = df_resumen_temp["__user_key"].map(dict_contacto).fillna(df_resumen["Últ. vez contactado"])
                 
                 except Exception as e:
                     st.warning(f"⚠️ No se pudo completar con datos de la tabla de bonos: {e}")
