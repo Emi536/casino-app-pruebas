@@ -2855,21 +2855,21 @@ elif auth_status:
                     clave_casino = "padrino" if casino_actual == "Padrino Latino" else "tiger"
                     df_bonos = cargar_tabla_bonos(clave_casino, sh)
                 
-                    # 🔹 Crear clave de unión sin agregar columna visible
+                    # Normalizar claves
                     df_resumen_temp = df_resumen.copy()
                     df_resumen_temp["__user_key"] = df_resumen_temp["Nombre de jugador"].astype(str).str.lower().str.replace(" ", "").str.replace("_", "")
                     df_bonos["__user_key"] = df_bonos["Usuario"].astype(str).str.lower().str.replace(" ", "").str.replace("_", "")
                 
-                    # 🔄 Crear diccionarios para acceder rápido
+                    # Crear diccionarios de fusión
                     dict_tipo_bono = dict(zip(df_bonos["__user_key"], df_bonos["Tipo de Bono"]))
-                    dict_contacto = dict(zip(df_bonos["__user_key"], df_bonos["Últ. vez contactado"]))
+                    dict_contacto = dict(zip(df_bonos["__user_key"], df_bonos["Últ. vez contactado"]))  # <-- ¡nombre correcto!
                 
-                    # 🧠 Completar solo si las columnas existen
+                    # Rellenar SOLO si las columnas existen
                     if "Tipo de bono" in df_resumen.columns:
                         df_resumen["Tipo de bono"] = df_resumen_temp["__user_key"].map(dict_tipo_bono).fillna(df_resumen["Tipo de bono"])
                 
-                    if "últ. vez contactado" in df_resumen.columns:
-                        df_resumen["últ. vez contactado"] = df_resumen_temp["__user_key"].map(dict_contacto).fillna(df_resumen["Últ. vez contactado"])
+                    if "Últ. vez contactado" in df_resumen.columns:
+                        df_resumen["Últ. vez contactado"] = df_resumen_temp["__user_key"].map(dict_contacto).fillna(df_resumen["Últ. vez contactado"])
                 
                 except Exception as e:
                     st.warning(f"⚠️ No se pudo completar con datos de la tabla de bonos: {e}")
