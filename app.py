@@ -17,7 +17,8 @@ import pickle
 import zipfile
 import tempfile
 import io
-from pathlib import Path 
+from pathlib import Path
+import re
 
 from sqlalchemy import create_engine
 import psycopg2
@@ -136,6 +137,40 @@ elif auth_status:
         })
         return df
 
+    # 🔍 Detecta el formato numérico
+    def detectar_formato_decimal(valor):
+        if "," in valor and "." in valor:
+            return "en" if valor.rfind(".") > valor.rfind(",") else "lat"
+        elif "," in valor:
+            return "lat"
+        elif "." in valor:
+            return "en"
+        else:
+            return "none"
+    
+    # 🔄 Convierte valores como "2.000,00" o "2,000.00" a 2000.00
+    def convertir_a_numero(valor):
+        try:
+            valor = str(valor).strip()
+            if valor == "":
+                return 0.0
+            formato = detectar_formato_decimal(valor)
+            if formato == "en":
+                valor = valor.replace(",", "")
+            elif formato == "lat":
+                valor = valor.replace(".", "").replace(",", ".")
+            return float(valor)
+        except:
+            return 0.0
+    
+    # ✅ Limpia columnas numéricas específicas
+    def limpiar_columnas_numericas(df):
+        columnas_numericas = ["Depositar", "Retirar", "Wager", "Balance antes de operación"]
+        for col in columnas_numericas:
+            if col in df.columns:
+                df[col] = df[col].apply(convertir_a_numero)
+        return df
+    
     # ✅ Convierte correctamente la columna "Tiempo"
     def convertir_columna_tiempo(df):
         def convertir(valor):
@@ -143,7 +178,7 @@ elif auth_status:
                 if isinstance(valor, datetime.time):
                     return valor
                 if isinstance(valor, str) and ":" in valor:
-                    return datetime.datetime.strptime(valor, "%H:%M:%S").time()
+                    return datetime.datetime.strptime(valor.strip(), "%H:%M:%S").time()
                 valor_str = str(int(float(valor))).zfill(6)
                 h, m, s = int(valor_str[0:2]), int(valor_str[2:4]), int(valor_str[4:6])
                 return datetime.time(h, m, s)
@@ -152,20 +187,6 @@ elif auth_status:
     
         if "Tiempo" in df.columns:
             df["Tiempo"] = df["Tiempo"].apply(convertir)
-        return df
-    
-    # ✅ Limpia columnas numéricas específicas
-    def limpiar_columnas_numericas(df):
-        columnas_numericas = ["Depositar", "Retirar", "Wager", "Balance antes de operación"]
-        for col in columnas_numericas:
-            if col in df.columns:
-                df[col] = (
-                    df[col]
-                    .astype(str)
-                    .str.replace(r"[^\d,.\-]", "", regex=True)
-                    .str.replace(",", ".", regex=False)
-                )
-                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0)
         return df
     
     # ✅ Limpieza específica para la tabla de transacciones
@@ -187,21 +208,7 @@ elif auth_status:
     
         return df
     
-    def detectar_tabla(df):
-        columnas = set(col.lower().strip() for col in df.columns)
-    
-        if {"sesión", "usuario", "nombre del juego", "hora de apertura"}.issubset(columnas):
-            return "actividad_jugador_cruda"
-        elif {"operación", "depositar", "retirar", "fecha", "del usuario"}.issubset(columnas):
-            return "transacciones_crudas"
-        elif {"id_usuario", "usuario", "bonos ofrecidos", "bonos usados"}.issubset(columnas):
-            return "bonos_crudos"
-        elif {"game name", "label", "category", "type"}.issubset(columnas):
-            return "catalogo_juegos"
-        else:
-            return None
-        
-    # ✅ Inserta datos en Supabase (vía SQLAlchemy)
+    # ✅ Inserta datos en Supabase
     def subir_a_supabase(df, tabla, engine):
         try:
             if tabla == "transacciones_crudas":
@@ -222,11 +229,10 @@ elif auth_status:
                 df.columns = df.columns.str.strip()
                 df = df[[col for col in df.columns if col in columnas_validas]]
     
-                # 🔢 Limpiar columnas numéricas con comas
                 columnas_numericas = ["Balance", "Apuesta", "Ganar", "Ganancias"]
                 for col in columnas_numericas:
                     if col in df.columns:
-                        df[col] = df[col].astype(str).str.replace(",", "").str.replace("−", "-")  # soporto guión largo también
+                        df[col] = df[col].astype(str).str.replace(",", "").str.replace("−", "-")
                         df[col] = pd.to_numeric(df[col], errors="coerce")
     
             else:
@@ -241,21 +247,30 @@ elif auth_status:
     
         except SQLAlchemyError as e:
             st.error(f"❌ Error al subir datos a `{tabla}`: {e}")
-
-
+    
+    # ✅ Detecta la tabla por estructura de columnas
+    def detectar_tabla(df):
+        columnas = set(col.lower().strip() for col in df.columns)
+    
+        if {"sesión", "usuario", "nombre del juego", "hora de apertura"}.issubset(columnas):
+            return "actividad_jugador_cruda"
+        elif {"operación", "depositar", "retirar", "fecha", "del usuario"}.issubset(columnas):
+            return "transacciones_crudas"
+        elif {"id_usuario", "usuario", "bonos ofrecidos", "bonos usados"}.issubset(columnas):
+            return "bonos_crudos"
+        elif {"game name", "label", "category", "type"}.issubset(columnas):
+            return "catalogo_juegos"
+        else:
+            return None
+    
+    # ✅ Agrega columna del casino
     def agregar_columna_casino(df, casino):
-        """
-        Asegura que el DataFrame tenga la columna 'casino' y la llena con el valor seleccionado.
-        Si ya existe, la sobrescribe.
-        """
         df.columns = df.columns.str.strip()
         df["casino"] = casino
         return df
-
+    
+    # ✅ Extrae nombre real de la hoja 'Información'
     def extraer_nombre_real_desde_info(archivo_path):
-        """
-        Intenta leer la hoja 'Información' de un archivo Excel y devuelve el nombre real del usuario (campo 'Usuario').
-        """
         try:
             df_info = pd.read_excel(archivo_path, sheet_name="Información", usecols="A:B", nrows=10)
             df_info.columns = df_info.columns.str.strip()
