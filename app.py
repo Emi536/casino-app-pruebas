@@ -595,9 +595,6 @@ elif auth_status:
                 default=tipos_disponibles
             )
 
-            if seleccion_tipos:
-                df_resumen_filtrado = df_resumen_filtrado[df_resumen_filtrado["Tipo de bono"].isin(seleccion_tipos)]
-
             if not df_resumen_filtrado.empty:
                 st.dataframe(df_resumen_filtrado, use_container_width=True)
 
