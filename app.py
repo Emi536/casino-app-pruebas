@@ -2851,7 +2851,33 @@ elif auth_status:
             with engine.connect() as conn:
                 query = f'SELECT * FROM "{nombre_vista}" ORDER BY "Ganacias casino" DESC'
                 df_resumen = pd.read_sql(query, conn)
-
+                try:
+                    clave_casino = "padrino" if casino_actual == "Padrino Latino" else "tiger"
+                    df_bonos = cargar_tabla_bonos(clave_casino, sh)
+                
+                    # Normalización de nombres
+                    df_resumen["Usuario_NORM"] = df_resumen["Nombre de jugador"].astype(str).str.lower().str.replace(" ", "").str.replace("_", "")
+                    df_bonos["Usuario_NORM"] = df_bonos["Usuario"].astype(str).str.lower().str.replace(" ", "").str.replace("_", "")
+                
+                    # Unir por nombre normalizado
+                    df_resumen = df_resumen.merge(
+                        df_bonos[["Usuario_NORM", "Tipo de Bono", "Últ. vez contactado"]],
+                        on="Usuario_NORM", how="left"
+                    )
+                
+                    # Solo rellenar columnas vacías (por si ya existen)
+                    if "Tipo de bono" in df_resumen.columns:
+                        df_resumen["Tipo de bono"] = df_resumen["Tipo de bono"].fillna(df_resumen["Tipo de Bono"])
+                    else:
+                        df_resumen["Tipo de bono"] = df_resumen["Tipo de Bono"]
+                
+                    df_resumen["últ. vez contactado"] = df_resumen["Últ. vez contactado"]
+                
+                    # Limpieza
+                    df_resumen.drop(columns=["Usuario_NORM", "Tipo de Bono", "Últ. vez contactado"], inplace=True)
+                
+                except Exception as e:
+                    st.warning(f"⚠️ No se pudo completar con datos de la tabla de bonos: {e}")
                 if not df_resumen.empty:
                     st.dataframe(df_resumen, use_container_width=True)
 
