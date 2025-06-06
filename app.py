@@ -2851,6 +2851,26 @@ elif auth_status:
             with engine.connect() as conn:
                 query = f'SELECT * FROM "{nombre_vista}" ORDER BY "Ganacias casino" DESC'
                 df_resumen = pd.read_sql(query, conn)
+
+                # 🗓️ Filtro por fecha de última carga
+                st.markdown("### 📅 Filtrar jugadores por fecha de última carga")
+                col1, col2 = st.columns(2)
+                
+                # Convertir si aún no es datetime
+                if not pd.api.types.is_datetime64_any_dtype(df_resumen["Última vez que cargó"]):
+                    df_resumen["Última vez que cargó"] = pd.to_datetime(df_resumen["Última vez que cargó"], errors="coerce")
+                
+                with col1:
+                    filtro_desde = st.date_input("📆 Desde", value=df_resumen["Última vez que cargó"].min().date(), key="desde_ultima_carga")
+                
+                with col2:
+                    filtro_hasta = st.date_input("📆 Hasta", value=df_resumen["Última vez que cargó"].max().date(), key="hasta_ultima_carga")
+                
+                # Aplicar el filtro
+                df_resumen_filtrado = df_resumen[
+                    (df_resumen["Última vez que cargó"] >= pd.to_datetime(filtro_desde)) &
+                    (df_resumen["Última vez que cargó"] <= pd.to_datetime(filtro_hasta))
+                ]
                 try:
                     clave_casino = "padrino" if casino_actual == "Padrino Latino" else "tiger"
                     df_bonos = cargar_tabla_bonos(clave_casino, sh)
@@ -2874,7 +2894,7 @@ elif auth_status:
                 except Exception as e:
                     st.warning(f"⚠️ No se pudo completar con datos de la tabla de bonos: {e}")
                 if not df_resumen.empty:
-                    st.dataframe(df_resumen, use_container_width=True)
+                    st.dataframe(df_resumen_filtrado, use_container_width=True)
 
                     output = io.BytesIO()
                     with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
