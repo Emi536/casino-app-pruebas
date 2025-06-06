@@ -2864,7 +2864,10 @@ elif auth_status:
             dict_contacto = dict(zip(df_bonos["__user_key"], df_bonos["Últ. vez contactado"]))
         
             if "Tipo de bono" in df_resumen.columns:
-                df_resumen["Tipo de bono"] = df_resumen["__user_key"].map(dict_tipo_bono).fillna(df_resumen["Tipo de bono"])
+                df_resumen["Tipo de bono"] = df_resumen["__user_key"].map(dict_tipo_bono).combine_first(df_resumen["Tipo de bono"])
+                
+                # Normalizar: convertir cadenas vacías o espacios en "N/A"
+                df_resumen["Tipo de bono"] = df_resumen["Tipo de bono"].replace("", pd.NA)
                 df_resumen["Tipo de bono"] = df_resumen["Tipo de bono"].fillna("N/A")
         
             if "Últ. vez contactado" in df_resumen.columns:
