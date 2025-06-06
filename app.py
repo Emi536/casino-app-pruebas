@@ -487,6 +487,8 @@ elif auth_status:
         casino_actual = st.selectbox("🎰 Seleccioná el casino al que pertenece este reporte", [
             "Fénix", "Eros"
         ], key="casino_selector_fenix_eros")
+        
+        clave_casino = "fenix" if casino_actual == "Fénix" else "eros"
 
         if "casino_anterior_fenix_eros" not in st.session_state:
             st.session_state["casino_anterior_fenix_eros"] = casino_actual
