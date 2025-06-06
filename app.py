@@ -2413,6 +2413,8 @@ elif auth_status:
                 df_resumen["Últ. vez contactado"] = df_resumen["__user_key"].map(dict_contacto).fillna(df_resumen["Últ. vez contactado"])
     
             df_resumen.drop(columns=["__user_key"], inplace=True)
+
+            df_resumen = asignar_princi(df_resumen, sh, "atenea")
     
             st.markdown("### 📅 Filtrar jugadores por fecha de última carga")
             col1, col2 = st.columns(2)
