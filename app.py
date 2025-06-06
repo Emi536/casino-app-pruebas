@@ -2865,6 +2865,7 @@ elif auth_status:
         
             if "Tipo de bono" in df_resumen.columns:
                 df_resumen["Tipo de bono"] = df_resumen["__user_key"].map(dict_tipo_bono).fillna(df_resumen["Tipo de bono"])
+                df_resumen["Tipo de bono"] = df_resumen["Tipo de bono"].fillna("N/A")
         
             if "Últ. vez contactado" in df_resumen.columns:
                 df_resumen["Últ. vez contactado"] = df_resumen["__user_key"].map(dict_contacto).fillna(df_resumen["Últ. vez contactado"])
