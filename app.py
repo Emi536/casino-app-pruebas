@@ -2415,6 +2415,13 @@ elif auth_status:
             df_resumen.drop(columns=["__user_key"], inplace=True)
 
             df_resumen = asignar_princi(df_resumen, sh, "atenea")
+
+            cols = df_resumen.columns.tolist()
+            if "Tipo de bono" in cols and "PRINCI" in cols:
+                cols.remove("PRINCI")
+                idx = cols.index("Tipo de bono") + 1
+                cols.insert(idx, "PRINCI")
+                df_resumen = df_resumen[cols]
     
             st.markdown("### 📅 Filtrar jugadores por fecha de última carga")
             col1, col2 = st.columns(2)
