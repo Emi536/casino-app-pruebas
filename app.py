@@ -2869,20 +2869,7 @@ elif auth_status:
             if "Últ. vez contactado" in df_resumen.columns:
                 df_resumen["Últ. vez contactado"] = df_resumen["__user_key"].map(dict_contacto).fillna(df_resumen["Últ. vez contactado"])
         
-            df_resumen.drop(columns=["__user_key"], inplace=True)
-        
-            # 🗓️ Filtro por fecha
-            st.markdown("### 📅 Filtrar jugadores por fecha de última carga")
-            col1, col2 = st.columns(2)
-        
-            if not pd.api.types.is_datetime64_any_dtype(df_resumen["Última vez que cargó"]):
-                df_resumen["Última vez que cargó"] = pd.to_datetime(df_resumen["Última vez que cargó"], errors="coerce")
-        
-            with col1:
-                filtro_desde = st.date_input("📆 Desde", value=df_resumen["Última vez que cargó"].min().date(), key="desde_ultima_carga")
-            with col2:
-                filtro_hasta = st.date_input("📆 Hasta", value=df_resumen["Última vez que cargó"].max().date(), key="hasta_ultima_carga")
-        
+            # Reemplazá valores nulos ANTES de filtrar (asegura coherencia en filtros)
             df_resumen["Tipo de bono"] = df_resumen["Tipo de bono"].fillna("N/A")
             
             # 🗓️ Filtro por fecha de última carga
@@ -2916,6 +2903,7 @@ elif auth_status:
             
             if seleccion_tipos:
                 df_resumen_filtrado = df_resumen_filtrado[df_resumen_filtrado["Tipo de bono"].isin(seleccion_tipos)]
+
         
             # ✅ Mostrar y exportar
             if not df_resumen_filtrado.empty:
