@@ -343,6 +343,32 @@ elif auth_status:
     
         return df_bono[columnas_finales]
 
+    def asignar_princi(df_registro: pd.DataFrame, sh, nombre_casino: str) -> pd.DataFrame:
+        try:
+            nombre_hoja = f"princi_{nombre_casino.lower()}"
+            hoja_princi = sh.worksheet(nombre_hoja)
+            data_princi = hoja_princi.get_all_values()
+            df_princi = pd.DataFrame(data_princi[1:], columns=data_princi[0])
+    
+            def normalizar(nombre):
+                return str(nombre).strip().lower().replace(" ", "").replace("_", "")
+    
+            mapping_princi = {}
+            for col in df_princi.columns:
+                for nombre in df_princi[col]:
+                    if nombre.strip():
+                        mapping_princi[normalizar(nombre)] = col.strip().upper()
+    
+            df_registro["Jugador_NORM"] = df_registro["Nombre de jugador"].apply(normalizar)
+            df_registro["PRINCI"] = df_registro["Jugador_NORM"].map(mapping_princi).fillna("N/A")
+            df_registro.drop(columns=["Jugador_NORM"], inplace=True)
+        
+        except Exception as e:
+            st.warning(f"⚠️ No se pudo asignar princi desde la hoja '{nombre_hoja}': {e}")
+            df_registro["PRINCI"] = "N/A"
+    
+        return df_registro
+
 
     # --- SECCION 1: METRICAS DE JUGADORES ---
     if seccion == "🔝 Métricas de jugadores":
