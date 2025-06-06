@@ -578,6 +578,17 @@ elif auth_status:
             col_filtro, _ = st.columns(2)
             tipos_disponibles = sorted(df_resumen_filtrado["Tipo de bono"].unique().tolist())
 
+            # ✅ Cambio: por defecto no se selecciona ningún tipo de bono
+            seleccion_tipos = col_filtro.multiselect(
+                "🎯 Filtrar por tipo de bono:",
+                options=tipos_disponibles,
+                default=[]  # ← cambio importante
+            )
+            
+            # ✅ Agregado: si se selecciona al menos un tipo, se filtra; si no, se muestra todo
+            if seleccion_tipos:
+                df_resumen_filtrado = df_resumen_filtrado[df_resumen_filtrado["Tipo de bono"].isin(seleccion_tipos)]
+
             seleccion_tipos = col_filtro.multiselect(
                 "🎯 Filtrar por tipo de bono:",
                 options=tipos_disponibles,
