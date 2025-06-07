@@ -1826,19 +1826,526 @@ elif auth_status:
                 
                 # === TAB 1: DASHBOARD VIP ===
                 with tab1:
-                    render_dashboard_vip(df_vip)
+                    st.markdown("## 📊 Dashboard Principal")
+                    
+                    if df_vip.empty:
+                        st.markdown("""
+                        <div class="info-card">
+                            ℹ️ <strong>No hay datos VIP disponibles</strong><br>
+                            La tabla jugadores_vip no contiene registros aún.
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        # === MÉTRICAS PRINCIPALES ===
+                        col1, col2, col3, col4 = st.columns(4)
+                        
+                        total_jugadores = df_vip["usuario"].nunique()
+                        riesgo_alto = df_vip[df_vip["riesgo_abandono"] == "alto"].shape[0]
+                        riesgo_medio = df_vip[df_vip["riesgo_abandono"] == "medio"].shape[0]
+                        riesgo_bajo = df_vip[df_vip["riesgo_abandono"] == "bajo"].shape[0]
+                        
+                        with col1:
+                            st.markdown(f"""
+                            <div class="metric-card">
+                                <div class="metric-value">{total_jugadores}</div>
+                                <div class="metric-label">👥 Total Jugadores VIP</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        with col2:
+                            st.markdown(f"""
+                            <div class="metric-card">
+                                <div class="metric-value">{riesgo_alto}</div>
+                                <div class="metric-label">🔴 Riesgo Alto</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        with col3:
+                            st.markdown(f"""
+                            <div class="metric-card">
+                                <div class="metric-value">{riesgo_medio}</div>
+                                <div class="metric-label">🟠 Riesgo Medio</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        with col4:
+                            st.markdown(f"""
+                            <div class="metric-card">
+                                <div class="metric-value">{riesgo_bajo}</div>
+                                <div class="metric-label">🟢 Riesgo Bajo</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        
+                        # === MÉTRICAS FINANCIERAS ===
+                        col5, col6, col7, col8 = st.columns(4)
+                        
+                        total_apostado = df_vip["total_apostado"].sum()
+                        total_cargado = df_vip["total_cargado"].sum() if "total_cargado" in df_vip.columns else 0
+                        promedio_apostado = df_vip["total_apostado"].mean()
+                        roi = ((total_cargado - total_apostado) / total_apostado * 100) if total_apostado > 0 else 0
+                        
+                        with col5:
+                            st.markdown(f"""
+                            <div class="metric-card">
+                                <div class="metric-value">${total_apostado:,.0f}</div>
+                                <div class="metric-label">💰 Total Apostado</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        with col6:
+                            st.markdown(f"""
+                            <div class="metric-card">
+                                <div class="metric-value">${total_cargado:,.0f}</div>
+                                <div class="metric-label">💳 Total Cargado</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        with col7:
+                            st.markdown(f"""
+                            <div class="metric-card">
+                                <div class="metric-value">${promedio_apostado:,.0f}</div>
+                                <div class="metric-label">📊 Promedio Apostado</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        with col8:
+                            st.markdown(f"""
+                            <div class="metric-card">
+                                <div class="metric-value">{roi:.1f}%</div>
+                                <div class="metric-label">📈 ROI</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        st.markdown("---")
+                        
+                        # === GRÁFICOS PRINCIPALES ===
+                        col_left, col_right = st.columns(2)
+                        
+                        with col_left:
+                            # Gráfico de distribución por riesgo
+                            riesgo_counts = df_vip["riesgo_abandono"].value_counts()
+                            fig_pie = px.pie(
+                                values=riesgo_counts.values, 
+                                names=riesgo_counts.index,
+                                title="🎯 Distribución por Nivel de Riesgo",
+                                color_discrete_map={
+                                    'alto': '#ff4757',
+                                    'medio': '#ffa502', 
+                                    'bajo': '#2ed573'
+                                },
+                                hole=0.4
+                            )
+                            fig_pie.update_traces(textposition='inside', textinfo='percent+label')
+                            fig_pie.update_layout(
+                                paper_bgcolor='rgba(0,0,0,0)',
+                                plot_bgcolor='rgba(0,0,0,0)',
+                                font=dict(color='white', size=12)
+                            )
+                            st.plotly_chart(fig_pie, use_container_width=True)
+                        
+                        with col_right:
+                            # Top 10 jugadores por monto apostado
+                            top_10 = df_vip.head(10)
+                            fig_bar = px.bar(
+                                top_10, 
+                                x="total_apostado", 
+                                y="usuario",
+                                orientation='h',
+                                title="🏆 Top 10 Jugadores por Monto Apostado",
+                                color="riesgo_abandono",
+                                color_discrete_map={
+                                    'alto': '#ff4757',
+                                    'medio': '#ffa502', 
+                                    'bajo': '#2ed573'
+                                }
+                            )
+                            fig_bar.update_layout(
+                                yaxis={'categoryorder':'total ascending'},
+                                paper_bgcolor='rgba(0,0,0,0)',
+                                plot_bgcolor='rgba(0,0,0,0)',
+                                font=dict(color='white', size=12)
+                            )
+                            st.plotly_chart(fig_bar, use_container_width=True)
                 
                 # === TAB 2: GESTIÓN DE DATOS ===
                 with tab2:
-                    render_data_management(df_vip)
+                    st.markdown("## 📋 Gestión de Datos VIP")
+                    
+                    if df_vip.empty:
+                        st.markdown("""
+                        <div class="info-card">
+                            ℹ️ <strong>No hay datos disponibles</strong><br>
+                            La tabla jugadores_vip no contiene registros aún.
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        # === FILTROS AVANZADOS ===
+                        st.markdown("### 🔍 Filtros de Datos")
+                        
+                        col1, col2, col3, col4 = st.columns(4)
+                        
+                        with col1:
+                            casinos_disponibles = ["Todos"] + list(df_vip["casino"].unique()) if "casino" in df_vip.columns else ["Todos"]
+                            casino_filtro = st.selectbox("🏢 Casino", casinos_disponibles)
+                        
+                        with col2:
+                            riesgos_disponibles = ["Todos"] + list(df_vip["riesgo_abandono"].unique())
+                            riesgo_filtro = st.selectbox("⚠️ Nivel de Riesgo", riesgos_disponibles)
+                        
+                        with col3:
+                            min_apostado = st.number_input("💰 Monto mínimo", min_value=0.0, value=0.0, step=1000.0)
+                        
+                        with col4:
+                            max_apostado = st.number_input("💰 Monto máximo", min_value=0.0, value=float(df_vip["total_apostado"].max()), step=1000.0)
+                        
+                        # Aplicar filtros
+                        df_filtrado = df_vip.copy()
+                        
+                        if casino_filtro != "Todos" and "casino" in df_vip.columns:
+                            df_filtrado = df_filtrado[df_filtrado["casino"] == casino_filtro]
+                        
+                        if riesgo_filtro != "Todos":
+                            df_filtrado = df_filtrado[df_filtrado["riesgo_abandono"] == riesgo_filtro]
+                        
+                        df_filtrado = df_filtrado[
+                            (df_filtrado["total_apostado"] >= min_apostado) & 
+                            (df_filtrado["total_apostado"] <= max_apostado)
+                        ]
+                        
+                        st.markdown(f"""
+                        <div class="info-card">
+                            📊 <strong>Mostrando {len(df_filtrado)} de {len(df_vip)} jugadores</strong>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # === TABLA INTERACTIVA ===
+                        if not df_filtrado.empty:
+                            st.markdown("### 📄 Tabla de Jugadores VIP")
+                            st.dataframe(df_filtrado, use_container_width=True)
+                            
+                            # === DESCARGA DE DATOS ===
+                            col1, col2 = st.columns(2)
+                            
+                            with col1:
+                                # Excel completo
+                                output = io.BytesIO()
+                                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                                    df_filtrado.to_excel(writer, index=False, sheet_name='jugadores_vip_filtrado')
+                                
+                                st.download_button(
+                                    "📥 Descargar Excel (Filtrado)",
+                                    data=output.getvalue(),
+                                    file_name=f"jugadores_vip_filtrado.xlsx",
+                                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                )
+                            
+                            with col2:
+                                # CSV
+                                csv = df_filtrado.to_csv(index=False)
+                                st.download_button(
+                                    "📥 Descargar CSV (Filtrado)",
+                                    data=csv,
+                                    file_name=f"jugadores_vip_filtrado.csv",
+                                    mime="text/csv"
+                                )
                 
                 # === TAB 3: ANÁLISIS AVANZADO ===
                 with tab3:
-                    render_advanced_analysis(df_vip, conn)
+                    st.markdown("## 📈 Análisis Avanzado")
+                    
+                    if df_vip.empty:
+                        st.markdown("""
+                        <div class="info-card">
+                            ℹ️ <strong>No hay datos para análisis</strong><br>
+                            Necesitas datos en la tabla jugadores_vip para ver los análisis.
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        # === ANÁLISIS POR CASINO ===
+                        if "casino" in df_vip.columns:
+                            st.markdown("### 🏢 Análisis por Casino")
+                            
+                            casino_stats = df_vip.groupby("casino").agg({
+                                "usuario": "count",
+                                "total_apostado": ["sum", "mean", "median"]
+                            }).round(2)
+                            
+                            # Mostrar estadísticas
+                            st.dataframe(casino_stats, use_container_width=True)
+                            
+                            # Gráficos comparativos
+                            col1, col2 = st.columns(2)
+                            
+                            with col1:
+                                casino_counts = df_vip["casino"].value_counts()
+                                fig_casino_bar = px.bar(
+                                    x=casino_counts.index,
+                                    y=casino_counts.values,
+                                    title="👥 Jugadores por Casino",
+                                    color=casino_counts.index,
+                                    color_discrete_sequence=px.colors.qualitative.Set3
+                                )
+                                fig_casino_bar.update_layout(
+                                    paper_bgcolor='rgba(0,0,0,0)',
+                                    plot_bgcolor='rgba(0,0,0,0)',
+                                    font=dict(color='white')
+                                )
+                                st.plotly_chart(fig_casino_bar, use_container_width=True)
+                            
+                            with col2:
+                                casino_apostado = df_vip.groupby("casino")["total_apostado"].sum()
+                                fig_casino_pie = px.pie(
+                                    values=casino_apostado.values,
+                                    names=casino_apostado.index,
+                                    title="💰 Distribución de Apuestas por Casino",
+                                    color_discrete_sequence=px.colors.qualitative.Set3
+                                )
+                                fig_casino_pie.update_layout(
+                                    paper_bgcolor='rgba(0,0,0,0)',
+                                    plot_bgcolor='rgba(0,0,0,0)',
+                                    font=dict(color='white')
+                                )
+                                st.plotly_chart(fig_casino_pie, use_container_width=True)
+                        
+                        st.markdown("---")
+                        
+                        # === ANÁLISIS DE DISTRIBUCIONES ===
+                        st.markdown("### 📊 Análisis de Distribuciones")
+                        
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            # Histograma de montos apostados
+                            fig_hist = px.histogram(
+                                df_vip, 
+                                x="total_apostado", 
+                                nbins=20,
+                                title="💰 Distribución de Montos Apostados",
+                                color="riesgo_abandono",
+                                color_discrete_map={
+                                    'alto': '#ff4757',
+                                    'medio': '#ffa502', 
+                                    'bajo': '#2ed573'
+                                }
+                            )
+                            fig_hist.update_layout(
+                                paper_bgcolor='rgba(0,0,0,0)',
+                                plot_bgcolor='rgba(0,0,0,0)',
+                                font=dict(color='white')
+                            )
+                            st.plotly_chart(fig_hist, use_container_width=True)
+                        
+                        with col2:
+                            # Box plot por riesgo
+                            fig_box = px.box(
+                                df_vip, 
+                                x="riesgo_abandono", 
+                                y="total_apostado",
+                                title="📦 Distribución por Nivel de Riesgo",
+                                color="riesgo_abandono",
+                                color_discrete_map={
+                                    'alto': '#ff4757',
+                                    'medio': '#ffa502', 
+                                    'bajo': '#2ed573'
+                                }
+                            )
+                            fig_box.update_layout(
+                                paper_bgcolor='rgba(0,0,0,0)',
+                                plot_bgcolor='rgba(0,0,0,0)',
+                                font=dict(color='white')
+                            )
+                            st.plotly_chart(fig_box, use_container_width=True)
                 
                 # === TAB 4: CARGA DE ARCHIVOS ===
                 with tab4:
-                    render_file_upload(engine)
+                    st.markdown("## 📤 Carga de Archivos")
+                    
+                    # === SELECCIÓN DE CASINO ===
+                    st.markdown("### 🏢 Configuración")
+                    casino = st.selectbox(
+                        "Seleccioná el casino al que pertenece este archivo", 
+                        ["Fenix", "Eros", "Bet Argento", "Atlantis"],
+                        help="Esta información se agregará automáticamente a los datos cargados"
+                    )
+                    
+                    # === TIPO DE ARCHIVO ===
+                    st.markdown("### 📂 Tipo de Carga")
+                    tipo_archivo = st.radio(
+                        "Seleccioná el tipo de archivo a cargar",
+                        ["Archivo individual (.csv o .xlsx)", "Archivo ZIP con múltiples historiales"],
+                        help="Archivo individual para datos únicos, ZIP para múltiples reportes históricos"
+                    )
+                    
+                    if tipo_archivo == "Archivo individual (.csv o .xlsx)":
+                        # === CARGA INDIVIDUAL ===
+                        st.markdown("### 📎 Subir Archivo Individual")
+                        
+                        st.markdown("""
+                        <div class="upload-zone">
+                            <h4>📁 Zona de Carga</h4>
+                            <p>Arrastra tu archivo aquí o haz clic para seleccionar</p>
+                            <p><small>Formatos soportados: CSV, XLSX</small></p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        archivo = st.file_uploader("", type=["csv", "xlsx"], key="single_upload")
+                        
+                        if archivo:
+                            try:
+                                with st.spinner("🔄 Procesando archivo..."):
+                                    if archivo.name.endswith(".csv"):
+                                        df = pd.read_csv(archivo)
+                                    else:
+                                        df = pd.read_excel(archivo)
+                                    
+                                    df.columns = df.columns.str.strip()
+                                    df["casino"] = casino
+                                
+                                st.markdown("""
+                                <div class="success-card">
+                                    ✅ <strong>Archivo procesado correctamente</strong>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                
+                                st.markdown("#### 👀 Vista previa del archivo:")
+                                st.dataframe(df.head(10), use_container_width=True)
+                                
+                                if df.empty:
+                                    st.markdown("""
+                                    <div class="warning-card">
+                                        ⚠️ <strong>Archivo vacío</strong><br>
+                                        El archivo está vacío o malformado.
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                else:
+                                    tabla = detectar_tabla(df)
+                                    
+                                    if tabla in {"actividad_jugador_cruda", "transacciones_crudas", "bonos_crudos", "catalogo_juegos"}:
+                                        st.markdown(f"""
+                                        <div class="info-card">
+                                            📌 <strong>Tabla detectada:</strong> {tabla}<br>
+                                            El archivo será cargado en esta tabla.
+                                        </div>
+                                        """, unsafe_allow_html=True)
+                                        
+                                        if st.button("🚀 Confirmar Carga", type="primary"):
+                                            subir_a_supabase(df, tabla, engine)
+                                            
+                                    elif tabla == "jugadores_vip":
+                                        st.markdown("""
+                                        <div class="warning-card">
+                                            ❌ <strong>Carga no permitida</strong><br>
+                                            No se puede subir directamente a la tabla jugadores_vip. Esta tabla es generada automáticamente.
+                                        </div>
+                                        """, unsafe_allow_html=True)
+                                    else:
+                                        st.markdown("""
+                                        <div class="warning-card">
+                                            ⚠️ <strong>Tabla no detectada</strong><br>
+                                            No se pudo detectar a qué tabla pertenece el archivo. Verificá las columnas.
+                                        </div>
+                                        """, unsafe_allow_html=True)
+                                        
+                            except Exception as e:
+                                st.markdown(f"""
+                                <div class="warning-card">
+                                    ❌ <strong>Error al procesar archivo:</strong><br>
+                                    {str(e)}
+                                </div>
+                                """, unsafe_allow_html=True)
+                    
+                    else:
+                        # === CARGA ZIP ===
+                        st.markdown("### 📦 Subir Archivo ZIP")
+                        
+                        st.markdown("""
+                        <div class="upload-zone">
+                            <h4>📦 Zona de Carga ZIP</h4>
+                            <p>Arrastra tu archivo ZIP aquí o haz clic para seleccionar</p>
+                            <p><small>El ZIP debe contener archivos .xlsx con hojas "Historia"</small></p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        archivo_zip = st.file_uploader("", type=["zip"], key="zip_upload")
+                        
+                        if archivo_zip:
+                            with st.spinner("⏳ Procesando archivo ZIP..."):
+                                try:
+                                    with tempfile.TemporaryDirectory() as tmpdir:
+                                        zip_path = os.path.join(tmpdir, "reportes.zip")
+                                        with open(zip_path, "wb") as f:
+                                            f.write(archivo_zip.getbuffer())
+                                        
+                                        with zipfile.ZipFile(zip_path, "r") as zip_ref:
+                                            zip_ref.extractall(tmpdir)
+                                        
+                                        archivos_xlsx = list(Path(tmpdir).rglob("*.xlsx"))
+                                        
+                                        if not archivos_xlsx:
+                                            st.markdown("""
+                                            <div class="warning-card">
+                                                ⚠️ <strong>No se encontraron archivos</strong><br>
+                                                No se encontraron archivos .xlsx en el ZIP.
+                                            </div>
+                                            """, unsafe_allow_html=True)
+                                        else:
+                                            dataframes = []
+                                            progress_bar = st.progress(0)
+                                            status_text = st.empty()
+                                            
+                                            for i, archivo in enumerate(archivos_xlsx):
+                                                try:
+                                                    status_text.text(f"Procesando: {archivo.name}")
+                                                    df_historia = pd.read_excel(archivo, sheet_name="Historia")
+                                                    df_historia.columns = df_historia.columns.str.strip()
+                                                    
+                                                    nombre_real = extraer_nombre_real_desde_info(archivo)
+                                                    if nombre_real and "Usuario" in df_historia.columns:
+                                                        df_historia["Usuario"] = nombre_real
+                                                    
+                                                    df_historia["casino"] = casino
+                                                    dataframes.append(df_historia)
+                                                    
+                                                    progress_bar.progress((i + 1) / len(archivos_xlsx))
+                                                    
+                                                except Exception as e:
+                                                    st.warning(f"No se pudo procesar {archivo.name}: {e}")
+                                            
+                                            status_text.empty()
+                                            progress_bar.empty()
+                                            
+                                            if dataframes:
+                                                df_final = pd.concat(dataframes, ignore_index=True)
+                                                
+                                                st.markdown(f"""
+                                                <div class="success-card">
+                                                    ✅ <strong>Consolidación completa</strong><br>
+                                                    {len(df_final)} registros procesados desde {len(dataframes)} archivos
+                                                </div>
+                                                """, unsafe_allow_html=True)
+                                                
+                                                st.markdown("#### 👀 Vista previa de datos consolidados:")
+                                                st.dataframe(df_final.head(10), use_container_width=True)
+                                                
+                                                if st.button("🚀 Confirmar Carga Masiva", type="primary"):
+                                                    subir_a_supabase(df_final, "actividad_jugador_cruda", engine)
+                                            else:
+                                                st.markdown("""
+                                                <div class="warning-card">
+                                                    ⚠️ <strong>Sin archivos válidos</strong><br>
+                                                    No se pudo consolidar ningún archivo válido del ZIP.
+                                                </div>
+                                                """, unsafe_allow_html=True)
+                                                
+                                except Exception as e:
+                                    st.markdown(f"""
+                                    <div class="warning-card">
+                                        ❌ <strong>Error al procesar ZIP:</strong><br>
+                                        {str(e)}
+                                    </div>
+                                    """, unsafe_allow_html=True)
                     
         except Exception as e:
             st.markdown(f"""
@@ -1847,600 +2354,7 @@ elif auth_status:
             </div>
             """, unsafe_allow_html=True)
     
-    def render_dashboard_vip(df_vip):
-        """Dashboard principal con KPIs y visualizaciones"""
-        st.markdown("## 📊 Dashboard Principal")
-        
-        if df_vip.empty:
-            st.markdown("""
-            <div class="info-card">
-                ℹ️ <strong>No hay datos VIP disponibles</strong><br>
-                La tabla jugadores_vip no contiene registros aún.
-            </div>
-            """, unsafe_allow_html=True)
-            return
-        
-        # === MÉTRICAS PRINCIPALES ===
-        col1, col2, col3, col4 = st.columns(4)
-        
-        total_jugadores = df_vip["usuario"].nunique()
-        riesgo_alto = df_vip[df_vip["riesgo_abandono"] == "alto"].shape[0]
-        riesgo_medio = df_vip[df_vip["riesgo_abandono"] == "medio"].shape[0]
-        riesgo_bajo = df_vip[df_vip["riesgo_abandono"] == "bajo"].shape[0]
-        
-        with col1:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-value">{total_jugadores}</div>
-                <div class="metric-label">👥 Total Jugadores VIP</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-value">{riesgo_alto}</div>
-                <div class="metric-label">🔴 Riesgo Alto</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col3:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-value">{riesgo_medio}</div>
-                <div class="metric-label">🟠 Riesgo Medio</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col4:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-value">{riesgo_bajo}</div>
-                <div class="metric-label">🟢 Riesgo Bajo</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        # === MÉTRICAS FINANCIERAS ===
-        col5, col6, col7, col8 = st.columns(4)
-        
-        total_apostado = df_vip["total_apostado"].sum()
-        total_cargado = df_vip["total_cargado"].sum() if "total_cargado" in df_vip.columns else 0
-        promedio_apostado = df_vip["total_apostado"].mean()
-        roi = ((total_cargado - total_apostado) / total_apostado * 100) if total_apostado > 0 else 0
-        
-        with col5:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-value">${total_apostado:,.0f}</div>
-                <div class="metric-label">💰 Total Apostado</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col6:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-value">${total_cargado:,.0f}</div>
-                <div class="metric-label">💳 Total Cargado</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col7:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-value">${promedio_apostado:,.0f}</div>
-                <div class="metric-label">📊 Promedio Apostado</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col8:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-value">{roi:.1f}%</div>
-                <div class="metric-label">📈 ROI</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        st.markdown("---")
-        
-        # === GRÁFICOS PRINCIPALES ===
-        col_left, col_right = st.columns(2)
-        
-        with col_left:
-            # Gráfico de distribución por riesgo
-            riesgo_counts = df_vip["riesgo_abandono"].value_counts()
-            fig_pie = px.pie(
-                values=riesgo_counts.values, 
-                names=riesgo_counts.index,
-                title="🎯 Distribución por Nivel de Riesgo",
-                color_discrete_map={
-                    'alto': '#ff4757',
-                    'medio': '#ffa502', 
-                    'bajo': '#2ed573'
-                },
-                hole=0.4
-            )
-            fig_pie.update_traces(textposition='inside', textinfo='percent+label')
-            fig_pie.update_layout(
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font=dict(color='white', size=12)
-            )
-            st.plotly_chart(fig_pie, use_container_width=True)
-        
-        with col_right:
-            # Top 10 jugadores por monto apostado
-            top_10 = df_vip.head(10)
-            fig_bar = px.bar(
-                top_10, 
-                x="total_apostado", 
-                y="usuario",
-                orientation='h',
-                title="🏆 Top 10 Jugadores por Monto Apostado",
-                color="riesgo_abandono",
-                color_discrete_map={
-                    'alto': '#ff4757',
-                    'medio': '#ffa502', 
-                    'bajo': '#2ed573'
-                }
-            )
-            fig_bar.update_layout(
-                yaxis={'categoryorder':'total ascending'},
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font=dict(color='white', size=12)
-            )
-            st.plotly_chart(fig_bar, use_container_width=True)
-    
-    def render_data_management(df_vip):
-        """Gestión y visualización de datos VIP"""
-        st.markdown("## 📋 Gestión de Datos VIP")
-        
-        if df_vip.empty:
-            st.markdown("""
-            <div class="info-card">
-                ℹ️ <strong>No hay datos disponibles</strong><br>
-                La tabla jugadores_vip no contiene registros aún.
-            </div>
-            """, unsafe_allow_html=True)
-            return
-        
-        # === FILTROS AVANZADOS ===
-        st.markdown("### 🔍 Filtros de Datos")
-        
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            casinos_disponibles = ["Todos"] + list(df_vip["casino"].unique()) if "casino" in df_vip.columns else ["Todos"]
-            casino_filtro = st.selectbox("🏢 Casino", casinos_disponibles)
-        
-        with col2:
-            riesgos_disponibles = ["Todos"] + list(df_vip["riesgo_abandono"].unique())
-            riesgo_filtro = st.selectbox("⚠️ Nivel de Riesgo", riesgos_disponibles)
-        
-        with col3:
-            min_apostado = st.number_input("💰 Monto mínimo", min_value=0.0, value=0.0, step=1000.0)
-        
-        with col4:
-            max_apostado = st.number_input("💰 Monto máximo", min_value=0.0, value=float(df_vip["total_apostado"].max()), step=1000.0)
-        
-        # Aplicar filtros
-        df_filtrado = df_vip.copy()
-        
-        if casino_filtro != "Todos" and "casino" in df_vip.columns:
-            df_filtrado = df_filtrado[df_filtrado["casino"] == casino_filtro]
-        
-        if riesgo_filtro != "Todos":
-            df_filtrado = df_filtrado[df_filtrado["riesgo_abandono"] == riesgo_filtro]
-        
-        df_filtrado = df_filtrado[
-            (df_filtrado["total_apostado"] >= min_apostado) & 
-            (df_filtrado["total_apostado"] <= max_apostado)
-        ]
-        
-        st.markdown(f"""
-        <div class="info-card">
-            📊 <strong>Mostrando {len(df_filtrado)} de {len(df_vip)} jugadores</strong>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # === TABLA INTERACTIVA ===
-        if not df_filtrado.empty:
-            st.markdown("### 📄 Tabla de Jugadores VIP")
-            
-            # Configurar columnas
-            column_config = {
-                "usuario": st.column_config.TextColumn("👤 Usuario", width="medium"),
-                "riesgo_abandono": st.column_config.SelectboxColumn(
-                    "⚠️ Riesgo",
-                    options=["alto", "medio", "bajo"],
-                    width="small"
-                ),
-                "total_apostado": st.column_config.NumberColumn(
-                    "💰 Total Apostado",
-                    format="$%.2f",
-                    width="medium"
-                )
-            }
-            
-            if "total_cargado" in df_filtrado.columns:
-                column_config["total_cargado"] = st.column_config.NumberColumn(
-                    "💳 Total Cargado",
-                    format="$%.2f",
-                    width="medium"
-                )
-            
-            if "casino" in df_filtrado.columns:
-                column_config["casino"] = st.column_config.TextColumn("🏢 Casino", width="small")
-            
-            st.dataframe(
-                df_filtrado,
-                use_container_width=True,
-                column_config=column_config,
-                hide_index=True
-            )
-            
-            # === DESCARGA DE DATOS ===
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                # Excel completo
-                output = io.BytesIO()
-                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                    df_filtrado.to_excel(writer, index=False, sheet_name='jugadores_vip_filtrado')
-                
-                st.download_button(
-                    "📥 Descargar Excel (Filtrado)",
-                    data=output.getvalue(),
-                    file_name=f"jugadores_vip_filtrado_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
-            
-            with col2:
-                # CSV
-                csv = df_filtrado.to_csv(index=False)
-                st.download_button(
-                    "📥 Descargar CSV (Filtrado)",
-                    data=csv,
-                    file_name=f"jugadores_vip_filtrado_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
-                    mime="text/csv"
-                )
-    
-    def render_advanced_analysis(df_vip, conn):
-        """Análisis avanzado con gráficos detallados"""
-        st.markdown("## 📈 Análisis Avanzado")
-        
-        if df_vip.empty:
-            st.markdown("""
-            <div class="info-card">
-                ℹ️ <strong>No hay datos para análisis</strong><br>
-                Necesitas datos en la tabla jugadores_vip para ver los análisis.
-            </div>
-            """, unsafe_allow_html=True)
-            return
-        
-        # === ANÁLISIS POR CASINO ===
-        if "casino" in df_vip.columns:
-            st.markdown("### 🏢 Análisis por Casino")
-            
-            casino_stats = df_vip.groupby("casino").agg({
-                "usuario": "count",
-                "total_apostado": ["sum", "mean", "median"],
-                "total_cargado": ["sum", "mean"] if "total_cargado" in df_vip.columns else "usuario"
-            }).round(2)
-            
-            # Mostrar estadísticas
-            st.dataframe(casino_stats, use_container_width=True)
-            
-            # Gráficos comparativos
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                casino_counts = df_vip["casino"].value_counts()
-                fig_casino_bar = px.bar(
-                    x=casino_counts.index,
-                    y=casino_counts.values,
-                    title="👥 Jugadores por Casino",
-                    color=casino_counts.index,
-                    color_discrete_sequence=px.colors.qualitative.Set3
-                )
-                fig_casino_bar.update_layout(
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    font=dict(color='white')
-                )
-                st.plotly_chart(fig_casino_bar, use_container_width=True)
-            
-            with col2:
-                casino_apostado = df_vip.groupby("casino")["total_apostado"].sum()
-                fig_casino_pie = px.pie(
-                    values=casino_apostado.values,
-                    names=casino_apostado.index,
-                    title="💰 Distribución de Apuestas por Casino",
-                    color_discrete_sequence=px.colors.qualitative.Set3
-                )
-                fig_casino_pie.update_layout(
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    font=dict(color='white')
-                )
-                st.plotly_chart(fig_casino_pie, use_container_width=True)
-        
-        st.markdown("---")
-        
-        # === ANÁLISIS DE DISTRIBUCIONES ===
-        st.markdown("### 📊 Análisis de Distribuciones")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Histograma de montos apostados
-            fig_hist = px.histogram(
-                df_vip, 
-                x="total_apostado", 
-                nbins=20,
-                title="💰 Distribución de Montos Apostados",
-                color="riesgo_abandono",
-                color_discrete_map={
-                    'alto': '#ff4757',
-                    'medio': '#ffa502', 
-                    'bajo': '#2ed573'
-                }
-            )
-            fig_hist.update_layout(
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font=dict(color='white')
-            )
-            st.plotly_chart(fig_hist, use_container_width=True)
-        
-        with col2:
-            # Box plot por riesgo
-            fig_box = px.box(
-                df_vip, 
-                x="riesgo_abandono", 
-                y="total_apostado",
-                title="📦 Distribución por Nivel de Riesgo",
-                color="riesgo_abandono",
-                color_discrete_map={
-                    'alto': '#ff4757',
-                    'medio': '#ffa502', 
-                    'bajo': '#2ed573'
-                }
-            )
-            fig_box.update_layout(
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font=dict(color='white')
-            )
-            st.plotly_chart(fig_box, use_container_width=True)
-        
-        # === MATRIZ DE CORRELACIÓN ===
-        st.markdown("### 🔗 Análisis de Correlaciones")
-        
-        numeric_cols = df_vip.select_dtypes(include=['number']).columns
-        if len(numeric_cols) > 1:
-            correlation_matrix = df_vip[numeric_cols].corr()
-            
-            fig_corr = px.imshow(
-                correlation_matrix,
-                title="🔗 Matriz de Correlaciones",
-                color_continuous_scale="RdBu",
-                aspect="auto"
-            )
-            fig_corr.update_layout(
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font=dict(color='white')
-            )
-            st.plotly_chart(fig_corr, use_container_width=True)
-    
-    def render_file_upload(engine):
-        """Sección de carga de archivos (funcionalidad original)"""
-        st.markdown("## 📤 Carga de Archivos")
-        
-        # === SELECCIÓN DE CASINO ===
-        st.markdown("### 🏢 Configuración")
-        casino = st.selectbox(
-            "Seleccioná el casino al que pertenece este archivo", 
-            ["Fenix", "Eros", "Bet Argento", "Atlantis"],
-            help="Esta información se agregará automáticamente a los datos cargados"
-        )
-        
-        # === TIPO DE ARCHIVO ===
-        st.markdown("### 📂 Tipo de Carga")
-        tipo_archivo = st.radio(
-            "Seleccioná el tipo de archivo a cargar",
-            ["Archivo individual (.csv o .xlsx)", "Archivo ZIP con múltiples historiales"],
-            help="Archivo individual para datos únicos, ZIP para múltiples reportes históricos"
-        )
-        
-        if tipo_archivo == "Archivo individual (.csv o .xlsx)":
-            render_single_upload(casino, engine)
-        else:
-            render_zip_upload(casino, engine)
-    
-    def render_single_upload(casino, engine):
-        """Carga de archivo individual"""
-        st.markdown("### 📎 Subir Archivo Individual")
-        
-        st.markdown("""
-        <div class="upload-zone">
-            <h4>📁 Zona de Carga</h4>
-            <p>Arrastra tu archivo aquí o haz clic para seleccionar</p>
-            <p><small>Formatos soportados: CSV, XLSX</small></p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        archivo = st.file_uploader("", type=["csv", "xlsx"], key="single_upload")
-        
-        if archivo:
-            try:
-                with st.spinner("🔄 Procesando archivo..."):
-                    if archivo.name.endswith(".csv"):
-                        df = pd.read_csv(archivo)
-                    else:
-                        df = pd.read_excel(archivo)
-                    
-                    df.columns = df.columns.str.strip()
-                    df["casino"] = casino
-                
-                st.markdown("""
-                <div class="success-card">
-                    ✅ <strong>Archivo procesado correctamente</strong>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                st.markdown("#### 👀 Vista previa del archivo:")
-                st.dataframe(df.head(10), use_container_width=True)
-                
-                if df.empty:
-                    st.markdown("""
-                    <div class="warning-card">
-                        ⚠️ <strong>Archivo vacío</strong><br>
-                        El archivo está vacío o malformado.
-                    </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    tabla = detectar_tabla(df)
-                    
-                    if tabla in {"actividad_jugador_cruda", "transacciones_crudas", "bonos_crudos", "catalogo_juegos"}:
-                        st.markdown(f"""
-                        <div class="info-card">
-                            📌 <strong>Tabla detectada:</strong> {tabla}<br>
-                            El archivo será cargado en esta tabla.
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            if st.button("🚀 Confirmar Carga", type="primary"):
-                                subir_a_supabase(df, tabla, engine)
-                        with col2:
-                            if st.button("❌ Cancelar"):
-                                st.rerun()
-                                
-                    elif tabla == "jugadores_vip":
-                        st.markdown("""
-                        <div class="warning-card">
-                            ❌ <strong>Carga no permitida</strong><br>
-                            No se puede subir directamente a la tabla jugadores_vip. Esta tabla es generada automáticamente.
-                        </div>
-                        """, unsafe_allow_html=True)
-                    else:
-                        st.markdown("""
-                        <div class="warning-card">
-                            ⚠️ <strong>Tabla no detectada</strong><br>
-                            No se pudo detectar a qué tabla pertenece el archivo. Verificá las columnas.
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-            except Exception as e:
-                st.markdown(f"""
-                <div class="warning-card">
-                    ❌ <strong>Error al procesar archivo:</strong><br>
-                    {str(e)}
-                </div>
-                """, unsafe_allow_html=True)
-    
-    def render_zip_upload(casino, engine):
-        """Carga de archivo ZIP"""
-        st.markdown("### 📦 Subir Archivo ZIP")
-        
-        st.markdown("""
-        <div class="upload-zone">
-            <h4>📦 Zona de Carga ZIP</h4>
-            <p>Arrastra tu archivo ZIP aquí o haz clic para seleccionar</p>
-            <p><small>El ZIP debe contener archivos .xlsx con hojas "Historia"</small></p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        archivo_zip = st.file_uploader("", type=["zip"], key="zip_upload")
-        
-        if archivo_zip:
-            with st.spinner("⏳ Procesando archivo ZIP..."):
-                try:
-                    with tempfile.TemporaryDirectory() as tmpdir:
-                        zip_path = os.path.join(tmpdir, "reportes.zip")
-                        with open(zip_path, "wb") as f:
-                            f.write(archivo_zip.getbuffer())
-                        
-                        with zipfile.ZipFile(zip_path, "r") as zip_ref:
-                            zip_ref.extractall(tmpdir)
-                        
-                        archivos_xlsx = list(Path(tmpdir).rglob("*.xlsx"))
-                        
-                        if not archivos_xlsx:
-                            st.markdown("""
-                            <div class="warning-card">
-                                ⚠️ <strong>No se encontraron archivos</strong><br>
-                                No se encontraron archivos .xlsx en el ZIP.
-                            </div>
-                            """, unsafe_allow_html=True)
-                        else:
-                            dataframes = []
-                            progress_bar = st.progress(0)
-                            status_text = st.empty()
-                            
-                            for i, archivo in enumerate(archivos_xlsx):
-                                try:
-                                    status_text.text(f"Procesando: {archivo.name}")
-                                    df_historia = pd.read_excel(archivo, sheet_name="Historia")
-                                    df_historia.columns = df_historia.columns.str.strip()
-                                    
-                                    nombre_real = extraer_nombre_real_desde_info(archivo)
-                                    if nombre_real and "Usuario" in df_historia.columns:
-                                        df_historia["Usuario"] = nombre_real
-                                    
-                                    df_historia["casino"] = casino
-                                    dataframes.append(df_historia)
-                                    
-                                    progress_bar.progress((i + 1) / len(archivos_xlsx))
-                                    
-                                except Exception as e:
-                                    st.warning(f"No se pudo procesar {archivo.name}: {e}")
-                            
-                            status_text.empty()
-                            progress_bar.empty()
-                            
-                            if dataframes:
-                                df_final = pd.concat(dataframes, ignore_index=True)
-                                
-                                st.markdown(f"""
-                                <div class="success-card">
-                                    ✅ <strong>Consolidación completa</strong><br>
-                                    {len(df_final)} registros procesados desde {len(dataframes)} archivos
-                                </div>
-                                """, unsafe_allow_html=True)
-                                
-                                st.markdown("#### 👀 Vista previa de datos consolidados:")
-                                st.dataframe(df_final.head(10), use_container_width=True)
-                                
-                                col1, col2 = st.columns(2)
-                                with col1:
-                                    if st.button("🚀 Confirmar Carga Masiva", type="primary"):
-                                        subir_a_supabase(df_final, "actividad_jugador_cruda", engine)
-                                with col2:
-                                    if st.button("❌ Cancelar Carga"):
-                                        st.rerun()
-                            else:
-                                st.markdown("""
-                                <div class="warning-card">
-                                    ⚠️ <strong>Sin archivos válidos</strong><br>
-                                    No se pudo consolidar ningún archivo válido del ZIP.
-                                </div>
-                                """, unsafe_allow_html=True)
-                                
-                except Exception as e:
-                    st.markdown(f"""
-                    <div class="warning-card">
-                        ❌ <strong>Error al procesar ZIP:</strong><br>
-                        {str(e)}
-                    </div>
-                    """, unsafe_allow_html=True)
-    
-    # === FUNCIONES AUXILIARES (MANTENER ORIGINALES) ===
+    # === FUNCIONES AUXILIARES (AGREGAR AL FINAL DEL ARCHIVO) ===
     def detectar_tabla(df):
         """Detecta a qué tabla pertenece el DataFrame basándose en sus columnas"""
         columnas = set(df.columns.str.lower().str.strip())
