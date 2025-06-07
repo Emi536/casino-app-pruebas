@@ -728,13 +728,12 @@ elif auth_status:
             col_filtro, _ = st.columns(2)
             tipos_disponibles = sorted(df_resumen_filtrado["Tipo de bono"].unique().tolist())
     
-            # ✅ Por defecto, no se selecciona ningún bono
             seleccion_tipos = col_filtro.multiselect(
                 "🎯 Filtrar por tipo de bono:",
                 options=tipos_disponibles,
-                default=[]
+                default=[]  # ← esto evita que se filtre por defecto
             )
-    
+            
             if seleccion_tipos:
                 df_resumen_filtrado = df_resumen_filtrado[df_resumen_filtrado["Tipo de bono"].isin(seleccion_tipos)]
     
@@ -1110,6 +1109,17 @@ elif auth_status:
                 df_resumen["Últ. vez contactado"] = df_resumen["__user_key"].map(dict_contacto).fillna(df_resumen["Últ. vez contactado"])
         
             df_resumen.drop(columns=["__user_key"], inplace=True)
+
+            # ✅ Asignar PRINCI
+            df_resumen = asignar_princi(df_resumen, sh, clave_casino)
+            
+            # 🧠 Reordenar columnas para mostrar PRINCI junto a tipo de bono
+            cols = df_resumen.columns.tolist()
+            if "Tipo de bono" in cols and "PRINCI" in cols:
+                cols.remove("PRINCI")
+                idx = cols.index("Tipo de bono") + 1
+                cols.insert(idx, "PRINCI")
+                df_resumen = df_resumen[cols]
         
             # 🗓️ Filtro por fecha
             st.markdown("### 📅 Filtrar jugadores por fecha de última carga")
