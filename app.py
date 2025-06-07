@@ -1723,17 +1723,7 @@ elif auth_status:
         
                     st.subheader("👀 Vista de tabla jugadores_vip")
                     
-                    # 🔘 Selector de vista
-                    opcion_vista = st.radio(
-                        "🔎 ¿Qué datos querés mostrar?",
-                        ["Top 10 por total apostado", "Todos los jugadores"]
-                    )
-                    
-                    # 📥 Consulta según opción elegida
-                    if opcion_vista == "Top 10 por total apostado":
-                        query = "SELECT * FROM jugadores_vip ORDER BY total_apostado DESC LIMIT 10"
-                    else:
-                        query = "SELECT * FROM jugadores_vip ORDER BY total_apostado DESC"
+                    query = "SELECT * FROM jugadores_vip ORDER BY total_apostado DESC"
                     
                     # 📊 Leer tabla
                     try:
