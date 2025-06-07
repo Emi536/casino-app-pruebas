@@ -2051,7 +2051,7 @@ elif auth_status:
                                     mime="text/csv"
                                 )
                 
-                # === TAB 3: ANÁLISIS AVANZADO ===
+                # === TAB 3: ANÁLISIS AVANZADO MEJORADO ===
                 with tab3:
                     st.markdown("## 📈 Análisis Avanzado")
                     
@@ -2063,100 +2063,276 @@ elif auth_status:
                         </div>
                         """, unsafe_allow_html=True)
                     else:
-                        # === ANÁLISIS POR CASINO ===
-                        if "casino" in df_vip.columns:
-                            st.markdown("### 🏢 Análisis por Casino")
-                            
-                            casino_stats = df_vip.groupby("casino").agg({
-                                "usuario": "count",
-                                "total_apostado": ["sum", "mean", "median"]
-                            }).round(2)
-                            
-                            # Mostrar estadísticas
-                            st.dataframe(casino_stats, use_container_width=True)
-                            
-                            # Gráficos comparativos
-                            col1, col2 = st.columns(2)
-                            
-                            with col1:
-                                casino_counts = df_vip["casino"].value_counts()
-                                fig_casino_bar = px.bar(
-                                    x=casino_counts.index,
-                                    y=casino_counts.values,
-                                    title="👥 Jugadores por Casino",
-                                    color=casino_counts.index,
-                                    color_discrete_sequence=px.colors.qualitative.Set3
-                                )
-                                fig_casino_bar.update_layout(
-                                    paper_bgcolor='rgba(0,0,0,0)',
-                                    plot_bgcolor='rgba(0,0,0,0)',
-                                    font=dict(color='white')
-                                )
-                                st.plotly_chart(fig_casino_bar, use_container_width=True)
-                            
-                            with col2:
-                                casino_apostado = df_vip.groupby("casino")["total_apostado"].sum()
-                                fig_casino_pie = px.pie(
-                                    values=casino_apostado.values,
-                                    names=casino_apostado.index,
-                                    title="💰 Distribución de Apuestas por Casino",
-                                    color_discrete_sequence=px.colors.qualitative.Set3
-                                )
-                                fig_casino_pie.update_layout(
-                                    paper_bgcolor='rgba(0,0,0,0)',
-                                    plot_bgcolor='rgba(0,0,0,0)',
-                                    font=dict(color='white')
-                                )
-                                st.plotly_chart(fig_casino_pie, use_container_width=True)
+                        # === ANÁLISIS DE SEGMENTACIÓN VIP ===
+                        st.markdown("### 🎯 Segmentación de Jugadores VIP")
                         
-                        st.markdown("---")
-                        
-                        # === ANÁLISIS DE DISTRIBUCIONES ===
-                        st.markdown("### 📊 Análisis de Distribuciones")
+                        # Crear segmentos basados en monto apostado
+                        df_vip_copy = df_vip.copy()
+                        df_vip_copy['segmento'] = pd.cut(
+                            df_vip_copy['total_apostado'], 
+                            bins=[0, 10000, 50000, 100000, float('inf')], 
+                            labels=['Bronce', 'Plata', 'Oro', 'Diamante']
+                        )
                         
                         col1, col2 = st.columns(2)
                         
                         with col1:
-                            # Histograma de montos apostados
-                            fig_hist = px.histogram(
-                                df_vip, 
-                                x="total_apostado", 
-                                nbins=20,
-                                title="💰 Distribución de Montos Apostados",
-                                color="riesgo_abandono",
-                                color_discrete_map={
-                                    'alto': '#ff4757',
-                                    'medio': '#ffa502', 
-                                    'bajo': '#2ed573'
-                                }
-                            )
-                            fig_hist.update_layout(
-                                paper_bgcolor='rgba(0,0,0,0)',
-                                plot_bgcolor='rgba(0,0,0,0)',
-                                font=dict(color='white')
-                            )
-                            st.plotly_chart(fig_hist, use_container_width=True)
+                            # Tabla de segmentación
+                            segmento_stats = df_vip_copy.groupby('segmento').agg({
+                                'usuario': 'count',
+                                'total_apostado': ['sum', 'mean'],
+                                'riesgo_abandono': lambda x: (x == 'alto').sum()
+                            }).round(2)
+                            
+                            segmento_stats.columns = ['Cantidad', 'Total Apostado', 'Promedio', 'Riesgo Alto']
+                            segmento_stats['% del Total'] = (segmento_stats['Total Apostado'] / segmento_stats['Total Apostado'].sum() * 100).round(1)
+                            
+                            st.markdown("#### 📊 Distribución por Segmentos")
+                            st.dataframe(segmento_stats, use_container_width=True)
                         
                         with col2:
-                            # Box plot por riesgo
-                            fig_box = px.box(
-                                df_vip, 
-                                x="riesgo_abandono", 
-                                y="total_apostado",
-                                title="📦 Distribución por Nivel de Riesgo",
-                                color="riesgo_abandono",
-                                color_discrete_map={
-                                    'alto': '#ff4757',
-                                    'medio': '#ffa502', 
-                                    'bajo': '#2ed573'
-                                }
-                            )
-                            fig_box.update_layout(
+                            # Gráfico de concentración (Regla 80/20)
+                            df_sorted = df_vip_copy.sort_values('total_apostado', ascending=False).reset_index(drop=True)
+                            df_sorted['cumulative_pct'] = (df_sorted.index + 1) / len(df_sorted) * 100
+                            df_sorted['revenue_cumulative_pct'] = df_sorted['total_apostado'].cumsum() / df_sorted['total_apostado'].sum() * 100
+                            
+                            fig_pareto = go.Figure()
+                            fig_pareto.add_trace(go.Scatter(
+                                x=df_sorted['cumulative_pct'],
+                                y=df_sorted['revenue_cumulative_pct'],
+                                mode='lines',
+                                name='Concentración de Ingresos',
+                                line=dict(color='#00d4aa', width=3)
+                            ))
+                            
+                            # Línea de referencia 80/20
+                            fig_pareto.add_trace(go.Scatter(
+                                x=[0, 20, 100],
+                                y=[0, 80, 100],
+                                mode='lines',
+                                name='Regla 80/20',
+                                line=dict(color='#ff6b6b', dash='dash', width=2)
+                            ))
+                            
+                            fig_pareto.update_layout(
+                                title="📈 Análisis de Concentración (Pareto)",
+                                xaxis_title="% de Jugadores",
+                                yaxis_title="% de Ingresos Acumulados",
                                 paper_bgcolor='rgba(0,0,0,0)',
                                 plot_bgcolor='rgba(0,0,0,0)',
-                                font=dict(color='white')
+                                font=dict(color='white'),
+                                height=400
                             )
-                            st.plotly_chart(fig_box, use_container_width=True)
+                            st.plotly_chart(fig_pareto, use_container_width=True)
+                        
+                        st.markdown("---")
+                        
+                        # === ANÁLISIS DE RIESGO Y VALOR ===
+                        st.markdown("### ⚠️ Matriz de Riesgo vs Valor")
+                        
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            # Matriz de riesgo vs segmento
+                            risk_value_matrix = pd.crosstab(
+                                df_vip_copy['segmento'], 
+                                df_vip_copy['riesgo_abandono'], 
+                                margins=True
+                            )
+                            
+                            st.markdown("#### 📋 Matriz Riesgo x Segmento")
+                            st.dataframe(risk_value_matrix, use_container_width=True)
+                            
+                            # Identificar jugadores críticos
+                            criticos = df_vip_copy[
+                                (df_vip_copy['riesgo_abandono'] == 'alto') & 
+                                (df_vip_copy['segmento'].isin(['Oro', 'Diamante']))
+                            ]
+                            
+                            st.markdown(f"""
+                            <div class="warning-card">
+                                🚨 <strong>Jugadores Críticos:</strong> {len(criticos)}<br>
+                                Alto valor + Alto riesgo = Atención inmediata
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        with col2:
+                            # Scatter plot Valor vs Riesgo
+                            fig_scatter = px.scatter(
+                                df_vip_copy,
+                                x='total_apostado',
+                                y='riesgo_abandono',
+                                color='segmento',
+                                size='total_apostado',
+                                hover_data=['usuario'],
+                                title="💎 Valor vs Riesgo por Jugador",
+                                color_discrete_map={
+                                    'Bronce': '#cd7f32',
+                                    'Plata': '#c0c0c0',
+                                    'Oro': '#ffd700',
+                                    'Diamante': '#b9f2ff'
+                                }
+                            )
+                            fig_scatter.update_layout(
+                                paper_bgcolor='rgba(0,0,0,0)',
+                                plot_bgcolor='rgba(0,0,0,0)',
+                                font=dict(color='white'),
+                                height=400
+                            )
+                            st.plotly_chart(fig_scatter, use_container_width=True)
+                        
+                        st.markdown("---")
+                        
+                        # === ANÁLISIS POR CASINO (MEJORADO) ===
+                        if "casino" in df_vip.columns:
+                            st.markdown("### 🏢 Rendimiento por Casino")
+                            
+                            casino_analysis = df_vip.groupby("casino").agg({
+                                "usuario": "count",
+                                "total_apostado": ["sum", "mean"],
+                                "riesgo_abandono": [
+                                    lambda x: (x == 'alto').sum(),
+                                    lambda x: (x == 'medio').sum(),
+                                    lambda x: (x == 'bajo').sum()
+                                ]
+                            }).round(2)
+                            
+                            casino_analysis.columns = [
+                                'Total Jugadores', 'Ingresos Totales', 'Ingreso Promedio',
+                                'Riesgo Alto', 'Riesgo Medio', 'Riesgo Bajo'
+                            ]
+                            
+                            # Calcular métricas de eficiencia
+                            casino_analysis['Ingreso por Jugador'] = casino_analysis['Ingresos Totales'] / casino_analysis['Total Jugadores']
+                            casino_analysis['% Riesgo Alto'] = (casino_analysis['Riesgo Alto'] / casino_analysis['Total Jugadores'] * 100).round(1)
+                            casino_analysis['Score Eficiencia'] = (
+                                casino_analysis['Ingreso por Jugador'] / casino_analysis['% Riesgo Alto'].replace(0, 1)
+                            ).round(0)
+                            
+                            st.markdown("#### 📊 Métricas de Rendimiento")
+                            st.dataframe(casino_analysis, use_container_width=True)
+                            
+                            # Ranking de casinos
+                            col1, col2, col3 = st.columns(3)
+                            
+                            with col1:
+                                mejor_ingresos = casino_analysis['Ingresos Totales'].idxmax()
+                                st.markdown(f"""
+                                <div class="success-card">
+                                    🏆 <strong>Mayor Ingresos:</strong><br>
+                                    {mejor_ingresos}<br>
+                                    ${casino_analysis.loc[mejor_ingresos, 'Ingresos Totales']:,.0f}
+                                </div>
+                                """, unsafe_allow_html=True)
+                            
+                            with col2:
+                                mejor_eficiencia = casino_analysis['Score Eficiencia'].idxmax()
+                                st.markdown(f"""
+                                <div class="success-card">
+                                    ⚡ <strong>Mayor Eficiencia:</strong><br>
+                                    {mejor_eficiencia}<br>
+                                    Score: {casino_analysis.loc[mejor_eficiencia, 'Score Eficiencia']:,.0f}
+                                </div>
+                                """, unsafe_allow_html=True)
+                            
+                            with col3:
+                                menor_riesgo = casino_analysis['% Riesgo Alto'].idxmin()
+                                st.markdown(f"""
+                                <div class="success-card">
+                                    🛡️ <strong>Menor Riesgo:</strong><br>
+                                    {menor_riesgo}<br>
+                                    {casino_analysis.loc[menor_riesgo, '% Riesgo Alto']:.1f}% alto riesgo
+                                </div>
+                                """, unsafe_allow_html=True)
+                        
+                        st.markdown("---")
+                        
+                        # === ANÁLISIS DE OPORTUNIDADES ===
+                        st.markdown("### 💡 Oportunidades de Negocio")
+                        
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            # Jugadores de alto valor con bajo riesgo (upselling)
+                            upselling = df_vip_copy[
+                                (df_vip_copy['riesgo_abandono'] == 'bajo') & 
+                                (df_vip_copy['total_apostado'] > df_vip_copy['total_apostado'].median())
+                            ].sort_values('total_apostado', ascending=False)
+                            
+                            st.markdown("#### 📈 Oportunidades de Upselling")
+                            st.markdown(f"**{len(upselling)} jugadores** con bajo riesgo y alto valor")
+                            
+                            if not upselling.empty:
+                                st.dataframe(
+                                    upselling[['usuario', 'total_apostado', 'casino']].head(10),
+                                    use_container_width=True
+                                )
+                        
+                        with col2:
+                            # Jugadores en riesgo que necesitan atención
+                            atencion = df_vip_copy[
+                                df_vip_copy['riesgo_abandono'] == 'alto'
+                            ].sort_values('total_apostado', ascending=False)
+                            
+                            st.markdown("#### 🚨 Requieren Atención Inmediata")
+                            st.markdown(f"**{len(atencion)} jugadores** en riesgo alto")
+                            
+                            if not atencion.empty:
+                                st.dataframe(
+                                    atencion[['usuario', 'total_apostado', 'casino']].head(10),
+                                    use_container_width=True
+                                )
+                        
+                        # === RESUMEN EJECUTIVO ===
+                        st.markdown("---")
+                        st.markdown("### 📋 Resumen Ejecutivo")
+                        
+                        total_ingresos = df_vip['total_apostado'].sum()
+                        top_20_pct = int(len(df_vip) * 0.2)
+                        top_20_ingresos = df_vip.nlargest(top_20_pct, 'total_apostado')['total_apostado'].sum()
+                        concentracion = (top_20_ingresos / total_ingresos * 100) if total_ingresos > 0 else 0
+                        
+                        col1, col2, col3, col4 = st.columns(4)
+                        
+                        with col1:
+                            st.markdown(f"""
+                            <div class="metric-card">
+                                <div class="metric-value">{concentracion:.1f}%</div>
+                                <div class="metric-label">📊 Concentración Top 20%</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        with col2:
+                            riesgo_alto_valor = len(df_vip_copy[
+                                (df_vip_copy['riesgo_abandono'] == 'alto') & 
+                                (df_vip_copy['segmento'].isin(['Oro', 'Diamante']))
+                            ])
+                            st.markdown(f"""
+                            <div class="metric-card">
+                                <div class="metric-value">{riesgo_alto_valor}</div>
+                                <div class="metric-label">🚨 VIP Críticos</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        with col3:
+                            oportunidades = len(upselling) if 'upselling' in locals() else 0
+                            st.markdown(f"""
+                            <div class="metric-card">
+                                <div class="metric-value">{oportunidades}</div>
+                                <div class="metric-label">📈 Oportunidades</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        with col4:
+                            if "casino" in df_vip.columns:
+                                mejor_casino = casino_analysis['Score Eficiencia'].idxmax()
+                                mejor_score = casino_analysis.loc[mejor_casino, 'Score Eficiencia']
+                                st.markdown(f"""
+                                <div class="metric-card">
+                                    <div class="metric-value">{mejor_score:.0f}</div>
+                                    <div class="metric-label">⚡ Mejor Score</div>
+                                </div>
+                                """, unsafe_allow_html=True)
                 
                 # === TAB 4: CARGA DE ARCHIVOS ===
                 with tab4:
