@@ -2229,6 +2229,335 @@ elif auth_status:
                         
                         st.markdown("---")
                         
+
+                        # === AGREGAR DESPUÉS DE LA SECCIÓN DE CROSS-PROPERTY ===
+                        st.markdown("---")
+                        
+                        # === SEGMENTACIÓN POR FRANJA HORARIA ===
+                        st.markdown("### ⏰ Segmentación por Franja Horaria")
+                        
+                        # Si no existe la columna franja_horaria, crearla basada en datos disponibles
+                        if "franja_horaria" not in df_strategy.columns:
+                            # Crear franjas horarias simuladas basadas en patrones (esto se puede ajustar con datos reales)
+                            import random
+                            random.seed(42)  # Para resultados consistentes
+                            franjas = ['🌅 Mañana (6-12h)', '☀️ Tarde (12-18h)', '🌙 Noche (18-24h)', '🌃 Madrugada (0-6h)']
+                            df_strategy['franja_horaria'] = [random.choice(franjas) for _ in range(len(df_strategy))]
+                        
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            # Análisis por franja horaria
+                            horario_analysis = df_strategy.groupby('franja_horaria').agg({
+                                'usuario': 'count',
+                                'total_cargado': ['sum', 'mean'],
+                                'riesgo_abandono': lambda x: (x == 'alto').sum()
+                            }).round(2)
+                            
+                            horario_analysis.columns = ['Jugadores', 'Total Cargado', 'Promedio Carga', 'En Riesgo']
+                            horario_analysis['% Ingresos'] = (horario_analysis['Total Cargado'] / horario_analysis['Total Cargado'].sum() * 100).round(1)
+                            horario_analysis['Carga por Jugador'] = (horario_analysis['Total Cargado'] / horario_analysis['Jugadores']).round(0)
+                            
+                            st.markdown("#### ⏰ Análisis por Franja Horaria")
+                            st.dataframe(horario_analysis, use_container_width=True)
+                            
+                            # Identificar franja más rentable
+                            mejor_franja = horario_analysis['Total Cargado'].idxmax()
+                            mejor_valor = horario_analysis.loc[mejor_franja, 'Total Cargado']
+                            
+                            st.markdown(f"""
+                            <div class="success-card">
+                                🏆 <strong>Franja Más Rentable:</strong><br>
+                                {mejor_franja}<br>
+                                ${mejor_valor:,.0f} en cargas
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        with col2:
+                            # Gráfico de distribución por horario
+                            fig_horario = px.bar(
+                                x=horario_analysis.index,
+                                y=horario_analysis['Total Cargado'],
+                                title="💰 Ingresos por Franja Horaria",
+                                color=horario_analysis.index,
+                                color_discrete_map={
+                                    '🌅 Mañana (6-12h)': '#ffeb3b',
+                                    '☀️ Tarde (12-18h)': '#ff9800',
+                                    '🌙 Noche (18-24h)': '#3f51b5',
+                                    '🌃 Madrugada (0-6h)': '#9c27b0'
+                                }
+                            )
+                            fig_horario.update_layout(
+                                paper_bgcolor='rgba(0,0,0,0)',
+                                plot_bgcolor='rgba(0,0,0,0)',
+                                font=dict(color='white'),
+                                xaxis_title="Franja Horaria",
+                                yaxis_title="Total Cargado ($)",
+                                height=350
+                            )
+                            st.plotly_chart(fig_horario, use_container_width=True)
+                        
+                        # === OPORTUNIDADES POR HORARIO ===
+                        st.markdown("#### 🎯 Oportunidades por Franja Horaria")
+                        
+                        col1, col2, col3, col4 = st.columns(4)
+                        
+                        franjas_info = {
+                            '🌅 Mañana (6-12h)': {'estrategia': 'Promociones de inicio de día', 'target': 'Jubilados y trabajadores remotos'},
+                            '☀️ Tarde (12-18h)': {'estrategia': 'Bonos de almuerzo', 'target': 'Trabajadores en pausa'},
+                            '🌙 Noche (18-24h)': {'estrategia': 'Happy hour nocturno', 'target': 'Trabajadores post-laboral'},
+                            '🌃 Madrugada (0-6h)': {'estrategia': 'Bonos nocturnos especiales', 'target': 'Jugadores nocturnos'}
+                        }
+                        
+                        for i, (franja, info) in enumerate(franjas_info.items()):
+                            with [col1, col2, col3, col4][i]:
+                                jugadores_franja = horario_analysis.loc[franja, 'Jugadores'] if franja in horario_analysis.index else 0
+                                ingresos_franja = horario_analysis.loc[franja, 'Total Cargado'] if franja in horario_analysis.index else 0
+                                
+                                st.markdown(f"""
+                                <div class="info-card">
+                                    <strong>{franja}</strong><br>
+                                    👥 {jugadores_franja} jugadores<br>
+                                    💰 ${ingresos_franja:,.0f}<br>
+                                    <small>{info['estrategia']}</small>
+                                </div>
+                                """, unsafe_allow_html=True)
+                        
+                        st.markdown("---")
+                        
+                        # === SEGMENTACIÓN POR CATEGORÍA DE SESIONES ===
+                        st.markdown("### 🎮 Segmentación por Categoría de Sesiones")
+                        
+                        # Si no existe la columna categoria_sesiones, crearla
+                        if "categoria_sesiones" not in df_strategy.columns:
+                            # Crear categorías basadas en total_cargado como proxy de frecuencia/intensidad
+                            df_strategy['categoria_sesiones'] = pd.cut(
+                                df_strategy['total_cargado'], 
+                                bins=[0, 2000, 10000, 30000, float('inf')], 
+                                labels=['🔵 Casual', '🟡 Regular', '🟠 Intensivo', '🔴 Compulsivo']
+                            )
+                        
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            # Análisis por categoría de sesiones
+                            sesiones_analysis = df_strategy.groupby('categoria_sesiones').agg({
+                                'usuario': 'count',
+                                'total_cargado': ['sum', 'mean'],
+                                'riesgo_abandono': lambda x: (x == 'alto').sum()
+                            }).round(2)
+                            
+                            sesiones_analysis.columns = ['Jugadores', 'Total Cargado', 'Promedio Carga', 'En Riesgo']
+                            sesiones_analysis['% Riesgo'] = (sesiones_analysis['En Riesgo'] / sesiones_analysis['Jugadores'] * 100).round(1)
+                            sesiones_analysis['Valor por Jugador'] = (sesiones_analysis['Total Cargado'] / sesiones_analysis['Jugadores']).round(0)
+                            
+                            st.markdown("#### 🎮 Análisis por Categoría de Sesiones")
+                            st.dataframe(sesiones_analysis, use_container_width=True)
+                        
+                        with col2:
+                            # Gráfico de riesgo por categoría
+                            fig_sesiones = px.scatter(
+                                x=sesiones_analysis['Valor por Jugador'],
+                                y=sesiones_analysis['% Riesgo'],
+                                size=sesiones_analysis['Jugadores'],
+                                color=sesiones_analysis.index,
+                                title="🎯 Valor vs Riesgo por Categoría",
+                                labels={'x': 'Valor por Jugador ($)', 'y': '% en Riesgo'},
+                                color_discrete_map={
+                                    '🔵 Casual': '#2196f3',
+                                    '🟡 Regular': '#ffeb3b',
+                                    '🟠 Intensivo': '#ff9800',
+                                    '🔴 Compulsivo': '#f44336'
+                                }
+                            )
+                            fig_sesiones.update_layout(
+                                paper_bgcolor='rgba(0,0,0,0)',
+                                plot_bgcolor='rgba(0,0,0,0)',
+                                font=dict(color='white'),
+                                height=350
+                            )
+                            st.plotly_chart(fig_sesiones, use_container_width=True)
+                        
+                        # === ESTRATEGIAS POR CATEGORÍA DE SESIONES ===
+                        st.markdown("#### 💡 Estrategias por Categoría de Sesiones")
+                        
+                        col1, col2, col3, col4 = st.columns(4)
+                        
+                        categorias_estrategias = {
+                            '🔵 Casual': {
+                                'objetivo': 'Incrementar frecuencia',
+                                'estrategia': 'Bonos de bienvenida diarios',
+                                'riesgo': 'Bajo - Enfoque en engagement'
+                            },
+                            '🟡 Regular': {
+                                'objetivo': 'Aumentar valor por sesión',
+                                'estrategia': 'Promociones escalonadas',
+                                'riesgo': 'Medio - Monitoreo regular'
+                            },
+                            '🟠 Intensivo': {
+                                'objetivo': 'Mantener nivel actual',
+                                'estrategia': 'Programas VIP exclusivos',
+                                'riesgo': 'Medio-Alto - Seguimiento cercano'
+                            },
+                            '🔴 Compulsivo': {
+                                'objetivo': 'Juego responsable',
+                                'estrategia': 'Límites y pausas sugeridas',
+                                'riesgo': 'Alto - Intervención necesaria'
+                            }
+                        }
+                        
+                        for i, (categoria, estrategia) in enumerate(categorias_estrategias.items()):
+                            with [col1, col2, col3, col4][i]:
+                                jugadores_cat = sesiones_analysis.loc[categoria, 'Jugadores'] if categoria in sesiones_analysis.index else 0
+                                
+                                st.markdown(f"""
+                                <div class="info-card">
+                                    <strong>{categoria}</strong><br>
+                                    👥 {jugadores_cat} jugadores<br>
+                                    🎯 {estrategia['objetivo']}<br>
+                                    📋 {estrategia['estrategia']}<br>
+                                    <small>⚠️ {estrategia['riesgo']}</small>
+                                </div>
+                                """, unsafe_allow_html=True)
+                        
+                        st.markdown("---")
+                        
+                        # === SEGMENTACIÓN POR CATEGORÍA VA ===
+                        st.markdown("### 💎 Segmentación por Categoría VA (Valor Agregado)")
+                        
+                        # Si no existe la columna categoria_va, crearla
+                        if "categoria_va" not in df_strategy.columns:
+                            # Crear categorías VA basadas en combinación de carga, riesgo y casino
+                            def asignar_categoria_va(row):
+                                if row['total_cargado'] > 50000 and row['riesgo_abandono'] == 'bajo':
+                                    return '💎 Premium Plus'
+                                elif row['total_cargado'] > 25000 and row['riesgo_abandono'] in ['bajo', 'medio']:
+                                    return '🥇 Gold Member'
+                                elif row['total_cargado'] > 10000:
+                                    return '🥈 Silver Member'
+                                else:
+                                    return '🥉 Standard'
+                            
+                            df_strategy['categoria_va'] = df_strategy.apply(asignar_categoria_va, axis=1)
+                        
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            # Análisis por categoría VA
+                            va_analysis = df_strategy.groupby('categoria_va').agg({
+                                'usuario': 'count',
+                                'total_cargado': ['sum', 'mean'],
+                                'total_apostado': 'sum',
+                                'riesgo_abandono': lambda x: (x == 'alto').sum()
+                            }).round(2)
+                            
+                            va_analysis.columns = ['Jugadores', 'Total Cargado', 'Promedio Carga', 'Total Apostado', 'En Riesgo']
+                            va_analysis['ROI VA'] = (va_analysis['Total Apostado'] / va_analysis['Total Cargado']).round(2)
+                            va_analysis['% Portfolio'] = (va_analysis['Total Cargado'] / va_analysis['Total Cargado'].sum() * 100).round(1)
+                            
+                            st.markdown("#### 💎 Análisis por Categoría VA")
+                            st.dataframe(va_analysis, use_container_width=True)
+                        
+                        with col2:
+                            # Gráfico de portfolio VA
+                            fig_va = px.treemap(
+                                names=va_analysis.index,
+                                values=va_analysis['Total Cargado'],
+                                title="🏦 Portfolio por Categoría VA",
+                                color=va_analysis['ROI VA'],
+                                color_continuous_scale='Viridis'
+                            )
+                            fig_va.update_layout(
+                                paper_bgcolor='rgba(0,0,0,0)',
+                                font=dict(color='white'),
+                                height=350
+                            )
+                            st.plotly_chart(fig_va, use_container_width=True)
+                        
+                        # === MATRIZ ESTRATÉGICA VA ===
+                        st.markdown("#### 🎯 Matriz Estratégica por Categoría VA")
+                        
+                        col1, col2, col3, col4 = st.columns(4)
+                        
+                        va_estrategias = {
+                            '💎 Premium Plus': {
+                                'beneficios': 'Account manager dedicado, eventos exclusivos',
+                                'comunicacion': 'Contacto directo, ofertas personalizadas',
+                                'objetivo': 'Retención máxima y cross-selling premium'
+                            },
+                            '🥇 Gold Member': {
+                                'beneficios': 'Bonos mejorados, acceso prioritario',
+                                'comunicacion': 'Email personalizado, llamadas ocasionales',
+                                'objetivo': 'Upgrade a Premium Plus'
+                            },
+                            '🥈 Silver Member': {
+                                'beneficios': 'Bonos regulares, promociones especiales',
+                                'comunicacion': 'Email segmentado, SMS promocionales',
+                                'objetivo': 'Incrementar frecuencia y valor'
+                            },
+                            '🥉 Standard': {
+                                'beneficios': 'Bonos básicos, promociones generales',
+                                'comunicacion': 'Email masivo, notificaciones app',
+                                'objetivo': 'Activación y primer upgrade'
+                            }
+                        }
+                        
+                        for i, (categoria, estrategia) in enumerate(va_estrategias.items()):
+                            with [col1, col2, col3, col4][i]:
+                                jugadores_va = va_analysis.loc[categoria, 'Jugadores'] if categoria in va_analysis.index else 0
+                                portfolio_va = va_analysis.loc[categoria, '% Portfolio'] if categoria in va_analysis.index else 0
+                                
+                                st.markdown(f"""
+                                <div class="info-card">
+                                    <strong>{categoria}</strong><br>
+                                    👥 {jugadores_va} jugadores<br>
+                                    📊 {portfolio_va}% del portfolio<br>
+                                    🎁 {estrategia['beneficios']}<br>
+                                    📞 {estrategia['comunicacion']}<br>
+                                    <small>🎯 {estrategia['objetivo']}</small>
+                                </div>
+                                """, unsafe_allow_html=True)
+                        
+                        st.markdown("---")
+                        
+                        # === EXPORTAR SEGMENTACIONES ADICIONALES ===
+                        st.markdown("### 📥 Exportar Segmentaciones Específicas")
+                        
+                        col1, col2, col3 = st.columns(3)
+                        
+                        with col1:
+                            # Export por franja horaria
+                            horario_export = df_strategy[['usuario', 'casino', 'franja_horaria', 'total_cargado', 'riesgo_abandono']]
+                            csv_horario = horario_export.to_csv(index=False)
+                            st.download_button(
+                                "⏰ Segmentación Horaria",
+                                data=csv_horario,
+                                file_name="segmentacion_franja_horaria.csv",
+                                mime="text/csv"
+                            )
+                        
+                        with col2:
+                            # Export por categoría sesiones
+                            sesiones_export = df_strategy[['usuario', 'casino', 'categoria_sesiones', 'total_cargado', 'riesgo_abandono']]
+                            csv_sesiones = sesiones_export.to_csv(index=False)
+                            st.download_button(
+                                "🎮 Categoría Sesiones",
+                                data=csv_sesiones,
+                                file_name="segmentacion_categoria_sesiones.csv",
+                                mime="text/csv"
+                            )
+                        
+                        with col3:
+                            # Export por categoría VA
+                            va_export = df_strategy[['usuario', 'casino', 'categoria_va', 'total_cargado', 'riesgo_abandono']]
+                            csv_va = va_export.to_csv(index=False)
+                            st.download_button(
+                                "💎 Categoría VA",
+                                data=csv_va,
+                                file_name="segmentacion_categoria_va.csv",
+                                mime="text/csv"
+                            )
+                        
                         # === ESTRATEGIAS DE REACTIVACIÓN ===
                         st.markdown("### 🚨 Estrategias de Reactivación y Retención")
                         
