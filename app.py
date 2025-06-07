@@ -107,7 +107,8 @@ elif auth_status:
         "fenix_eros": ["🔝 Métricas de jugadores", "📋 Registro Fénix/Eros"],
         "bet": ["🔝 Métricas de jugadores","📋 Registro BetArgento/Atlantis"],
         "spirita":["🔝 Métricas de jugadores","📋 Registro Spirita"],
-        "atenea":["🔝 Métricas de jugadores","📋 Registro Atenea"]
+        "atenea":["🔝 Métricas de jugadores","📋 Registro Atenea"],
+        "padrino":["🔝 Métricas de jugadores","📋 Registro Padrino Latino/Tiger"]
     }
     
     # Obtener lista de secciones según el rol
