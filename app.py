@@ -1146,9 +1146,9 @@ elif auth_status:
             seleccion_tipos = col_filtro.multiselect(
                 "🎯 Filtrar por tipo de bono:",
                 options=tipos_disponibles,
-                default=tipos_disponibles
+                default=[]  # ← esto evita que se filtre por defecto
             )
-        
+            
             if seleccion_tipos:
                 df_resumen_filtrado = df_resumen_filtrado[df_resumen_filtrado["Tipo de bono"].isin(seleccion_tipos)]
         
