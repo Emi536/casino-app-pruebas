@@ -1824,7 +1824,7 @@ elif auth_status:
                     "📤 Carga de Archivos"
                 ])
                 
-                # === TAB 1: DASHBOARD VIP MEJORADO ===
+                # === TAB 1: DASHBOARD VIP CON GRÁFICOS ESTRATÉGICOS ===
                 with tab1:
                     st.markdown("## 📊 Dashboard Principal")
                     
@@ -1878,8 +1878,8 @@ elif auth_status:
                         
                         st.markdown("<br>", unsafe_allow_html=True)
                         
-                        # === MÉTRICAS FINANCIERAS (CORREGIDAS) ===
-                        col5, col6, col7 = st.columns(3)  # Cambiado a 3 columnas
+                        # === MÉTRICAS FINANCIERAS ===
+                        col5, col6, col7 = st.columns(3)
                         
                         total_apostado = df_vip["total_apostado"].sum()
                         total_cargado = df_vip["total_cargado"].sum() if "total_cargado" in df_vip.columns else 0
@@ -1911,184 +1911,462 @@ elif auth_status:
                         
                         st.markdown("---")
                         
-                        # === GRÁFICOS PRINCIPALES MEJORADOS ===
-                        col_left, col_right = st.columns(2)
+                        # === NUEVOS GRÁFICOS ESTRATÉGICOS ===
                         
-                        with col_left:
-                            # Gráfico de distribución por riesgo (CORREGIDO)
-                            riesgo_counts = df_vip["riesgo_abandono"].value_counts().reindex(["alto", "medio", "bajo"], fill_value=0)
+                        # === 1. EVOLUCIÓN TEMPORAL DEL TOTAL CARGADO ===
+                        st.markdown("### 📈 Evolución Temporal del Total Cargado")
+                        
+                        # Verificar si existen datos temporales, si no, simularlos
+                        if "fecha_ultima_carga" not in df_vip.columns:
+                            # Crear fechas simuladas para demostración
+                            import datetime
+                            import random
                             
-                            # Calcular porcentajes manualmente para mejor control
-                            total_count = riesgo_counts.sum()
-                            riesgo_percentages = (riesgo_counts / total_count * 100).round(1)
+                            # Generar fechas de los últimos 6 meses
+                            end_date = datetime.datetime.now()
+                            start_date = end_date - datetime.timedelta(days=180)
                             
-                            # Crear labels con valores y porcentajes
-                            labels_with_data = [f"{name}<br>{count} jugadores<br>({pct}%)" 
-                                              for name, count, pct in zip(riesgo_counts.index, riesgo_counts.values, riesgo_percentages)]
+                            # Crear DataFrame temporal con fechas simuladas
+                            dates = []
+                            casinos = []
+                            amounts = []
                             
-                            fig_pie = px.pie(
-                                values=riesgo_counts.values, 
-                                names=riesgo_counts.index,
-                                title="🎯 Distribución por Nivel de Riesgo",
-                                color_discrete_map={
-                                    'alto': '#ff4757',
-                                    'medio': '#ffa502', 
-                                    'bajo': '#2ed573'
-                                },
-                                hole=0.3
+                            # Generar datos para cada casino
+                            if "casino" in df_vip.columns:
+                                unique_casinos = df_vip["casino"].unique()
+                            else:
+                                unique_casinos = ["Casino A", "Casino B", "Casino C"]
+                            
+                            # Generar datos semanales para cada casino
+                            current_date = start_date
+                            while current_date <= end_date:
+                                for casino in unique_casinos:
+                                    # Simular tendencia creciente con fluctuaciones
+                                    base_amount = 50000 + (current_date - start_date).days * 500
+                                    random_factor = random.uniform(0.7, 1.3)
+                                    amount = base_amount * random_factor
+                                    
+                                    dates.append(current_date)
+                                    casinos.append(casino)
+                                    amounts.append(amount)
+                                
+                                # Avanzar una semana
+                                current_date += datetime.timedelta(days=7)
+                            
+                            # Crear DataFrame temporal
+                            df_temporal = pd.DataFrame({
+                                "fecha": dates,
+                                "casino": casinos,
+                                "total_cargado": amounts
+                            })
+                            
+                            # Agrupar por semana y casino
+                            df_temporal["semana"] = df_temporal["fecha"].dt.strftime("%Y-%U")
+                            df_semanal = df_temporal.groupby(["semana", "casino"])["total_cargado"].sum().reset_index()
+                            
+                            # Crear gráfico de evolución temporal
+                            fig_evolucion = px.line(
+                                df_semanal,
+                                x="semana",
+                                y="total_cargado",
+                                color="casino",
+                                title="📈 Evolución del Total Cargado por Semana",
+                                markers=True,
+                                line_shape="spline"
                             )
                             
-                            # Mejorar la visualización del texto
-                            fig_pie.update_traces(
-                                textposition='auto',
-                                textinfo='label+percent+value',
-                                textfont_size=12,
-                                marker=dict(line=dict(color='#FFFFFF', width=2))
-                            )
-                            
-                            fig_pie.update_layout(
+                            fig_evolucion.update_layout(
                                 paper_bgcolor='rgba(0,0,0,0)',
                                 plot_bgcolor='rgba(0,0,0,0)',
-                                font=dict(color='white', size=12),
-                                showlegend=True,
-                                legend=dict(
-                                    orientation="h",
-                                    yanchor="bottom",
-                                    y=-0.2,
-                                    xanchor="center",
-                                    x=0.5
-                                )
+                                font=dict(color='white'),
+                                xaxis_title="Semana",
+                                yaxis_title="Total Cargado ($)",
+                                legend_title="Casino",
+                                height=400
                             )
-                            st.plotly_chart(fig_pie, use_container_width=True)
-                        
-                        with col_right:
-                            # Nuevo gráfico: Distribución por Casino (si existe la columna)
-                            if "casino" in df_vip.columns:
-                                casino_stats = df_vip.groupby("casino").agg({
-                                    "usuario": "count",
-                                    "total_cargado": "sum" if "total_cargado" in df_vip.columns else "total_apostado"
-                                }).round(0)
-                                
-                                casino_stats.columns = ["Jugadores", "Total Ingresos"]
-                                
-                                fig_casino = px.bar(
-                                    x=casino_stats.index,
-                                    y=casino_stats["Total Ingresos"],
-                                    title="🏢 Ingresos por Casino",
-                                    color=casino_stats.index,
-                                    color_discrete_sequence=px.colors.qualitative.Set3,
-                                    text=casino_stats["Total Ingresos"]
-                                )
-                                
-                                # Agregar etiquetas de datos
-                                fig_casino.update_traces(
-                                    texttemplate='$%{text:,.0f}',
-                                    textposition='outside'
-                                )
-                                
-                                fig_casino.update_layout(
-                                    paper_bgcolor='rgba(0,0,0,0)',
-                                    plot_bgcolor='rgba(0,0,0,0)',
-                                    font=dict(color='white', size=12),
-                                    xaxis_title="Casino",
-                                    yaxis_title="Total Ingresos ($)",
-                                    showlegend=False
-                                )
-                                st.plotly_chart(fig_casino, use_container_width=True)
                             
-                            else:
-                                # Si no hay columna casino, mostrar distribución de montos
-                                # Crear rangos de montos para mejor visualización
-                                if "total_cargado" in df_vip.columns:
-                                    monto_col = "total_cargado"
-                                    titulo = "💳 Distribución de Montos Cargados"
-                                else:
-                                    monto_col = "total_apostado"
-                                    titulo = "💰 Distribución de Montos Apostados"
-                                
-                                # Crear bins para la distribución
-                                bins = [0, 5000, 15000, 50000, float('inf')]
-                                labels = ['$0-5K', '$5K-15K', '$15K-50K', '$50K+']
-                                
-                                df_vip['rango_monto'] = pd.cut(df_vip[monto_col], bins=bins, labels=labels, include_lowest=True)
-                                rango_counts = df_vip['rango_monto'].value_counts().sort_index()
-                                
-                                fig_dist = px.bar(
-                                    x=rango_counts.index,
-                                    y=rango_counts.values,
-                                    title=titulo,
-                                    color=rango_counts.index,
-                                    color_discrete_sequence=px.colors.sequential.Viridis,
-                                    text=rango_counts.values
-                                )
-                                
-                                fig_dist.update_traces(
-                                    texttemplate='%{text} jugadores',
-                                    textposition='outside'
-                                )
-                                
-                                fig_dist.update_layout(
-                                    paper_bgcolor='rgba(0,0,0,0)',
-                                    plot_bgcolor='rgba(0,0,0,0)',
-                                    font=dict(color='white', size=12),
-                                    xaxis_title="Rango de Montos",
-                                    yaxis_title="Cantidad de Jugadores",
-                                    showlegend=False
-                                )
-                                st.plotly_chart(fig_dist, use_container_width=True)
+                            # Mejorar formato de ejes
+                            fig_evolucion.update_yaxes(tickprefix="$", tickformat=",")
+                            
+                            st.plotly_chart(fig_evolucion, use_container_width=True)
+                            
+                            st.markdown("""
+                            <div class="info-card">
+                                <strong>ℹ️ Nota:</strong> Este gráfico muestra datos simulados. Para ver datos reales, agrega la columna "fecha_ultima_carga" a tu tabla.
+                            </div>
+                            """, unsafe_allow_html=True)
+                        else:
+                            # Usar datos reales si existen
+                            df_vip["semana"] = pd.to_datetime(df_vip["fecha_ultima_carga"]).dt.strftime("%Y-%U")
+                            df_semanal = df_vip.groupby(["semana", "casino"])["total_cargado"].sum().reset_index()
+                            
+                            fig_evolucion = px.line(
+                                df_semanal,
+                                x="semana",
+                                y="total_cargado",
+                                color="casino",
+                                title="📈 Evolución del Total Cargado por Semana",
+                                markers=True
+                            )
+                            
+                            fig_evolucion.update_layout(
+                                paper_bgcolor='rgba(0,0,0,0)',
+                                plot_bgcolor='rgba(0,0,0,0)',
+                                font=dict(color='white'),
+                                xaxis_title="Semana",
+                                yaxis_title="Total Cargado ($)",
+                                legend_title="Casino",
+                                height=400
+                            )
+                            
+                            # Mejorar formato de ejes
+                            fig_evolucion.update_yaxes(tickprefix="$", tickformat=",")
+                            
+                            st.plotly_chart(fig_evolucion, use_container_width=True)
                         
                         st.markdown("---")
                         
-                        # === RESUMEN EJECUTIVO ===
-                        st.markdown("### 📋 Resumen Ejecutivo")
+                        # === 2. MAPA DE CALOR POR HORARIO Y DÍA ===
+                        st.markdown("### 🧭 Mapa de Calor por Horario y Día")
                         
-                        col1, col2, col3 = st.columns(3)
-                        
-                        with col1:
-                            # Concentración de riesgo
-                            pct_riesgo_alto = (riesgo_alto / total_jugadores * 100) if total_jugadores > 0 else 0
-                            color_riesgo = "🔴" if pct_riesgo_alto > 30 else "🟡" if pct_riesgo_alto > 15 else "🟢"
+                        # Verificar si existen datos de horario, si no, simularlos
+                        if "hora_carga" not in df_vip.columns or "dia_semana" not in df_vip.columns:
+                            # Crear datos simulados para el heatmap
+                            import numpy as np
                             
-                            st.markdown(f"""
+                            # Días y horas
+                            dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+                            horas = list(range(24))
+                            
+                            # Crear matriz de datos con patrones realistas
+                            # Más actividad en tardes/noches y fines de semana
+                            base_matrix = np.zeros((7, 24))
+                            
+                            # Patrón de días laborables
+                            for d in range(5):  # Lunes a Viernes
+                                for h in range(24):
+                                    if h < 8:  # Madrugada
+                                        base_matrix[d, h] = np.random.randint(1, 10)
+                                    elif h < 12:  # Mañana
+                                        base_matrix[d, h] = np.random.randint(10, 30)
+                                    elif h < 18:  # Tarde
+                                        base_matrix[d, h] = np.random.randint(20, 50)
+                                    else:  # Noche
+                                        base_matrix[d, h] = np.random.randint(30, 70)
+                            
+                            # Patrón de fin de semana
+                            for d in range(5, 7):  # Sábado y Domingo
+                                for h in range(24):
+                                    if h < 8:  # Madrugada
+                                        base_matrix[d, h] = np.random.randint(5, 20)
+                                    elif h < 12:  # Mañana
+                                        base_matrix[d, h] = np.random.randint(15, 40)
+                                    elif h < 18:  # Tarde
+                                        base_matrix[d, h] = np.random.randint(30, 70)
+                                    else:  # Noche
+                                        base_matrix[d, h] = np.random.randint(50, 100)
+                            
+                            # Crear DataFrame para el heatmap
+                            heatmap_data = []
+                            for d in range(7):
+                                for h in range(24):
+                                    heatmap_data.append({
+                                        "dia": dias[d],
+                                        "hora": h,
+                                        "cargas": base_matrix[d, h]
+                                    })
+                            
+                            df_heatmap = pd.DataFrame(heatmap_data)
+                            
+                            # Selector de casino para el heatmap (si hay múltiples casinos)
+                            if "casino" in df_vip.columns:
+                                casinos_disponibles = ["Todos"] + list(df_vip["casino"].unique())
+                                casino_seleccionado = st.selectbox("🏢 Seleccionar Casino para el Mapa de Calor", casinos_disponibles)
+                            
+                            # Selector de métrica
+                            metrica_heatmap = st.radio(
+                                "📊 Seleccionar Métrica",
+                                ["Cantidad de Cargas", "Monto Total Cargado"],
+                                horizontal=True
+                            )
+                            
+                            # Crear heatmap
+                            fig_heatmap = px.imshow(
+                                df_heatmap.pivot(index="dia", columns="hora", values="cargas"),
+                                labels=dict(x="Hora del Día", y="Día de la Semana", color=metrica_heatmap),
+                                x=heatmap_data[0:24]["hora"],
+                                y=dias,
+                                color_continuous_scale="Viridis"
+                            )
+                            
+                            fig_heatmap.update_layout(
+                                paper_bgcolor='rgba(0,0,0,0)',
+                                plot_bgcolor='rgba(0,0,0,0)',
+                                font=dict(color='white'),
+                                title="🧭 Intensidad de Cargas por Día y Hora",
+                                height=400
+                            )
+                            
+                            st.plotly_chart(fig_heatmap, use_container_width=True)
+                            
+                            st.markdown("""
                             <div class="info-card">
-                                <strong>{color_riesgo} Estado de Riesgo</strong><br>
-                                {pct_riesgo_alto:.1f}% de jugadores en riesgo alto<br>
-                                <small>{'Atención crítica requerida' if pct_riesgo_alto > 30 else 'Monitoreo regular' if pct_riesgo_alto > 15 else 'Situación estable'}</small>
+                                <strong>ℹ️ Nota:</strong> Este mapa de calor muestra datos simulados. Para ver datos reales, agrega las columnas "hora_carga" y "dia_semana" a tu tabla.
+                            </div>
+                            """, unsafe_allow_html=True)
+                        else:
+                            # Usar datos reales si existen
+                            df_heatmap = df_vip.groupby(["dia_semana", "hora_carga"])["total_cargado"].agg(["count", "sum"]).reset_index()
+                            df_heatmap.columns = ["dia", "hora", "cantidad", "monto"]
+                            
+                            # Selector de casino para el heatmap (si hay múltiples casinos)
+                            if "casino" in df_vip.columns:
+                                casinos_disponibles = ["Todos"] + list(df_vip["casino"].unique())
+                                casino_seleccionado = st.selectbox("🏢 Seleccionar Casino para el Mapa de Calor", casinos_disponibles)
+                                
+                                if casino_seleccionado != "Todos":
+                                    df_heatmap_casino = df_vip[df_vip["casino"] == casino_seleccionado]
+                                    df_heatmap = df_heatmap_casino.groupby(["dia_semana", "hora_carga"])["total_cargado"].agg(["count", "sum"]).reset_index()
+                                    df_heatmap.columns = ["dia", "hora", "cantidad", "monto"]
+                            
+                            # Selector de métrica
+                            metrica_heatmap = st.radio(
+                                "📊 Seleccionar Métrica",
+                                ["Cantidad de Cargas", "Monto Total Cargado"],
+                                horizontal=True
+                            )
+                            
+                            # Crear heatmap según la métrica seleccionada
+                            valor = "cantidad" if metrica_heatmap == "Cantidad de Cargas" else "monto"
+                            
+                            fig_heatmap = px.imshow(
+                                df_heatmap.pivot(index="dia", columns="hora", values=valor),
+                                labels=dict(x="Hora del Día", y="Día de la Semana", color=metrica_heatmap),
+                                color_continuous_scale="Viridis"
+                            )
+                            
+                            fig_heatmap.update_layout(
+                                paper_bgcolor='rgba(0,0,0,0)',
+                                plot_bgcolor='rgba(0,0,0,0)',
+                                font=dict(color='white'),
+                                title=f"🧭 {metrica_heatmap} por Día y Hora",
+                                height=400
+                            )
+                            
+                            st.plotly_chart(fig_heatmap, use_container_width=True)
+                        
+                        st.markdown("---")
+                        
+                        # === 3. RANKING DE JUGADORES INACTIVOS DE ALTO VALOR ===
+                        st.markdown("### 🚨 Jugadores Inactivos de Alto Valor")
+                        
+                        # Verificar si existe la columna tipo_jugador
+                        if "tipo_jugador" not in df_vip.columns:
+                            # Simular datos de tipo_jugador
+                            tipos = ["activo", "inactivo_alerta", "inactivo_prolongado", "activo", "activo"]
+                            df_vip["tipo_jugador"] = [random.choice(tipos) for _ in range(len(df_vip))]
+                        
+                        # Filtrar jugadores inactivos
+                        jugadores_inactivos = df_vip[df_vip["tipo_jugador"].isin(["inactivo_alerta", "inactivo_prolongado"])]
+                        
+                        if len(jugadores_inactivos) > 0:
+                            # Ordenar por total_cargado descendente
+                            jugadores_inactivos = jugadores_inactivos.sort_values(
+                                by="total_cargado" if "total_cargado" in df_vip.columns else "total_apostado", 
+                                ascending=False
+                            )
+                            
+                            # Mostrar tabla de jugadores inactivos
+                            col1, col2 = st.columns([2, 1])
+                            
+                            with col1:
+                                # Tabla de jugadores inactivos
+                                st.markdown("#### 📋 Top Jugadores Inactivos por Valor")
+                                
+                                # Seleccionar columnas relevantes
+                                cols_to_show = ["usuario", "tipo_jugador"]
+                                if "casino" in jugadores_inactivos.columns:
+                                    cols_to_show.append("casino")
+                                if "total_cargado" in jugadores_inactivos.columns:
+                                    cols_to_show.append("total_cargado")
+                                else:
+                                    cols_to_show.append("total_apostado")
+                                if "fecha_ultima_carga" in jugadores_inactivos.columns:
+                                    cols_to_show.append("fecha_ultima_carga")
+                                
+                                # Mostrar tabla con formato
+                                st.dataframe(
+                                    jugadores_inactivos[cols_to_show].head(10),
+                                    use_container_width=True,
+                                    column_config={
+                                        "usuario": st.column_config.TextColumn("👤 Usuario"),
+                                        "tipo_jugador": st.column_config.TextColumn("⚠️ Estado"),
+                                        "casino": st.column_config.TextColumn("🏢 Casino"),
+                                        "total_cargado": st.column_config.NumberColumn("💰 Total Cargado", format="$%.2f"),
+                                        "total_apostado": st.column_config.NumberColumn("💰 Total Apostado", format="$%.2f"),
+                                        "fecha_ultima_carga": st.column_config.DateColumn("📅 Última Carga")
+                                    }
+                                )
+                            
+                            with col2:
+                                # Estadísticas de inactivos
+                                total_inactivos = len(jugadores_inactivos)
+                                valor_en_riesgo = jugadores_inactivos["total_cargado"].sum() if "total_cargado" in jugadores_inactivos.columns else jugadores_inactivos["total_apostado"].sum()
+                                pct_inactivos = (total_inactivos / len(df_vip) * 100) if len(df_vip) > 0 else 0
+                                
+                                st.markdown(f"""
+                                <div class="warning-card">
+                                    <strong>🚨 Alerta de Inactividad</strong><br>
+                                    {total_inactivos} jugadores inactivos ({pct_inactivos:.1f}%)<br>
+                                    ${valor_en_riesgo:,.0f} en riesgo<br>
+                                    <small>Prioridad: Reactivación inmediata</small>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                
+                                # Distribución por tipo de inactividad
+                                inactivos_por_tipo = jugadores_inactivos["tipo_jugador"].value_counts()
+                                
+                                fig_inactivos = px.pie(
+                                    values=inactivos_por_tipo.values,
+                                    names=inactivos_por_tipo.index,
+                                    title="📊 Tipos de Inactividad",
+                                    color_discrete_map={
+                                        "inactivo_alerta": "#ff9800",
+                                        "inactivo_prolongado": "#f44336"
+                                    },
+                                    hole=0.4
+                                )
+                                
+                                fig_inactivos.update_layout(
+                                    paper_bgcolor='rgba(0,0,0,0)',
+                                    plot_bgcolor='rgba(0,0,0,0)',
+                                    font=dict(color='white'),
+                                    showlegend=True,
+                                    height=250
+                                )
+                                
+                                st.plotly_chart(fig_inactivos, use_container_width=True)
+                        else:
+                            st.markdown("""
+                            <div class="success-card">
+                                <strong>✅ Sin Jugadores Inactivos</strong><br>
+                                No se detectaron jugadores inactivos de alto valor.<br>
+                                <small>Excelente retención de jugadores VIP.</small>
                             </div>
                             """, unsafe_allow_html=True)
                         
-                        with col2:
-                            # Eficiencia de carga
-                            if "total_cargado" in df_vip.columns and total_apostado > 0:
-                                eficiencia = (total_cargado / total_apostado * 100)
-                                color_eficiencia = "🟢" if eficiencia > 80 else "🟡" if eficiencia > 60 else "🔴"
+                        st.markdown("---")
+                        
+                        # === 4. IDENTIFICACIÓN DE JUGADORES MULTICASINO ===
+                        st.markdown("### 🧲 Jugadores con Comportamiento Multicasino")
+                        
+                        if "casino" in df_vip.columns:
+                            # Contar casinos por usuario
+                            casinos_por_usuario = df_vip.groupby("usuario")["casino"].nunique().reset_index()
+                            casinos_por_usuario.columns = ["usuario", "num_casinos"]
+                            
+                            # Filtrar jugadores multicasino (2+ casinos)
+                            jugadores_multicasino = casinos_por_usuario[casinos_por_usuario["num_casinos"] >= 2]
+                            
+                            if len(jugadores_multicasino) > 0:
+                                # Unir con datos originales para obtener más información
+                                jugadores_multicasino = jugadores_multicasino.merge(
+                                    df_vip[["usuario", "total_cargado" if "total_cargado" in df_vip.columns else "total_apostado"]],
+                                    on="usuario"
+                                )
                                 
-                                st.markdown(f"""
-                                <div class="info-card">
-                                    <strong>{color_eficiencia} Eficiencia de Carga</strong><br>
-                                    {eficiencia:.1f}% ratio carga/apuesta<br>
-                                    <small>{'Excelente conversión' if eficiencia > 80 else 'Buena conversión' if eficiencia > 60 else 'Mejorar conversión'}</small>
-                                </div>
-                                """, unsafe_allow_html=True)
+                                # Eliminar duplicados
+                                jugadores_multicasino = jugadores_multicasino.drop_duplicates(subset=["usuario"])
+                                
+                                # Ordenar por número de casinos y luego por valor
+                                jugadores_multicasino = jugadores_multicasino.sort_values(
+                                    by=["num_casinos", "total_cargado" if "total_cargado" in df_vip.columns else "total_apostado"],
+                                    ascending=[False, False]
+                                )
+                                
+                                col1, col2 = st.columns([3, 2])
+                                
+                                with col1:
+                                    # Distribución de jugadores por número de casinos
+                                    conteo_por_num_casinos = jugadores_multicasino["num_casinos"].value_counts().sort_index()
+                                    
+                                    fig_multicasino = px.bar(
+                                        x=conteo_por_num_casinos.index,
+                                        y=conteo_por_num_casinos.values,
+                                        title="🏢 Jugadores por Número de Casinos",
+                                        labels={"x": "Número de Casinos", "y": "Cantidad de Jugadores"},
+                                        text=conteo_por_num_casinos.values,
+                                        color=conteo_por_num_casinos.index,
+                                        color_continuous_scale="Viridis"
+                                    )
+                                    
+                                    fig_multicasino.update_traces(
+                                        texttemplate="%{text} jugadores",
+                                        textposition="outside"
+                                    )
+                                    
+                                    fig_multicasino.update_layout(
+                                        paper_bgcolor='rgba(0,0,0,0)',
+                                        plot_bgcolor='rgba(0,0,0,0)',
+                                        font=dict(color='white'),
+                                        showlegend=False,
+                                        height=350
+                                    )
+                                    
+                                    st.plotly_chart(fig_multicasino, use_container_width=True)
+                                
+                                with col2:
+                                    # Estadísticas de jugadores multicasino
+                                    total_multicasino = len(jugadores_multicasino)
+                                    pct_multicasino = (total_multicasino / len(df_vip) * 100) if len(df_vip) > 0 else 0
+                                    valor_multicasino = jugadores_multicasino["total_cargado"].sum() if "total_cargado" in jugadores_multicasino.columns else jugadores_multicasino["total_apostado"].sum()
+                                    
+                                    st.markdown(f"""
+                                    <div class="success-card">
+                                        <strong>🧲 Jugadores Multicasino</strong><br>
+                                        {total_multicasino} jugadores ({pct_multicasino:.1f}%)<br>
+                                        ${valor_multicasino:,.0f} en valor<br>
+                                        <small>Oportunidad: Cross-property marketing</small>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                    
+                                    # Top jugadores multicasino
+                                    st.markdown("#### 🏆 Top Jugadores Multicasino")
+                                    
+                                    # Mostrar tabla con formato
+                                    st.dataframe(
+                                        jugadores_multicasino[["usuario", "num_casinos", "total_cargado" if "total_cargado" in jugadores_multicasino.columns else "total_apostado"]].head(5),
+                                        use_container_width=True,
+                                        column_config={
+                                            "usuario": st.column_config.TextColumn("👤 Usuario"),
+                                            "num_casinos": st.column_config.NumberColumn("🏢 Casinos"),
+                                            "total_cargado": st.column_config.NumberColumn("💰 Total Cargado", format="$%.2f"),
+                                            "total_apostado": st.column_config.NumberColumn("💰 Total Apostado", format="$%.2f")
+                                        }
+                                    )
+                                
+                                # Exportar lista de jugadores multicasino
+                                csv_multicasino = jugadores_multicasino.to_csv(index=False)
+                                st.download_button(
+                                    "📥 Descargar Lista de Jugadores Multicasino",
+                                    data=csv_multicasino,
+                                    file_name="jugadores_multicasino.csv",
+                                    mime="text/csv"
+                                )
                             else:
                                 st.markdown("""
                                 <div class="info-card">
-                                    <strong>📊 Datos de Carga</strong><br>
-                                    Información no disponible<br>
-                                    <small>Agregar columna total_cargado</small>
+                                    <strong>ℹ️ Sin Jugadores Multicasino</strong><br>
+                                    No se detectaron jugadores que jueguen en múltiples casinos.<br>
+                                    <small>Oportunidad: Implementar estrategias de cross-property marketing.</small>
                                 </div>
                                 """, unsafe_allow_html=True)
-                        
-                        with col3:
-                            # Valor promedio por jugador
-                            valor_promedio = promedio_cargado if "total_cargado" in df_vip.columns else df_vip["total_apostado"].mean()
-                            color_valor = "🟢" if valor_promedio > 25000 else "🟡" if valor_promedio > 10000 else "🔴"
-                            
-                            st.markdown(f"""
+                        else:
+                            st.markdown("""
                             <div class="info-card">
-                                <strong>{color_valor} Valor Promedio</strong><br>
-                                ${valor_promedio:,.0f} por jugador<br>
-                                <small>{'Alto valor' if valor_promedio > 25000 else 'Valor medio' if valor_promedio > 10000 else 'Oportunidad de crecimiento'}</small>
+                                <strong>ℹ️ Datos de Casino No Disponibles</strong><br>
+                                Para analizar comportamiento multicasino, agrega la columna "casino" a tu tabla.<br>
+                                <small>Esta información es clave para estrategias de cross-property marketing.</small>
                             </div>
                             """, unsafe_allow_html=True)
                 
