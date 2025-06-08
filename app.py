@@ -108,12 +108,13 @@ elif auth_status:
     
      # Definir qué secciones ve cada rol
     secciones_por_rol = {
-        "admin": ["🏢 Oficina VIP", "📋 Registro Fénix/Eros", "📋 Registro BetArgento/Atlantis","📋 Registro Spirita","📋 Registro Atenea","📋 Registro Padrino Latino/Tiger","📆 Agenda Fénix","📆 Agenda Eros","📆 Agenda BetArgento","📊 Análisis Temporal","🔝 Métricas de jugadores"],
-        "fenix_eros": ["🔝 Métricas de jugadores", "📋 Registro Fénix/Eros"],
-        "bet": ["🔝 Métricas de jugadores","📋 Registro BetArgento/Atlantis"],
-        "spirita":["🔝 Métricas de jugadores","📋 Registro Spirita"],
-        "atenea":["🔝 Métricas de jugadores","📋 Registro Atenea"],
-        "padrino":["🔝 Métricas de jugadores","📋 Registro Padrino Latino/Tiger"]
+        "admin": ["🏢 Oficina VIP", "📋 Registro Fénix/Eros", "📋 Registro BetArgento/Atlantis","📋 Registro Spirita","📋 Registro Atenea","📋 Registro Padrino Latino/Tiger","📋 Registro Fortuna/Gana 24","📆 Agenda Fénix","📆 Agenda Eros","📆 Agenda BetArgento","📊 Análisis Temporal"],
+        "fenix_eros": ["📋 Registro Fénix/Eros"],
+        "bet": ["📋 Registro BetArgento/Atlantis"],
+        "spirita":["📋 Registro Spirita"],
+        "atenea":["📋 Registro Atenea"],
+        "padrino":["📋 Registro Padrino Latino/Tiger"],
+        "fortuna":["📋 Registro Fortuna/Gana 24"]
     }
     
     # Obtener lista de secciones según el rol
@@ -390,102 +391,6 @@ elif auth_status:
     
         return df_registro
 
-
-    # --- SECCION 1: METRICAS DE JUGADORES ---
-    if seccion == "🔝 Métricas de jugadores":
-        st.header("📊 Métricas de Jugadores - Análisis de Cargas")
-    
-        top_n = st.selectbox("Selecciona el número de jugadores a mostrar:", [30, 50, 100, 150, 200], index=0)
-        archivo = st.file_uploader("📁 Subí tu archivo de cargas recientes:", type=["xlsx", "xls", "csv"], key="top10")
-    
-        if archivo:
-            df = pd.read_excel(archivo) if archivo.name.endswith((".xlsx", ".xls")) else pd.read_csv(archivo)
-            df = preparar_dataframe(df)
-    
-            if df is not None:
-                df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
-                df["Hora"] = pd.to_datetime(df["Hora"], format="%H:%M:%S", errors="coerce").dt.hour
-                df["Monto"] = pd.to_numeric(df["Monto"], errors="coerce").fillna(0)
-                df_cargas = df[df["Tipo"] == "in"]
-    
-                # --- KPIs ---
-                total_cargado = df_cargas["Monto"].sum()
-                promedio_carga = df_cargas["Monto"].mean()
-                total_jugadores = df_cargas["Jugador"].nunique()
-    
-                col1, col2, col3 = st.columns(3)
-                col1.metric("💰 Total Cargado", f"${total_cargado:,.0f}")
-                col2.metric("🎯 Promedio por Carga", f"${promedio_carga:,.0f}")
-                col3.metric("🧑 Jugadores Únicos", total_jugadores)
-    
-                st.markdown("---")
-    
-                # --- TOP MONTO Y CANTIDAD ---
-                top_monto = (
-                    df_cargas.groupby("Jugador")
-                    .agg(Monto_Total_Cargado=("Monto", "sum"), Cantidad_Cargas=("Jugador", "count"))
-                    .sort_values(by="Monto_Total_Cargado", ascending=False)
-                    .head(top_n)
-                    .reset_index()
-                )
-                top_monto['Última vez que cargó'] = top_monto['Jugador'].apply(lambda x: df_cargas[df_cargas['Jugador'] == x]['Fecha'].max())
-    
-                top_cant = (
-                    df_cargas.groupby("Jugador")
-                    .agg(Cantidad_Cargas=("Jugador", "count"), Monto_Total_Cargado=("Monto", "sum"))
-                    .sort_values(by="Cantidad_Cargas", ascending=False)
-                    .head(top_n)
-                    .reset_index()
-                )
-                top_cant['Última vez que cargó'] = top_cant['Jugador'].apply(lambda x: df_cargas[df_cargas['Jugador'] == x]['Fecha'].max())
-    
-                # --- VISUALIZACIONES ---
-                st.subheader("📈 Evolución diaria de cargas")
-                cargas_diarias = df_cargas.groupby(df_cargas["Fecha"].dt.date)["Monto"].sum().reset_index()
-                graf_linea = px.line(cargas_diarias, x="Fecha", y="Monto", title="Cargas por día", markers=True, labels={"Monto": "Monto Total ($)"})
-                st.plotly_chart(graf_linea, use_container_width=True)
-    
-                st.subheader("📊 Distribución de montos de carga")
-                graf_hist = px.histogram(df_cargas, x="Monto", nbins=20, title="Distribución de Montos de Carga", labels={"Monto": "Monto Cargado ($)"})
-                st.plotly_chart(graf_hist, use_container_width=True)
-    
-                st.subheader("🌡️ Mapa de Calor de Actividad Horaria")
-                heatmap_data = df_cargas.copy()
-                heatmap_data["Día"] = heatmap_data["Fecha"].dt.strftime("%Y-%m-%d")
-                graf_heatmap = px.density_heatmap(
-                    heatmap_data,
-                    x="Hora",
-                    y="Día",
-                    nbinsx=24,
-                    color_continuous_scale="Blues",
-                    title="Actividad de cargas por hora y día",
-                    labels={"Hora": "Hora del día", "Día": "Fecha"}
-                )
-                st.plotly_chart(graf_heatmap, use_container_width=True)
-    
-                st.markdown("---")
-    
-                # --- TABLAS ---
-                st.subheader(f"💵 Top {top_n} por Monto Total Cargado")
-                st.dataframe(top_monto)
-    
-                st.subheader(f"📈 Top {top_n} por Cantidad de Cargas")
-                st.dataframe(top_cant)
-    
-                # --- EXPORTAR ---
-                try:
-                    with pd.ExcelWriter(f"Top{top_n}_Cargas.xlsx", engine="openpyxl") as writer:
-                        top_monto.to_excel(writer, sheet_name="Top Monto", index=False)
-                        top_cant.to_excel(writer, sheet_name="Top Cantidad", index=False)
-                    with open(f"Top{top_n}_Cargas.xlsx", "rb") as f:
-                        st.download_button(f"📅 Descargar Excel - Top {top_n} Cargas", f, file_name=f"Top{top_n}_Cargas.xlsx")
-                except Exception as e:
-                    st.error(f"❌ Error al guardar el archivo: {e}")
-    
-            else:
-                st.error("❌ El archivo no tiene el formato esperado.")
-    
-    
 
     elif "📋 Registro Fénix/Eros" in seccion:
         st.header("📋 Registro general de jugadores")
@@ -1188,6 +1093,149 @@ elif auth_status:
                 st.dataframe(df_bonos, use_container_width=True)
         
                 # Descargar en Excel
+                output_bonos = io.BytesIO()
+                with pd.ExcelWriter(output_bonos, engine="xlsxwriter") as writer:
+                    df_bonos.to_excel(writer, index=False, sheet_name=f"Bonos_{casino_actual}")
+                st.download_button(
+                    "⬇️ Descargar Tabla de Bonos",
+                    data=output_bonos.getvalue(),
+                    file_name=f"{clave_casino}_bonos.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+            else:
+                st.info("ℹ️ No hay datos en la tabla de bonos para este casino.")
+        except Exception as e:
+            st.error(f"❌ Error al cargar tabla de bonos: {e}")
+
+    elif "📋 Registro Fortuna/Gana 24" in seccion:
+        st.header("📋 Registro general de jugadores")
+
+        casino_actual = st.selectbox("🎰 Seleccioná el casino al que pertenece este reporte", [
+            "Fortuna", "Gana 24"
+        ], key="casino_selector_fortuna_gana24")
+        
+        clave_casino = "fortuna" if casino_actual == "Fortuna" else "gana24"
+
+        if "casino_anterior_fortuna_gana24" not in st.session_state:
+            st.session_state["casino_anterior_fortuna_gana24"] = casino_actual
+
+        if casino_actual != st.session_state["casino_anterior_fortuna_gana24"]:
+            st.session_state["casino_anterior_fortuna_gana24"] = casino_actual
+            st.session_state.pop("archivo_procesado_fortuna_gana24", None)
+            st.experimental_rerun()
+
+        archivo = st.file_uploader("📁 Subí el archivo del reporte (.xlsx)", type=["xlsx"], key="reporte_fortuna_gana24")
+
+        if archivo and not st.session_state.get("archivo_procesado_fortuna_gana24"):
+            try:
+                df = pd.read_excel(archivo)
+                df = limpiar_transacciones(df)
+                df = agregar_columna_casino(df, casino_actual)
+
+                engine = create_engine(st.secrets["DB_URL"])
+                subir_a_supabase(df, "reportes_jugadores", engine)
+
+                st.session_state["archivo_procesado_fortuna_gana24"] = True
+                st.success("✅ Archivo subido y procesado correctamente.")
+            except Exception as e:
+                st.error(f"❌ Error al procesar o subir el archivo: {e}")
+        elif st.session_state.get("archivo_procesado_fortuna_gana24"):
+            st.success("✅ El archivo ya fue procesado. Si querés subir uno nuevo, cambiá el casino o recargá la página.")
+
+        # === Visualización de la vista correspondiente ===
+        st.markdown("---")
+        st.subheader(f"🔍 Vista resumen de jugadores - {casino_actual}")
+
+        nombre_vista = "resumen_fortuna" if casino_actual == "Fortuna" else "resumen_gana24"
+
+        try:
+            engine = create_engine(st.secrets["DB_URL"])
+            with engine.connect() as conn:
+                query = f'SELECT * FROM "{nombre_vista}" ORDER BY "Ganacias casino" DESC'
+                df_resumen = pd.read_sql(query, conn)
+
+            df_bonos = cargar_tabla_bonos(clave_casino, sh)
+
+            df_resumen["__user_key"] = df_resumen["Nombre de jugador"].astype(str).str.lower().str.replace(" ", "").str.replace("_", "")
+            df_bonos["__user_key"] = df_bonos["Usuario"].astype(str).str.lower().str.replace(" ", "").str.replace("_", "")
+
+            dict_tipo_bono = dict(zip(df_bonos["__user_key"], df_bonos["Tipo de Bono"]))
+            dict_contacto = dict(zip(df_bonos["__user_key"], df_bonos["Últ. vez contactado"]))
+
+            if "Tipo de bono" in df_resumen.columns:
+                df_resumen["Tipo de bono"] = df_resumen["__user_key"].map(dict_tipo_bono).combine_first(df_resumen["Tipo de bono"])
+                df_resumen["Tipo de bono"] = df_resumen["Tipo de bono"].replace("", pd.NA).fillna("N/A")
+
+            if "Últ. vez contactado" in df_resumen.columns:
+                df_resumen["Últ. vez contactado"] = df_resumen["__user_key"].map(dict_contacto).fillna(df_resumen["Últ. vez contactado"])
+
+            df_resumen.drop(columns=["__user_key"], inplace=True)
+
+            df_resumen = asignar_princi(df_resumen, sh, clave_casino)
+
+            cols = df_resumen.columns.tolist()
+            if "Tipo de bono" in cols and "PRINCI" in cols:
+                cols.remove("PRINCI")
+                idx = cols.index("Tipo de bono") + 1
+                cols.insert(idx, "PRINCI")
+                df_resumen = df_resumen[cols]
+
+            st.markdown("### 📅 Filtrar jugadores por fecha de última carga")
+            col1, col2 = st.columns(2)
+
+            if not pd.api.types.is_datetime64_any_dtype(df_resumen["Última vez que cargó"]):
+                df_resumen["Última vez que cargó"] = pd.to_datetime(df_resumen["Última vez que cargó"], errors="coerce")
+
+            with col1:
+                filtro_desde = st.date_input("📆 Desde", value=df_resumen["Última vez que cargó"].min().date(), key="desde_fecha_fortuna_gana24")
+            with col2:
+                filtro_hasta = st.date_input("📆 Hasta", value=df_resumen["Última vez que cargó"].max().date(), key="hasta_fecha_fortuna_gana24")
+
+            df_resumen_filtrado = df_resumen[
+                (df_resumen["Última vez que cargó"] >= pd.to_datetime(filtro_desde)) &
+                (df_resumen["Última vez que cargó"] <= pd.to_datetime(filtro_hasta))
+            ]
+
+            df_resumen_filtrado["Tipo de bono"] = df_resumen_filtrado["Tipo de bono"].fillna("N/A")
+            col_filtro, _ = st.columns(2)
+            tipos_disponibles = sorted(df_resumen_filtrado["Tipo de bono"].unique().tolist())
+
+            seleccion_tipos = col_filtro.multiselect(
+                "🎯 Filtrar por tipo de bono:",
+                options=tipos_disponibles,
+                default=[]
+            )
+
+            if seleccion_tipos:
+                df_resumen_filtrado = df_resumen_filtrado[df_resumen_filtrado["Tipo de bono"].isin(seleccion_tipos)]
+
+            if not df_resumen_filtrado.empty:
+                st.dataframe(df_resumen_filtrado, use_container_width=True)
+
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+                    df_resumen_filtrado.to_excel(writer, index=False, sheet_name=casino_actual)
+
+                st.download_button(
+                    "⬇️ Descargar Excel",
+                    data=output.getvalue(),
+                    file_name=f"{clave_casino}_resumen.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+            else:
+                st.info("ℹ️ No hay jugadores que coincidan con los filtros.")
+        except Exception as e:
+            st.error(f"❌ Error al consultar la vista del casino seleccionado: {e}")
+
+        st.markdown("----")
+        st.subheader(f"🎁 Tabla de Bonos - {casino_actual}")
+
+        try:
+            df_bonos = cargar_tabla_bonos(clave_casino, sh)
+
+            if not df_bonos.empty:
+                st.dataframe(df_bonos, use_container_width=True)
+
                 output_bonos = io.BytesIO()
                 with pd.ExcelWriter(output_bonos, engine="xlsxwriter") as writer:
                     df_bonos.to_excel(writer, index=False, sheet_name=f"Bonos_{casino_actual}")
