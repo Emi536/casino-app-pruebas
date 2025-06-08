@@ -1824,7 +1824,7 @@ elif auth_status:
                     "📤 Carga de Archivos"
                 ])
                 
-                # === TAB 1: DASHBOARD VIP ===
+                # === TAB 1: DASHBOARD VIP MEJORADO ===
                 with tab1:
                     st.markdown("## 📊 Dashboard Principal")
                     
@@ -1878,13 +1878,12 @@ elif auth_status:
                         
                         st.markdown("<br>", unsafe_allow_html=True)
                         
-                        # === MÉTRICAS FINANCIERAS ===
-                        col5, col6, col7, col8 = st.columns(4)
+                        # === MÉTRICAS FINANCIERAS (CORREGIDAS) ===
+                        col5, col6, col7 = st.columns(3)  # Cambiado a 3 columnas
                         
                         total_apostado = df_vip["total_apostado"].sum()
                         total_cargado = df_vip["total_cargado"].sum() if "total_cargado" in df_vip.columns else 0
-                        promedio_apostado = df_vip["total_apostado"].mean()
-                        roi = ((total_cargado - total_apostado) / total_apostado * 100) if total_apostado > 0 else 0
+                        promedio_cargado = df_vip["total_cargado"].mean() if "total_cargado" in df_vip.columns else 0
                         
                         with col5:
                             st.markdown(f"""
@@ -1905,27 +1904,28 @@ elif auth_status:
                         with col7:
                             st.markdown(f"""
                             <div class="metric-card">
-                                <div class="metric-value">${promedio_apostado:,.0f}</div>
-                                <div class="metric-label">📊 Promedio Apostado</div>
-                            </div>
-                            """, unsafe_allow_html=True)
-                        
-                        with col8:
-                            st.markdown(f"""
-                            <div class="metric-card">
-                                <div class="metric-value">{roi:.1f}%</div>
-                                <div class="metric-label">📈 ROI</div>
+                                <div class="metric-value">${promedio_cargado:,.0f}</div>
+                                <div class="metric-label">📊 Promedio Cargado</div>
                             </div>
                             """, unsafe_allow_html=True)
                         
                         st.markdown("---")
                         
-                        # === GRÁFICOS PRINCIPALES ===
+                        # === GRÁFICOS PRINCIPALES MEJORADOS ===
                         col_left, col_right = st.columns(2)
                         
                         with col_left:
-                            # Gráfico de distribución por riesgo
+                            # Gráfico de distribución por riesgo (CORREGIDO)
                             riesgo_counts = df_vip["riesgo_abandono"].value_counts()
+                            
+                            # Calcular porcentajes manualmente para mejor control
+                            total_count = riesgo_counts.sum()
+                            riesgo_percentages = (riesgo_counts / total_count * 100).round(1)
+                            
+                            # Crear labels con valores y porcentajes
+                            labels_with_data = [f"{name}<br>{count} jugadores<br>({pct}%)" 
+                                              for name, count, pct in zip(riesgo_counts.index, riesgo_counts.values, riesgo_percentages)]
+                            
                             fig_pie = px.pie(
                                 values=riesgo_counts.values, 
                                 names=riesgo_counts.index,
@@ -1935,39 +1935,162 @@ elif auth_status:
                                     'medio': '#ffa502', 
                                     'bajo': '#2ed573'
                                 },
-                                hole=0.4
+                                hole=0.3
                             )
-                            fig_pie.update_traces(textposition='inside', textinfo='percent+label')
+                            
+                            # Mejorar la visualización del texto
+                            fig_pie.update_traces(
+                                textposition='auto',
+                                textinfo='label+percent+value',
+                                textfont_size=12,
+                                marker=dict(line=dict(color='#FFFFFF', width=2))
+                            )
+                            
                             fig_pie.update_layout(
                                 paper_bgcolor='rgba(0,0,0,0)',
                                 plot_bgcolor='rgba(0,0,0,0)',
-                                font=dict(color='white', size=12)
+                                font=dict(color='white', size=12),
+                                showlegend=True,
+                                legend=dict(
+                                    orientation="h",
+                                    yanchor="bottom",
+                                    y=-0.2,
+                                    xanchor="center",
+                                    x=0.5
+                                )
                             )
                             st.plotly_chart(fig_pie, use_container_width=True)
                         
                         with col_right:
-                            # Top 10 jugadores por monto apostado
-                            top_10 = df_vip.head(10)
-                            fig_bar = px.bar(
-                                top_10, 
-                                x="total_apostado", 
-                                y="usuario",
-                                orientation='h',
-                                title="🏆 Top 10 Jugadores por Monto Apostado",
-                                color="riesgo_abandono",
-                                color_discrete_map={
-                                    'alto': '#ff4757',
-                                    'medio': '#ffa502', 
-                                    'bajo': '#2ed573'
-                                }
-                            )
-                            fig_bar.update_layout(
-                                yaxis={'categoryorder':'total ascending'},
-                                paper_bgcolor='rgba(0,0,0,0)',
-                                plot_bgcolor='rgba(0,0,0,0)',
-                                font=dict(color='white', size=12)
-                            )
-                            st.plotly_chart(fig_bar, use_container_width=True)
+                            # Nuevo gráfico: Distribución por Casino (si existe la columna)
+                            if "casino" in df_vip.columns:
+                                casino_stats = df_vip.groupby("casino").agg({
+                                    "usuario": "count",
+                                    "total_cargado": "sum" if "total_cargado" in df_vip.columns else "total_apostado"
+                                }).round(0)
+                                
+                                casino_stats.columns = ["Jugadores", "Total Ingresos"]
+                                
+                                fig_casino = px.bar(
+                                    x=casino_stats.index,
+                                    y=casino_stats["Total Ingresos"],
+                                    title="🏢 Ingresos por Casino",
+                                    color=casino_stats.index,
+                                    color_discrete_sequence=px.colors.qualitative.Set3,
+                                    text=casino_stats["Total Ingresos"]
+                                )
+                                
+                                # Agregar etiquetas de datos
+                                fig_casino.update_traces(
+                                    texttemplate='$%{text:,.0f}',
+                                    textposition='outside'
+                                )
+                                
+                                fig_casino.update_layout(
+                                    paper_bgcolor='rgba(0,0,0,0)',
+                                    plot_bgcolor='rgba(0,0,0,0)',
+                                    font=dict(color='white', size=12),
+                                    xaxis_title="Casino",
+                                    yaxis_title="Total Ingresos ($)",
+                                    showlegend=False
+                                )
+                                st.plotly_chart(fig_casino, use_container_width=True)
+                            
+                            else:
+                                # Si no hay columna casino, mostrar distribución de montos
+                                # Crear rangos de montos para mejor visualización
+                                if "total_cargado" in df_vip.columns:
+                                    monto_col = "total_cargado"
+                                    titulo = "💳 Distribución de Montos Cargados"
+                                else:
+                                    monto_col = "total_apostado"
+                                    titulo = "💰 Distribución de Montos Apostados"
+                                
+                                # Crear bins para la distribución
+                                bins = [0, 5000, 15000, 50000, float('inf')]
+                                labels = ['$0-5K', '$5K-15K', '$15K-50K', '$50K+']
+                                
+                                df_vip['rango_monto'] = pd.cut(df_vip[monto_col], bins=bins, labels=labels, include_lowest=True)
+                                rango_counts = df_vip['rango_monto'].value_counts().sort_index()
+                                
+                                fig_dist = px.bar(
+                                    x=rango_counts.index,
+                                    y=rango_counts.values,
+                                    title=titulo,
+                                    color=rango_counts.index,
+                                    color_discrete_sequence=px.colors.sequential.Viridis,
+                                    text=rango_counts.values
+                                )
+                                
+                                fig_dist.update_traces(
+                                    texttemplate='%{text} jugadores',
+                                    textposition='outside'
+                                )
+                                
+                                fig_dist.update_layout(
+                                    paper_bgcolor='rgba(0,0,0,0)',
+                                    plot_bgcolor='rgba(0,0,0,0)',
+                                    font=dict(color='white', size=12),
+                                    xaxis_title="Rango de Montos",
+                                    yaxis_title="Cantidad de Jugadores",
+                                    showlegend=False
+                                )
+                                st.plotly_chart(fig_dist, use_container_width=True)
+                        
+                        st.markdown("---")
+                        
+                        # === RESUMEN EJECUTIVO ===
+                        st.markdown("### 📋 Resumen Ejecutivo")
+                        
+                        col1, col2, col3 = st.columns(3)
+                        
+                        with col1:
+                            # Concentración de riesgo
+                            pct_riesgo_alto = (riesgo_alto / total_jugadores * 100) if total_jugadores > 0 else 0
+                            color_riesgo = "🔴" if pct_riesgo_alto > 30 else "🟡" if pct_riesgo_alto > 15 else "🟢"
+                            
+                            st.markdown(f"""
+                            <div class="info-card">
+                                <strong>{color_riesgo} Estado de Riesgo</strong><br>
+                                {pct_riesgo_alto:.1f}% de jugadores en riesgo alto<br>
+                                <small>{'Atención crítica requerida' if pct_riesgo_alto > 30 else 'Monitoreo regular' if pct_riesgo_alto > 15 else 'Situación estable'}</small>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        with col2:
+                            # Eficiencia de carga
+                            if "total_cargado" in df_vip.columns and total_apostado > 0:
+                                eficiencia = (total_cargado / total_apostado * 100)
+                                color_eficiencia = "🟢" if eficiencia > 80 else "🟡" if eficiencia > 60 else "🔴"
+                                
+                                st.markdown(f"""
+                                <div class="info-card">
+                                    <strong>{color_eficiencia} Eficiencia de Carga</strong><br>
+                                    {eficiencia:.1f}% ratio carga/apuesta<br>
+                                    <small>{'Excelente conversión' if eficiencia > 80 else 'Buena conversión' if eficiencia > 60 else 'Mejorar conversión'}</small>
+                                </div>
+                                """, unsafe_allow_html=True)
+                            else:
+                                st.markdown("""
+                                <div class="info-card">
+                                    <strong>📊 Datos de Carga</strong><br>
+                                    Información no disponible<br>
+                                    <small>Agregar columna total_cargado</small>
+                                </div>
+                                """, unsafe_allow_html=True)
+                        
+                        with col3:
+                            # Valor promedio por jugador
+                            valor_promedio = promedio_cargado if "total_cargado" in df_vip.columns else df_vip["total_apostado"].mean()
+                            color_valor = "🟢" if valor_promedio > 25000 else "🟡" if valor_promedio > 10000 else "🔴"
+                            
+                            st.markdown(f"""
+                            <div class="info-card">
+                                <strong>{color_valor} Valor Promedio</strong><br>
+                                ${valor_promedio:,.0f} por jugador<br>
+                                <small>{'Alto valor' if valor_promedio > 25000 else 'Valor medio' if valor_promedio > 10000 else 'Oportunidad de crecimiento'}</small>
+                            </div>
+                            """, unsafe_allow_html=True)
                 
                 # === TAB 2: GESTIÓN DE DATOS ===
                 with tab2:
