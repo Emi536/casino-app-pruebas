@@ -1823,7 +1823,7 @@ elif auth_status:
                     "📈 Análisis Avanzado", 
                     "📤 Carga de Archivos"
                 ])
-                
+                #
                 # === TAB 1: DASHBOARD VIP CON GRÁFICOS ESTRATÉGICOS ===
                 with tab1:
                     st.markdown("## 📊 Dashboard Principal")
