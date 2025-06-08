@@ -1916,7 +1916,7 @@ elif auth_status:
                         
                         with col_left:
                             # Gráfico de distribución por riesgo (CORREGIDO)
-                            riesgo_counts = df_vip["riesgo_abandono"].value_counts()
+                            riesgo_counts = df_vip["riesgo_abandono"].value_counts().reindex(["alto", "medio", "bajo"], fill_value=0)
                             
                             # Calcular porcentajes manualmente para mejor control
                             total_count = riesgo_counts.sum()
