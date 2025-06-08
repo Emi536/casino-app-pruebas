@@ -392,7 +392,7 @@ elif auth_status:
         return df_registro
 
 
-    elif "📋 Registro Fénix/Eros" in seccion:
+    if  "📋 Registro Fénix/Eros" in seccion:
         st.header("📋 Registro general de jugadores")
     
         casino_actual = st.selectbox("🎰 Seleccioná el casino al que pertenece este reporte", [
