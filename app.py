@@ -1,6 +1,6 @@
 import streamlit as st
 st.set_page_config(page_title="Strike IQ - Análisis de Cargas", layout="wide")
-
+#
 import pandas as pd
 import datetime
 import plotly.express as px
