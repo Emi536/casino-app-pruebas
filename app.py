@@ -394,101 +394,101 @@ elif auth_status:
 
     elif "📋 Registro Fénix/Eros" in seccion:
         st.header("📋 Registro general de jugadores")
-
+    
         casino_actual = st.selectbox("🎰 Seleccioná el casino al que pertenece este reporte", [
             "Fénix", "Eros"
         ], key="casino_selector_fenix_eros")
         
         clave_casino = "fenix" if casino_actual == "Fénix" else "eros"
-
+    
         if "casino_anterior_fenix_eros" not in st.session_state:
             st.session_state["casino_anterior_fenix_eros"] = casino_actual
-
+    
         if casino_actual != st.session_state["casino_anterior_fenix_eros"]:
             st.session_state["casino_anterior_fenix_eros"] = casino_actual
             st.session_state.pop("archivo_procesado_fenix_eros", None)
             st.experimental_rerun()
-
+    
         archivo = st.file_uploader("📁 Subí el archivo del reporte (.xlsx)", type=["xlsx"], key="reporte_fenix_eros")
-
+    
         if archivo and not st.session_state.get("archivo_procesado_fenix_eros"):
             try:
                 df = pd.read_excel(archivo)
                 df = limpiar_transacciones(df)
                 df = agregar_columna_casino(df, casino_actual)
-
+    
                 engine = create_engine(st.secrets["DB_URL"])
                 subir_a_supabase(df, "reportes_jugadores", engine)
-
+    
                 st.session_state["archivo_procesado_fenix_eros"] = True
                 st.success("✅ Archivo subido y procesado correctamente.")
-
+    
             except Exception as e:
                 st.error(f"❌ Error al procesar o subir el archivo: {e}")
-
+    
         elif st.session_state.get("archivo_procesado_fenix_eros"):
             st.success("✅ El archivo ya fue procesado. Si querés subir uno nuevo, cambiá el casino o recargá la página.")
-
+    
         # === Visualización de la vista correspondiente ===
         st.markdown("---")
         st.subheader(f"🔍 Vista resumen de jugadores - {casino_actual}")
-
+    
         nombre_vista = "resumen_fenix" if casino_actual == "Fénix" else "resumen_eros"
-
+    
         try:
             engine = create_engine(st.secrets["DB_URL"])
             with engine.connect() as conn:
                 query = f'SELECT * FROM "{nombre_vista}" ORDER BY "Ganacias casino" DESC'
                 df_resumen = pd.read_sql(query, conn)
-
+    
             clave_casino = "fenix" if casino_actual == "Fénix" else "eros"
             df_bonos = cargar_tabla_bonos(clave_casino, sh)
-
+    
             df_resumen["__user_key"] = df_resumen["Nombre de jugador"].astype(str).str.lower().str.replace(" ", "").str.replace("_", "")
             df_bonos["__user_key"] = df_bonos["Usuario"].astype(str).str.lower().str.replace(" ", "").str.replace("_", "")
-
+    
             dict_tipo_bono = dict(zip(df_bonos["__user_key"], df_bonos["Tipo de Bono"]))
             dict_contacto = dict(zip(df_bonos["__user_key"], df_bonos["Últ. vez contactado"]))
-
+    
             if "Tipo de bono" in df_resumen.columns:
                 df_resumen["Tipo de bono"] = df_resumen["__user_key"].map(dict_tipo_bono).combine_first(df_resumen["Tipo de bono"])
                 df_resumen["Tipo de bono"] = df_resumen["Tipo de bono"].replace("", pd.NA).fillna("N/A")
-
+    
             if "Últ. vez contactado" in df_resumen.columns:
                 df_resumen["Últ. vez contactado"] = df_resumen["__user_key"].map(dict_contacto).fillna(df_resumen["Últ. vez contactado"])
-
+    
             df_resumen.drop(columns=["__user_key"], inplace=True)
-
+    
             df_resumen = asignar_princi(df_resumen, sh, clave_casino)
-
+    
             cols = df_resumen.columns.tolist()
             if "Tipo de bono" in cols and "PRINCI" in cols:
                 cols.remove("PRINCI")
                 idx = cols.index("Tipo de bono") + 1
                 cols.insert(idx, "PRINCI")
                 df_resumen = df_resumen[cols]
-
+    
             # 🗓️ Filtro por fecha
             st.markdown("### 📅 Filtrar jugadores por fecha de última carga")
             col1, col2 = st.columns(2)
-
+    
             if not pd.api.types.is_datetime64_any_dtype(df_resumen["Última vez que cargó"]):
                 df_resumen["Última vez que cargó"] = pd.to_datetime(df_resumen["Última vez que cargó"], errors="coerce")
-
+    
             with col1:
                 filtro_desde = st.date_input("📆 Desde", value=df_resumen["Última vez que cargó"].min().date(), key="desde_fecha_fenix_eros")
             with col2:
                 filtro_hasta = st.date_input("📆 Hasta", value=df_resumen["Última vez que cargó"].max().date(), key="hasta_fecha_fenix_eros")
-
+    
             df_resumen_filtrado = df_resumen[
                 (df_resumen["Última vez que cargó"] >= pd.to_datetime(filtro_desde)) &
                 (df_resumen["Última vez que cargó"] <= pd.to_datetime(filtro_hasta))
             ]
-
+    
             df_resumen_filtrado["Tipo de bono"] = df_resumen_filtrado["Tipo de bono"].fillna("N/A")
             col_filtro, _ = st.columns(2)
             tipos_disponibles = sorted(df_resumen_filtrado["Tipo de bono"].unique().tolist())
-
+    
             # ✅ Cambio: por defecto no se selecciona ningún tipo de bono
             seleccion_tipos = col_filtro.multiselect(
                 "🎯 Filtrar por tipo de bono:",
@@ -499,14 +499,14 @@ elif auth_status:
             # ✅ Agregado: si se selecciona al menos un tipo, se filtra; si no, se muestra todo
             if seleccion_tipos:
                 df_resumen_filtrado = df_resumen_filtrado[df_resumen_filtrado["Tipo de bono"].isin(seleccion_tipos)]
-
+    
             if not df_resumen_filtrado.empty:
                 st.dataframe(df_resumen_filtrado, use_container_width=True)
-
+    
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
                     df_resumen_filtrado.to_excel(writer, index=False, sheet_name=casino_actual)
-
+    
                 st.download_button(
                     "⬇️ Descargar Excel",
                     data=output.getvalue(),
@@ -517,16 +517,16 @@ elif auth_status:
                 st.info("ℹ️ No hay jugadores que coincidan con los filtros.")
         except Exception as e:
             st.error(f"❌ Error al consultar la vista del casino seleccionado: {e}")
-
+    
         st.markdown("----")
         st.subheader(f"🎁 Tabla de Bonos - {casino_actual}")
-
+    
         try:
             df_bonos = cargar_tabla_bonos(clave_casino, sh)
-
+    
             if not df_bonos.empty:
                 st.dataframe(df_bonos, use_container_width=True)
-
+    
                 output_bonos = io.BytesIO()
                 with pd.ExcelWriter(output_bonos, engine="xlsxwriter") as writer:
                     df_bonos.to_excel(writer, index=False, sheet_name=f"Bonos_{casino_actual}")
