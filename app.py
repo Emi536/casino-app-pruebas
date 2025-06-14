@@ -2014,7 +2014,10 @@ elif auth_status:
                         if not df_filtrado.empty:
                             st.markdown("### 📄 Tabla de Jugadores VIP")
                             st.dataframe(df_filtrado, use_container_width=True)
-                            
+
+                            # === RESUMEN VIP ADICIONAL (por jugador, casino, etc) ===
+                            st.markdown("### 🧾 Resumen VIP")
+                            st.dataframe(resumen_vip, use_container_width=True)    
                             # === DESCARGA DE DATOS ===
                             col1, col2 = st.columns(2)
                             
