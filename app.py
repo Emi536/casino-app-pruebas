@@ -1862,6 +1862,13 @@ elif auth_status:
                 except Exception as e:
                     st.error(f"❌ Error al consultar la tabla jugadores_vip: {e}")
                     df_vip = pd.DataFrame()
+
+                query_resumen = "SELECT * FROM resumen_vip"
+                try:
+                    resumen_vip = pd.read_sql(query_resumen, conn)
+                except Exception as e:
+                    st.error(f"❌ Error al consultar la vista resumen_vip: {e}")
+                    resumen_vip = pd.DataFrame()
                 
                 # --- PESTAÑAS PRINCIPALES ---
                 tab1, tab2, tab3, tab4 = st.tabs([
