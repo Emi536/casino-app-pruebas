@@ -2117,6 +2117,22 @@ elif auth_status:
                             """, unsafe_allow_html=True)
                         
                         st.markdown("---")
+                        # Consulta específica a resumen_vip con las columnas seleccionadas
+                        query_resumen_vip = """
+                            SELECT jugador, casino, princi, monto_total, total_retirado, 
+                                   ultima_vez_que_cargo, racha_activa_dias, fin_racha_activa, dias_desde_ultima_carga
+                            FROM resumen_vip
+                        """
+                        
+                        # Leer datos desde Supabase
+                        df_resumen_vip = pd.read_sql(query_resumen_vip, conn)
+                        
+                        # Mostramos la tabla resumida al inicio de la TAB 3
+                        st.markdown("### 📊 Resumen Operativo Actual de VIPs")
+                        
+                        # Podemos mostrarla como tabla simple
+                        st.dataframe(df_resumen_vip, use_container_width=True)
+
                         
                         # === SEGMENTACIÓN ESTRATÉGICA POR CARGA ===
                         st.markdown("### 🎯 Segmentación Estratégica por Valor de Carga")
