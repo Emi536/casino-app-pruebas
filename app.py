@@ -2127,10 +2127,19 @@ elif auth_status:
                         # Leer datos desde Supabase
                         df_resumen_vip = pd.read_sql(query_resumen_vip, conn)
                         
-                        # Mostramos la tabla resumida al inicio de la TAB 3
-                        st.markdown("### 📊 Resumen Operativo Actual de VIPs")
+                        # Agregamos el filtro de casino
+                        st.markdown("### 🔍 Filtro de Casino")
                         
-                        # Podemos mostrarla como tabla simple
+                        # Obtenemos los casinos únicos desde el df_resumen_vip
+                        casinos_disponibles = ["Todos"] + list(df_resumen_vip["casino"].unique())
+                        casino_filtro = st.selectbox("🏢 Casino", casinos_disponibles)
+                        
+                        # Aplicamos el filtro
+                        if casino_filtro != "Todos":
+                            df_resumen_vip = df_resumen_vip[df_resumen_vip["casino"] == casino_filtro]
+                        
+                        # Mostramos la tabla resumida ya filtrada
+                        st.markdown("### 📊 Resumen Operativo Actual de VIPs")
                         st.dataframe(df_resumen_vip, use_container_width=True)
 
                         
