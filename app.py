@@ -390,6 +390,44 @@ elif auth_status:
     
         return df_registro
 
+    def corregir_bonos_na_con_vips(df_resumen, casino_actual, engine):
+        try:
+            query = "SELECT LOWER(TRIM(nombre)) AS nombre, LOWER(TRIM(sesion)) AS sesion FROM names_vips"
+            df_vips = pd.read_sql(query, engine)
+    
+            # Preparamos el dataframe para coincidir sin espacios/guiones
+            df_resumen["__nombre_match"] = df_resumen["Nombre de jugador"].str.lower().str.replace(" ", "").str.replace("_", "")
+            df_vips["__nombre_match"] = df_vips["nombre"].str.replace(" ", "").str.replace("_", "")
+    
+            # Definimos qué prefijo de sesión buscar según el casino
+            if casino_actual.lower() == "fénix":
+                filtro_sesion = "fenix"
+            elif casino_actual.lower() == "eros":
+                filtro_sesion = "eros"
+            elif casino_actual.lower() == "bet argento":
+                filtro_sesion = "betarg"
+            elif casino_actual.lower() == "atlantis":
+                filtro_sesion = "atlantis"
+            else:
+                return df_resumen
+    
+            # Filtramos solo los VIPs del casino actual
+            df_vips_casino = df_vips[df_vips["sesion"].str.startswith(filtro_sesion)]
+    
+            # Creamos set de usuarios vips válidos para este casino
+            set_vips = set(df_vips_casino["__nombre_match"])
+    
+            # Corregimos los "N/A" si el usuario aparece como VIP
+            mask_vip_na = df_resumen["Tipo de bono"].str.upper() == "N/A"
+            mask_usuario_vip = df_resumen["__nombre_match"].isin(set_vips)
+            df_resumen.loc[mask_vip_na & mask_usuario_vip, "Tipo de bono"] = "VIP"
+    
+            df_resumen.drop(columns=["__nombre_match"], inplace=True)
+            return df_resumen
+    
+        except Exception as e:
+            print(f"⚠️ Error en corrección de N/A con VIPs: {e}")
+            return df_resumen
 
     if  "📋 Registro Fénix/Eros" in seccion:
         st.header("📋 Registro general de jugadores")
@@ -452,6 +490,7 @@ elif auth_status:
             if "Tipo de bono" in df_resumen.columns:
                 df_resumen["Tipo de bono"] = df_resumen["__user_key"].map(dict_tipo_bono).combine_first(df_resumen["Tipo de bono"])
                 df_resumen["Tipo de bono"] = df_resumen["Tipo de bono"].replace("", pd.NA).fillna("N/A")
+                df_resumen = corregir_bonos_na_con_vips(df_resumen, casino_actual, engine)
     
             if "Últ. vez contactado" in df_resumen.columns:
                 df_resumen["Últ. vez contactado"] = df_resumen["__user_key"].map(dict_contacto).fillna(df_resumen["Últ. vez contactado"])
@@ -601,6 +640,7 @@ elif auth_status:
             if "Tipo de bono" in df_resumen.columns:
                 df_resumen["Tipo de bono"] = df_resumen["__user_key"].map(dict_tipo_bono).combine_first(df_resumen["Tipo de bono"])
                 df_resumen["Tipo de bono"] = df_resumen["Tipo de bono"].replace("", pd.NA).fillna("N/A")
+                df_resumen = corregir_bonos_na_con_vips(df_resumen, casino_actual, engine)
     
             if "Últ. vez contactado" in df_resumen.columns:
                 df_resumen["Últ. vez contactado"] = df_resumen["__user_key"].map(dict_contacto).fillna(df_resumen["Últ. vez contactado"])
