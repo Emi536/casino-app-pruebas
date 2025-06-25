@@ -668,21 +668,27 @@ elif auth_status:
             engine = create_engine(st.secrets["DB_URL"])
             with engine.connect() as conn:
                 query_movs = f"""
-                    SELECT DISTINCT LOWER(TRIM("Al usuario")) AS jugador
+                    SELECT DISTINCT LOWER(TRIM(REPLACE("Al usuario", ' ', ''))) AS jugador_normalizado
                     FROM reportes_jugadores
-                    WHERE casino = '{clave_casino}'
-                    AND DATE("Fecha") BETWEEN '{filtro_desde}' AND '{filtro_hasta}'
+                    WHERE LOWER(casino) = '{clave_casino.lower()}'
+                    AND "Fecha" BETWEEN '{filtro_desde}' AND '{filtro_hasta}'
                 """
                 df_movs = pd.read_sql(query_movs, conn)
             
-            # Aplicar filtro real sobre df_resumen
-            usuarios_filtrados = df_movs["jugador"].dropna().unique()
-            df_resumen["__jugador_filtrado"] = df_resumen["Nombre de jugador"].astype(str).str.lower().str.strip()
+            # Normalizamos ambos lados para asegurar coincidencias
+            df_resumen["__jugador_normalizado"] = (
+                df_resumen["Nombre de jugador"]
+                .astype(str)
+                .str.lower()
+                .str.replace(" ", "")
+                .str.strip()
+            )
             
-            df_resumen_filtrado = df_resumen[df_resumen["__jugador_filtrado"].isin(usuarios_filtrados)].copy()
-            df_resumen_filtrado.drop(columns="__jugador_filtrado", inplace=True)
+            usuarios_filtrados = df_movs["jugador_normalizado"].dropna().unique()
+            df_resumen_filtrado = df_resumen[df_resumen["__jugador_normalizado"].isin(usuarios_filtrados)].copy()
+            df_resumen_filtrado.drop(columns="__jugador_normalizado", inplace=True)
             
-            # Filtro adicional por tipo de bono (si se desea)
+            # Filtro adicional por tipo de bono (opcional)
             df_resumen_filtrado["Tipo de bono"] = df_resumen_filtrado["Tipo de bono"].fillna("N/A")
             col_filtro, _ = st.columns(2)
             tipos_disponibles = sorted(df_resumen_filtrado["Tipo de bono"].unique().tolist())
