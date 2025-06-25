@@ -655,35 +655,47 @@ elif auth_status:
                 cols.insert(idx, "PRINCI")
                 df_resumen = df_resumen[cols]
     
-            # 🗓️ Filtro por fecha
-            st.markdown("### 📅 Filtrar jugadores por fecha de última carga")
+            # 🗓️ Filtro por fecha de actividad real
+            st.markdown("### 📅 Filtrar jugadores por movimientos entre fechas reales")
+            
             col1, col2 = st.columns(2)
-    
-            if not pd.api.types.is_datetime64_any_dtype(df_resumen["Última vez que cargó"]):
-                df_resumen["Última vez que cargó"] = pd.to_datetime(df_resumen["Última vez que cargó"], errors="coerce")
-    
             with col1:
-                filtro_desde = st.date_input("📆 Desde", value=df_resumen["Última vez que cargó"].min().date(), key="desde_fecha_bet_atlantis")
+                filtro_desde = st.date_input("📆 Desde", key="desde_fecha_bet_atlantis")
             with col2:
-                filtro_hasta = st.date_input("📆 Hasta", value=df_resumen["Última vez que cargó"].max().date(), key="hasta_fecha_bet_atlantis")
-    
-            df_resumen_filtrado = df_resumen[
-                (df_resumen["Última vez que cargó"] >= pd.to_datetime(filtro_desde)) &
-                (df_resumen["Última vez que cargó"] <= pd.to_datetime(filtro_hasta))
-            ]
-    
+                filtro_hasta = st.date_input("📆 Hasta", key="hasta_fecha_bet_atlantis")
+            
+            # Conexión a Supabase para filtrar jugadores con movimientos en ese rango
+            engine = create_engine(st.secrets["DB_URL"])
+            with engine.connect() as conn:
+                query_movs = f"""
+                    SELECT DISTINCT LOWER(TRIM("Al usuario")) AS jugador
+                    FROM reportes_jugadores
+                    WHERE casino = '{clave_casino}'
+                    AND "Fecha" BETWEEN '{filtro_desde}' AND '{filtro_hasta}'
+                """
+                df_movs = pd.read_sql(query_movs, conn)
+            
+            # Aplicar filtro real sobre df_resumen
+            usuarios_filtrados = df_movs["jugador"].dropna().unique()
+            df_resumen["__jugador_filtrado"] = df_resumen["Nombre de jugador"].astype(str).str.lower().str.strip()
+            
+            df_resumen_filtrado = df_resumen[df_resumen["__jugador_filtrado"].isin(usuarios_filtrados)].copy()
+            df_resumen_filtrado.drop(columns="__jugador_filtrado", inplace=True)
+            
+            # Filtro adicional por tipo de bono (si se desea)
             df_resumen_filtrado["Tipo de bono"] = df_resumen_filtrado["Tipo de bono"].fillna("N/A")
             col_filtro, _ = st.columns(2)
             tipos_disponibles = sorted(df_resumen_filtrado["Tipo de bono"].unique().tolist())
-    
+            
             seleccion_tipos = col_filtro.multiselect(
                 "🎯 Filtrar por tipo de bono:",
                 options=tipos_disponibles,
-                default=[]  # ← esto evita que se filtre por defecto
+                default=[]
             )
             
             if seleccion_tipos:
                 df_resumen_filtrado = df_resumen_filtrado[df_resumen_filtrado["Tipo de bono"].isin(seleccion_tipos)]
+
     
             if not df_resumen_filtrado.empty:
                 st.dataframe(df_resumen_filtrado, use_container_width=True)
@@ -786,21 +798,31 @@ elif auth_status:
                 cols.insert(idx, "PRINCI")
                 df_resumen = df_resumen[cols]
     
-            st.markdown("### 📅 Filtrar jugadores por fecha de última carga")
+            st.markdown("### 📅 Filtrar jugadores por fechas reales de actividad")
+            
             col1, col2 = st.columns(2)
-    
-            if not pd.api.types.is_datetime64_any_dtype(df_resumen["Última vez que cargó"]):
-                df_resumen["Última vez que cargó"] = pd.to_datetime(df_resumen["Última vez que cargó"], errors="coerce")
-    
             with col1:
-                filtro_desde = st.date_input("📆 Desde", value=df_resumen["Última vez que cargó"].min().date(), key="desde_spirita")
+                filtro_desde = st.date_input("📆 Desde", value=datetime.today() - timedelta(days=30), key="desde_spirita")
             with col2:
-                filtro_hasta = st.date_input("📆 Hasta", value=df_resumen["Última vez que cargó"].max().date(), key="hasta_spirita")
-    
-            df_filtrado = df_resumen[
-                (df_resumen["Última vez que cargó"] >= pd.to_datetime(filtro_desde)) &
-                (df_resumen["Última vez que cargó"] <= pd.to_datetime(filtro_hasta))
-            ]
+                filtro_hasta = st.date_input("📆 Hasta", value=datetime.today(), key="hasta_spirita")
+            
+            # Conexión a Supabase para traer actividad real
+            with engine.connect() as conn:
+                query_jugadores = f"""
+                    SELECT DISTINCT LOWER(TRIM("Al usuario")) AS jugador
+                    FROM reportes_jugadores
+                    WHERE LOWER(TRIM(casino)) = 'spirita'
+                    AND "Fecha" BETWEEN '{filtro_desde}' AND '{filtro_hasta}'
+                """
+                df_activos = pd.read_sql(query_jugadores, conn)
+            
+            # Filtramos el resumen usando el listado real de jugadores activos
+            jugadores_activos = df_activos["jugador"].dropna().unique().tolist()
+            
+            # Generamos user_key para hacer match exacto
+            df_resumen["__user_key"] = df_resumen["Nombre de jugador"].astype(str).str.lower().str.replace(" ", "").str.replace("_", "")
+            df_filtrado = df_resumen[df_resumen["__user_key"].isin(jugadores_activos)]
+
     
             df_filtrado["Tipo de bono"] = df_filtrado["Tipo de bono"].fillna("N/A")
             col_filtro, _ = st.columns(2)
@@ -1287,248 +1309,6 @@ elif auth_status:
                 st.info("ℹ️ No hay datos en la tabla de bonos para este casino.")
         except Exception as e:
             st.error(f"❌ Error al cargar tabla de bonos: {e}")
-
-    
-    elif seccion == "📆 Agenda Fénix":
-        st.header("📆 Seguimiento de Jugadores Nuevos - Fénix")
-    
-        try:
-            hoja_agenda = sh.worksheet("agenda_fenix")
-            nombres_agenda = hoja_agenda.col_values(1)[1:]  # Omite encabezado
-            nombres_agenda = [str(n).strip().lower().replace(" ", "") for n in nombres_agenda if n]
-        except:
-            st.error("❌ No se pudo leer la hoja 'agenda_fenix'")
-            st.stop()
-    
-        try:
-            hoja_fenix = sh.worksheet("registro_fenix")
-            data_fenix = hoja_fenix.get_all_records()
-            df_fenix = pd.DataFrame(data_fenix)
-        except:
-            st.error("❌ No se pudo leer la hoja 'registro_fenix'")
-            st.stop()
-    
-        df_fenix = df_fenix.rename(columns={
-            "Del usuario": "Plataforma",
-            "Jugador": "Jugador",
-            "Monto": "Monto",
-            "Fecha": "Fecha",
-            "Tipo": "Tipo"
-        })
-    
-        df_fenix["Jugador"] = df_fenix["Jugador"].astype(str).str.strip().str.lower().str.replace(" ", "")
-        df_fenix["Fecha"] = pd.to_datetime(df_fenix["Fecha"], errors="coerce")
-        df_fenix["Monto"] = pd.to_numeric(df_fenix["Monto"], errors="coerce").fillna(0)
-    
-        valores_wagger = ["Fenix_Wagger100", "Fenix_Wagger40", "Fenix_Wagger30", "Fenix_Wagger50", "Fenix_Wagger150", "Fenix_Wagger200"]
-    
-        hoy = pd.to_datetime(datetime.date.today())
-        resumen = []
-    
-        for jugador in nombres_agenda:
-            historial = df_fenix[df_fenix["Jugador"] == jugador].sort_values("Fecha")
-            cargas = historial[historial["Tipo"].str.lower() == "in"]
-    
-            if not cargas.empty:
-                cargas_hl = cargas[cargas["Plataforma"] == "hl_casinofenix"]
-                cargas_wagger = cargas[cargas["Plataforma"].isin(valores_wagger)]
-    
-                suma_hl = cargas_hl["Monto"].sum()
-                suma_wagger = cargas_wagger["Monto"].sum()
-                total_cargas = cargas["Monto"].sum()
-                fecha_ingreso = cargas["Fecha"].min()
-                ultima_carga = cargas["Fecha"].max()
-                promedio = cargas["Monto"].mean()
-                dias_inactivo = (hoy - ultima_carga).days
-    
-                if dias_inactivo <= 3:
-                    riesgo = "🟢 Bajo"
-                elif dias_inactivo <= 19:
-                    riesgo = "🟡 Medio"
-                else:
-                    riesgo = "🔴 Alto"
-    
-                resumen.append({
-                    "Nombre de Usuario": jugador,
-                    "Fecha que ingresó": fecha_ingreso,
-                    "Última vez que cargó": ultima_carga,
-                    "Veces que cargó": len(cargas),
-                    "Suma de las cargas (HL)": suma_hl,
-                    "Suma de las cargas (Wagger)": suma_wagger,
-                    "Monto promedio": promedio,
-                    "Días inactivos": dias_inactivo,
-                    "Nivel de riesgo": riesgo
-                })
-    
-        if resumen:
-            df_resultado = pd.DataFrame(resumen).sort_values("Última vez que cargó", ascending=False)
-            st.subheader("📊 Resumen jugadores de agenda")
-            st.dataframe(df_resultado)
-            df_resultado.to_excel("resumen_agenda_fenix.xlsx", index=False)
-            with open("resumen_agenda_fenix.xlsx", "rb") as f:
-                st.download_button("📥 Descargar Excel", f, file_name="resumen_agenda_fenix.xlsx")
-        else:
-            st.info("⚠️ No se encontraron coincidencias entre jugadores nuevos y el historial de Fénix.")
-
-    elif seccion == "📆 Agenda Eros":
-        st.header("📆 Seguimiento de Jugadores Nuevos - Eros")
-    
-        try:
-            hoja_agenda = sh.worksheet("agenda_eros")
-            nombres_agenda = hoja_agenda.col_values(1)[1:]
-            nombres_agenda = [str(n).strip().lower().replace(" ", "") for n in nombres_agenda if n]
-        except:
-            st.error("❌ No se pudo leer la hoja 'agenda_eros'")
-            st.stop()
-    
-        try:
-            hoja_eros = sh.worksheet("registro_eros")
-            data_eros = hoja_eros.get_all_records()
-            df_eros = pd.DataFrame(data_eros)
-        except:
-            st.error("❌ No se pudo leer la hoja 'registro_eros'")
-            st.stop()
-    
-        df_eros = df_eros.rename(columns={
-            "Del usuario": "Plataforma",
-            "Jugador": "Jugador",
-            "Monto": "Monto",
-            "Fecha": "Fecha",
-            "Tipo": "Tipo"
-        })
-    
-        df_eros["Jugador"] = df_eros["Jugador"].astype(str).str.strip().str.lower().str.replace(" ", "")
-        df_eros["Fecha"] = pd.to_datetime(df_eros["Fecha"], errors="coerce")
-        df_eros["Monto"] = pd.to_numeric(df_eros["Monto"], errors="coerce").fillna(0)
-    
-        valores_wagger = ["Eros_wagger30%", "Eros_wagger40%", "Eros_wagger50%", "Eros_wagger100%", "Eros_wagger150%", "Eros_wagger200%"]
-    
-        hoy = pd.to_datetime(datetime.date.today())
-        resumen = []
-    
-        for jugador in nombres_agenda:
-            historial = df_eros[df_eros["Jugador"] == jugador].sort_values("Fecha")
-            cargas = historial[historial["Tipo"].str.lower() == "in"]
-    
-            if not cargas.empty:
-                cargas_hl = cargas[cargas["Plataforma"] == "hl_Erosonline"]
-                cargas_wagger = cargas[cargas["Plataforma"].isin(valores_wagger)]
-    
-                suma_hl = cargas_hl["Monto"].sum()
-                suma_wagger = cargas_wagger["Monto"].sum()
-                fecha_ingreso = cargas["Fecha"].min()
-                ultima_carga = cargas["Fecha"].max()
-                promedio = cargas["Monto"].mean()
-                dias_inactivo = (hoy - ultima_carga).days
-    
-                if dias_inactivo <= 3:
-                    riesgo = "🟢 Bajo"
-                elif dias_inactivo <= 19:
-                    riesgo = "🟡 Medio"
-                else:
-                    riesgo = "🔴 Alto"
-    
-                resumen.append({
-                    "Nombre de Usuario": jugador,
-                    "Fecha que ingresó": fecha_ingreso,
-                    "Última vez que cargó": ultima_carga,
-                    "Veces que cargó": len(cargas),
-                    "Suma de las cargas (HL)": suma_hl,
-                    "Suma de las cargas (Wagger)": suma_wagger,
-                    "Monto promedio": promedio,
-                    "Días inactivos": dias_inactivo,
-                    "Nivel de riesgo": riesgo
-                })
-    
-        if resumen:
-            df_resultado = pd.DataFrame(resumen).sort_values("Última vez que cargó", ascending=False)
-            st.subheader("📊 Resumen jugadores de agenda")
-            st.dataframe(df_resultado)
-            df_resultado.to_excel("resumen_agenda_eros.xlsx", index=False)
-            with open("resumen_agenda_eros.xlsx", "rb") as f:
-                st.download_button("📥 Descargar Excel", f, file_name="resumen_agenda_eros.xlsx")
-        else:
-            st.info("⚠️ No se encontraron coincidencias entre jugadores nuevos y el historial de Eros.")
-
-    elif seccion == "📆 Agenda BetArgento":
-        st.header("📆 Seguimiento de Jugadores Nuevos - BetArgento")
-    
-        try:
-            hoja_agenda = sh.worksheet("agenda_bet")
-            nombres_agenda = hoja_agenda.col_values(1)[1:]
-            nombres_agenda = [str(n).strip().lower().replace(" ", "") for n in nombres_agenda if n]
-        except:
-            st.error("❌ No se pudo leer la hoja 'agenda_bet'")
-            st.stop()
-    
-        try:
-            hoja_bet = sh.worksheet("registro_betargento")
-            data_bet = hoja_bet.get_all_records()
-            df_bet = pd.DataFrame(data_bet)
-        except:
-            st.error("❌ No se pudo leer la hoja 'registro_betargento'")
-            st.stop()
-    
-        df_bet = df_bet.rename(columns={
-            "Del usuario": "Plataforma",
-            "Jugador": "Jugador",
-            "Monto": "Monto",
-            "Fecha": "Fecha",
-            "Tipo": "Tipo"
-        })
-    
-        df_bet["Jugador"] = df_bet["Jugador"].astype(str).str.strip().str.lower().str.replace(" ", "")
-        df_bet["Fecha"] = pd.to_datetime(df_bet["Fecha"], errors="coerce")
-        df_bet["Monto"] = pd.to_numeric(df_bet["Monto"], errors="coerce").fillna(0)
-    
-        valores_wagger = ["Argento_Wager","Argento_Wager30","Argento_Wager100", "Argento_Wager50", "Argento_Wager150", "Argento_Wager200"]
-    
-        hoy = pd.to_datetime(datetime.date.today())
-        resumen = []
-    
-        for jugador in nombres_agenda:
-            historial = df_bet[df_bet["Jugador"] == jugador].sort_values("Fecha")
-            cargas = historial[historial["Tipo"].str.lower() == "in"]
-    
-            if not cargas.empty:
-                cargas_hl = cargas[cargas["Plataforma"] == "hl_BetArgento"]
-                cargas_wagger = cargas[cargas["Plataforma"].isin(valores_wagger)]
-    
-                suma_hl = cargas_hl["Monto"].sum()
-                suma_wagger = cargas_wagger["Monto"].sum()
-                fecha_ingreso = cargas["Fecha"].min()
-                ultima_carga = cargas["Fecha"].max()
-                promedio = cargas["Monto"].mean()
-                dias_inactivo = (hoy - ultima_carga).days
-    
-                if dias_inactivo <= 3:
-                    riesgo = "🟢 Bajo"
-                elif dias_inactivo <= 19:
-                    riesgo = "🟡 Medio"
-                else:
-                    riesgo = "🔴 Alto"
-    
-                resumen.append({
-                    "Nombre de Usuario": jugador,
-                    "Fecha que ingresó": fecha_ingreso,
-                    "Última vez que cargó": ultima_carga,
-                    "Veces que cargó": len(cargas),
-                    "Suma de las cargas (HL)": suma_hl,
-                    "Suma de las cargas (Wagger)": suma_wagger,
-                    "Monto promedio": promedio,
-                    "Días inactivos": dias_inactivo,
-                    "Nivel de riesgo": riesgo
-                })
-    
-        if resumen:
-            df_resultado = pd.DataFrame(resumen).sort_values("Última vez que cargó", ascending=False)
-            st.subheader("📊 Resumen jugadores de agenda")
-            st.dataframe(df_resultado)
-            df_resultado.to_excel("resumen_agenda_betargento.xlsx", index=False)
-            with open("resumen_agenda_betargento.xlsx", "rb") as f:
-                st.download_button("📥 Descargar Excel", f, file_name="resumen_agenda_betargento.xlsx")
-        else:
-            st.info("⚠️ No se encontraron coincidencias entre jugadores nuevos y el historial de BetArgento.")
 
     # Sección: Análisis Temporal
     elif seccion == "📊 Análisis Temporal":
