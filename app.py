@@ -668,27 +668,27 @@ elif auth_status:
             engine = create_engine(st.secrets["DB_URL"])
             with engine.connect() as conn:
                 query_movs = f"""
-                    SELECT DISTINCT LOWER(TRIM(REPLACE("Al usuario", ' ', ''))) AS jugador_normalizado
+                    SELECT DISTINCT LOWER(REGEXP_REPLACE(TRIM("Al usuario"), '[^a-zA-Z0-9]', '', 'g')) AS jugador_key
                     FROM reportes_jugadores
                     WHERE LOWER(casino) = '{clave_casino.lower()}'
                     AND "Fecha" BETWEEN '{filtro_desde}' AND '{filtro_hasta}'
                 """
                 df_movs = pd.read_sql(query_movs, conn)
             
-            # Normalizamos ambos lados para asegurar coincidencias
-            df_resumen["__jugador_normalizado"] = (
+            # Normalizar nombres en el resumen
+            df_resumen["jugador_key"] = (
                 df_resumen["Nombre de jugador"]
                 .astype(str)
                 .str.lower()
-                .str.replace(" ", "")
-                .str.strip()
+                .str.replace(r"[^a-zA-Z0-9]", "", regex=True)
             )
             
-            usuarios_filtrados = df_movs["jugador_normalizado"].dropna().unique()
-            df_resumen_filtrado = df_resumen[df_resumen["__jugador_normalizado"].isin(usuarios_filtrados)].copy()
-            df_resumen_filtrado.drop(columns="__jugador_normalizado", inplace=True)
+            # Filtrar por coincidencias reales
+            usuarios_filtrados = df_movs["jugador_key"].dropna().unique()
+            df_resumen_filtrado = df_resumen[df_resumen["jugador_key"].isin(usuarios_filtrados)].copy()
+            df_resumen_filtrado.drop(columns=["jugador_key"], inplace=True)
             
-            # Filtro adicional por tipo de bono (opcional)
+            # Filtro adicional por tipo de bono
             df_resumen_filtrado["Tipo de bono"] = df_resumen_filtrado["Tipo de bono"].fillna("N/A")
             col_filtro, _ = st.columns(2)
             tipos_disponibles = sorted(df_resumen_filtrado["Tipo de bono"].unique().tolist())
@@ -701,6 +701,7 @@ elif auth_status:
             
             if seleccion_tipos:
                 df_resumen_filtrado = df_resumen_filtrado[df_resumen_filtrado["Tipo de bono"].isin(seleccion_tipos)]
+
 
     
             if not df_resumen_filtrado.empty:
