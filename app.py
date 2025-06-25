@@ -664,34 +664,35 @@ elif auth_status:
             with col2:
                 filtro_hasta = st.date_input("📆 Hasta", key="hasta_fecha_bet_atlantis")
             
-            # Conexión a Supabase para filtrar jugadores con movimientos en ese rango
+            # ✅ Paso 1: Traer todos los movimientos reales desde Supabase
             engine = create_engine(st.secrets["DB_URL"])
             with engine.connect() as conn:
                 query_movs = f"""
-                    SELECT DISTINCT LOWER(REGEXP_REPLACE(TRIM("Al usuario"), '[^a-zA-Z0-9]', '', 'g')) AS jugador_key
+                    SELECT LOWER(TRIM("Al usuario")) AS jugador,
+                           "Fecha"
                     FROM reportes_jugadores
                     WHERE LOWER(casino) = '{clave_casino.lower()}'
                     AND "Fecha" BETWEEN '{filtro_desde}' AND '{filtro_hasta}'
                 """
                 df_movs = pd.read_sql(query_movs, conn)
             
-            # Normalizar nombres en el resumen
-            df_resumen["jugador_key"] = (
-                df_resumen["Nombre de jugador"]
-                .astype(str)
-                .str.lower()
-                .str.replace(r"[^a-zA-Z0-9]", "", regex=True)
-            )
+            # ⚠️ Validación temprana
+            if df_movs.empty:
+                st.warning("⚠️ No hay movimientos registrados en ese rango de fechas.")
+                st.stop()
             
-            # Filtrar por coincidencias reales
-            usuarios_filtrados = df_movs["jugador_key"].dropna().unique()
-            df_resumen_filtrado = df_resumen[df_resumen["jugador_key"].isin(usuarios_filtrados)].copy()
-            df_resumen_filtrado.drop(columns=["jugador_key"], inplace=True)
+            # ✅ Paso 2: Normalizar resumen para cruce
+            df_resumen["jugador_key"] = df_resumen["Nombre de jugador"].str.strip().str.lower()
+            df_movs["jugador_key"] = df_movs["jugador"].str.strip().str.lower()
             
-            # Filtro adicional por tipo de bono
-            df_resumen_filtrado["Tipo de bono"] = df_resumen_filtrado["Tipo de bono"].fillna("N/A")
+            # ✅ Paso 3: Unir movimientos con el resumen
+            df_filtrado = df_resumen.merge(df_movs[["jugador_key"]].drop_duplicates(), on="jugador_key", how="inner")
+            df_filtrado.drop(columns="jugador_key", inplace=True)
+            
+            # ✅ Paso 4: Filtro adicional por tipo de bono
+            df_filtrado["Tipo de bono"] = df_filtrado["Tipo de bono"].fillna("N/A")
             col_filtro, _ = st.columns(2)
-            tipos_disponibles = sorted(df_resumen_filtrado["Tipo de bono"].unique().tolist())
+            tipos_disponibles = sorted(df_filtrado["Tipo de bono"].unique().tolist())
             
             seleccion_tipos = col_filtro.multiselect(
                 "🎯 Filtrar por tipo de bono:",
@@ -700,7 +701,7 @@ elif auth_status:
             )
             
             if seleccion_tipos:
-                df_resumen_filtrado = df_resumen_filtrado[df_resumen_filtrado["Tipo de bono"].isin(seleccion_tipos)]
+                df_filtrado = df_filtrado[df_filtrado["Tipo de bono"].isin(seleccion_tipos)]
 
 
     
