@@ -748,39 +748,39 @@ elif auth_status:
             st.error(f"❌ Error al cargar tabla de bonos: {e}")
 
 
-    # SECCIÓN SPIRITA
-    elif "📋 Registro Spirita" in seccion:
-        st.header("📋 Registro general de jugadores - Spirita")
+    #SECCIÓN ATENEA
+    elif "📋 Registro Atenea" in seccion:
+        st.header("📋 Registro general de jugadores - Atenea")
     
-        archivo = st.file_uploader("📁 Subí el archivo del reporte (.xlsx)", type=["xlsx"], key="reporte_spirita")
+        archivo = st.file_uploader("📁 Subí el archivo del reporte (.xlsx)", type=["xlsx"], key="reporte_atenea")
     
-        if archivo and not st.session_state.get("archivo_procesado_spirita"):
+        if archivo and not st.session_state.get("archivo_procesado_atenea"):
             try:
                 df = pd.read_excel(archivo)
                 df = limpiar_transacciones(df)
-                df = agregar_columna_casino(df, "Spirita")
+                df = agregar_columna_casino(df, "Atenea")
     
                 engine = create_engine(st.secrets["DB_URL"])
                 subir_a_supabase(df, "reportes_jugadores", engine)
     
-                st.session_state["archivo_procesado_spirita"] = True
+                st.session_state["archivo_procesado_atenea"] = True
                 st.success("✅ Archivo subido y procesado correctamente.")
             except Exception as e:
                 st.error(f"❌ Error al procesar o subir el archivo: {e}")
     
-        elif st.session_state.get("archivo_procesado_spirita"):
+        elif st.session_state.get("archivo_procesado_atenea"):
             st.success("✅ El archivo ya fue procesado. Recargá la página si querés subir uno nuevo.")
     
         st.markdown("---")
-        st.subheader("🔍 Vista resumen de jugadores - Spirita")
+        st.subheader("🔍 Vista resumen de jugadores - Atenea")
     
         try:
             engine = create_engine(st.secrets["DB_URL"])
             with engine.connect() as conn:
-                query = 'SELECT * FROM "resumen_spirita" ORDER BY "Ganacias casino" DESC'
+                query = 'SELECT * FROM "resumen_atenea" ORDER BY "Ganacias casino" DESC'
                 df_resumen = pd.read_sql(query, conn)
     
-            df_bonos = cargar_tabla_bonos("spirita", sh)
+            df_bonos = cargar_tabla_bonos("atenea", sh)
     
             df_resumen["__user_key"] = df_resumen["Nombre de jugador"].astype(str).str.lower().str.replace(" ", "").str.replace("_", "")
             df_bonos["__user_key"] = df_bonos["Usuario"].astype(str).str.lower().str.replace(" ", "").str.replace("_", "")
@@ -796,9 +796,9 @@ elif auth_status:
                 df_resumen["Últ. vez contactado"] = df_resumen["__user_key"].map(dict_contacto).fillna(df_resumen["Últ. vez contactado"])
     
             df_resumen.drop(columns=["__user_key"], inplace=True)
-    
-            df_resumen = asignar_princi(df_resumen, sh, "spirita")
-    
+
+            df_resumen = asignar_princi(df_resumen, sh, "atenea")
+
             cols = df_resumen.columns.tolist()
             if "Tipo de bono" in cols and "PRINCI" in cols:
                 cols.remove("PRINCI")
@@ -806,31 +806,21 @@ elif auth_status:
                 cols.insert(idx, "PRINCI")
                 df_resumen = df_resumen[cols]
     
-            st.markdown("### 📅 Filtrar jugadores por fechas reales de actividad")
-            
+            st.markdown("### 📅 Filtrar jugadores por fecha de última carga")
             col1, col2 = st.columns(2)
+    
+            if not pd.api.types.is_datetime64_any_dtype(df_resumen["Última vez que cargó"]):
+                df_resumen["Última vez que cargó"] = pd.to_datetime(df_resumen["Última vez que cargó"], errors="coerce")
+    
             with col1:
-                filtro_desde = st.date_input("📆 Desde", value=datetime.today() - timedelta(days=30), key="desde_spirita")
+                filtro_desde = st.date_input("📆 Desde", value=df_resumen["Última vez que cargó"].min().date(), key="desde_atenea")
             with col2:
-                filtro_hasta = st.date_input("📆 Hasta", value=datetime.today(), key="hasta_spirita")
-            
-            # Conexión a Supabase para traer actividad real
-            with engine.connect() as conn:
-                query_jugadores = f"""
-                    SELECT DISTINCT LOWER(TRIM("Al usuario")) AS jugador
-                    FROM reportes_jugadores
-                    WHERE LOWER(TRIM(casino)) = 'spirita'
-                    AND "Fecha" BETWEEN '{filtro_desde}' AND '{filtro_hasta}'
-                """
-                df_activos = pd.read_sql(query_jugadores, conn)
-            
-            # Filtramos el resumen usando el listado real de jugadores activos
-            jugadores_activos = df_activos["jugador"].dropna().unique().tolist()
-            
-            # Generamos user_key para hacer match exacto
-            df_resumen["__user_key"] = df_resumen["Nombre de jugador"].astype(str).str.lower().str.replace(" ", "").str.replace("_", "")
-            df_filtrado = df_resumen[df_resumen["__user_key"].isin(jugadores_activos)]
-
+                filtro_hasta = st.date_input("📆 Hasta", value=df_resumen["Última vez que cargó"].max().date(), key="hasta_atenea")
+    
+            df_filtrado = df_resumen[
+                (df_resumen["Última vez que cargó"] >= pd.to_datetime(filtro_desde)) &
+                (df_resumen["Última vez que cargó"] <= pd.to_datetime(filtro_hasta))
+            ]
     
             df_filtrado["Tipo de bono"] = df_filtrado["Tipo de bono"].fillna("N/A")
             col_filtro, _ = st.columns(2)
@@ -850,41 +840,41 @@ elif auth_status:
     
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-                    df_filtrado.to_excel(writer, index=False, sheet_name="Spirita")
+                    df_filtrado.to_excel(writer, index=False, sheet_name="Atenea")
     
                 st.download_button(
                     "⬇️ Descargar Excel",
                     data=output.getvalue(),
-                    file_name="spirita_resumen.xlsx",
+                    file_name="atenea_resumen.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
             else:
                 st.info("ℹ️ No hay jugadores que coincidan con los filtros.")
     
         except Exception as e:
-            st.error(f"❌ Error al consultar la vista resumen de Spirita: {e}")
+            st.error(f"❌ Error al consultar la vista resumen de Atenea: {e}")
     
         st.markdown("----")
-        st.subheader("🎁 Tabla de Bonos - Spirita")
+        st.subheader("🎁 Tabla de Bonos - Atenea")
     
         try:
-            df_bonos = cargar_tabla_bonos("spirita", sh)
+            df_bonos = cargar_tabla_bonos("atenea", sh)
     
             if not df_bonos.empty:
                 st.dataframe(df_bonos, use_container_width=True)
     
                 output_bonos = io.BytesIO()
                 with pd.ExcelWriter(output_bonos, engine="xlsxwriter") as writer:
-                    df_bonos.to_excel(writer, index=False, sheet_name="Bonos_Spirita")
+                    df_bonos.to_excel(writer, index=False, sheet_name="Bonos_Atenea")
     
                 st.download_button(
                     "⬇️ Descargar Tabla de Bonos",
                     data=output_bonos.getvalue(),
-                    file_name="spirita_bonos.xlsx",
+                    file_name="atenea_bonos.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
             else:
-                st.info("ℹ️ No hay datos en la tabla de bonos de Spirita.")
+                st.info("ℹ️ No hay datos en la tabla de bonos de Atenea.")
         except Exception as e:
             st.error(f"❌ Error al cargar la tabla de bonos: {e}")
 
