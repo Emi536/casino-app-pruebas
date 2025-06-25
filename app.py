@@ -671,7 +671,7 @@ elif auth_status:
                     SELECT DISTINCT LOWER(TRIM("Al usuario")) AS jugador
                     FROM reportes_jugadores
                     WHERE casino = '{clave_casino}'
-                    AND "Fecha" BETWEEN '{filtro_desde}' AND '{filtro_hasta}'
+                    AND DATE("Fecha") BETWEEN '{filtro_desde}' AND '{filtro_hasta}'
                 """
                 df_movs = pd.read_sql(query_movs, conn)
             
