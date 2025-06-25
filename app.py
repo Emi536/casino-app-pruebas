@@ -509,34 +509,33 @@ elif auth_status:
             # 🗓️ Filtro por fecha
             st.markdown("### 📅 Filtrar jugadores por fecha de última carga")
             col1, col2 = st.columns(2)
-    
+            
             if not pd.api.types.is_datetime64_any_dtype(df_resumen["Última vez que cargó"]):
                 df_resumen["Última vez que cargó"] = pd.to_datetime(df_resumen["Última vez que cargó"], errors="coerce")
-    
+            
             with col1:
                 filtro_desde = st.date_input("📆 Desde", value=df_resumen["Última vez que cargó"].min().date(), key="desde_fecha_fenix_eros")
             with col2:
                 filtro_hasta = st.date_input("📆 Hasta", value=df_resumen["Última vez que cargó"].max().date(), key="hasta_fecha_fenix_eros")
-    
+            
             df_resumen_filtrado = df_resumen[
                 (df_resumen["Última vez que cargó"] >= pd.to_datetime(filtro_desde)) &
                 (df_resumen["Última vez que cargó"] <= pd.to_datetime(filtro_hasta))
             ]
-    
+            
             df_resumen_filtrado["Tipo de bono"] = df_resumen_filtrado["Tipo de bono"].fillna("N/A")
             col_filtro, _ = st.columns(2)
             tipos_disponibles = sorted(df_resumen_filtrado["Tipo de bono"].unique().tolist())
-    
-            # ✅ Cambio: por defecto no se selecciona ningún tipo de bono
+            
             seleccion_tipos = col_filtro.multiselect(
                 "🎯 Filtrar por tipo de bono:",
                 options=tipos_disponibles,
                 default=[]
             )
             
-            # ✅ Agregado: si se selecciona al menos un tipo, se filtra; si no, se muestra todo
             if seleccion_tipos:
                 df_resumen_filtrado = df_resumen_filtrado[df_resumen_filtrado["Tipo de bono"].isin(seleccion_tipos)]
+
     
             if not df_resumen_filtrado.empty:
                 st.dataframe(df_resumen_filtrado, use_container_width=True)
