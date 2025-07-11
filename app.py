@@ -470,12 +470,36 @@ elif auth_status:
         st.markdown("---")
         st.subheader(f"🔍 Vista resumen de jugadores - {casino_actual}")
     
-        nombre_vista = "resumen_fenix" if casino_actual == "Fénix" else "resumen_eros"
+        nombre_funcion = "resumen_fenix_dinamico" if casino_actual == "Fénix" else "resumen_eros_dinamico"
+        
+        # 🗓️ NUEVO filtro de rango dinámico — antes de abrir conexión
+        st.markdown("### 📅 Seleccioná el rango de fechas")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            filtro_desde = st.date_input(
+                "📆 Desde",
+                value=pd.to_datetime("2025-07-01").date(),
+                key="desde_fecha_fenix_eros"
+            )
+        with col2:
+            filtro_hasta = st.date_input(
+                "📆 Hasta",
+                value=pd.to_datetime("2025-07-10").date(),
+                key="hasta_fecha_fenix_eros"
+            )
+
     
         try:
             engine = create_engine(st.secrets["DB_URL"])
             with engine.connect() as conn:
-                query = f'SELECT * FROM "{nombre_vista}" ORDER BY "Ganacias casino" DESC'
+                query = f"""
+                SELECT * FROM {nombre_funcion}(
+                  '{filtro_desde.strftime('%Y-%m-%d')}',
+                  '{filtro_hasta.strftime('%Y-%m-%d')}'
+                )
+                ORDER BY "Ganacias casino" DESC
+                """
                 df_resumen = pd.read_sql(query, conn)
     
             clave_casino = "fenix" if casino_actual == "Fénix" else "eros"
@@ -505,27 +529,10 @@ elif auth_status:
                 idx = cols.index("Tipo de bono") + 1
                 cols.insert(idx, "PRINCI")
                 df_resumen = df_resumen[cols]
-    
-            # 🗓️ Filtro por fecha
-            st.markdown("### 📅 Filtrar jugadores por fecha de última carga")
-            col1, col2 = st.columns(2)
             
-            if not pd.api.types.is_datetime64_any_dtype(df_resumen["Última vez que cargó"]):
-                df_resumen["Última vez que cargó"] = pd.to_datetime(df_resumen["Última vez que cargó"], errors="coerce")
-            
-            with col1:
-                filtro_desde = st.date_input("📆 Desde", value=df_resumen["Última vez que cargó"].min().date(), key="desde_fecha_fenix_eros")
-            with col2:
-                filtro_hasta = st.date_input("📆 Hasta", value=df_resumen["Última vez que cargó"].max().date(), key="hasta_fecha_fenix_eros")
-            
-            df_resumen_filtrado = df_resumen[
-                (df_resumen["Última vez que cargó"] >= pd.to_datetime(filtro_desde)) &
-                (df_resumen["Última vez que cargó"] <= pd.to_datetime(filtro_hasta))
-            ]
-            
-            df_resumen_filtrado["Tipo de bono"] = df_resumen_filtrado["Tipo de bono"].fillna("N/A")
+            df_resumen["Tipo de bono"] = df_resumen["Tipo de bono"].fillna("N/A")
             col_filtro, _ = st.columns(2)
-            tipos_disponibles = sorted(df_resumen_filtrado["Tipo de bono"].unique().tolist())
+            tipos_disponibles = sorted(df_resumen["Tipo de bono"].unique().tolist())
             
             seleccion_tipos = col_filtro.multiselect(
                 "🎯 Filtrar por tipo de bono:",
@@ -534,15 +541,15 @@ elif auth_status:
             )
             
             if seleccion_tipos:
-                df_resumen_filtrado = df_resumen_filtrado[df_resumen_filtrado["Tipo de bono"].isin(seleccion_tipos)]
+                df_resumen = df_resumen[df_resumen["Tipo de bono"].isin(seleccion_tipos)]
 
     
-            if not df_resumen_filtrado.empty:
-                st.dataframe(df_resumen_filtrado, use_container_width=True)
+            if not df_resumen.empty:
+                st.dataframe(df_resumen, use_container_width=True)
     
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-                    df_resumen_filtrado.to_excel(writer, index=False, sheet_name=casino_actual)
+                    df_resumen.to_excel(writer, index=False, sheet_name=casino_actual)
     
                 st.download_button(
                     "⬇️ Descargar Excel",
