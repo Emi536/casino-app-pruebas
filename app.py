@@ -479,13 +479,13 @@ elif auth_status:
         with col1:
             filtro_desde = st.date_input(
                 "📆 Desde",
-                value=pd.to_datetime("2025-07-01").date(),
+                value=pd.to_datetime("2023-01-01").date(),
                 key="desde_fecha_fenix_eros"
             )
         with col2:
             filtro_hasta = st.date_input(
                 "📆 Hasta",
-                value=pd.to_datetime("2025-07-10").date(),
+                value=datetime.date.today(),
                 key="hasta_fecha_fenix_eros"
             )
 
@@ -635,13 +635,13 @@ elif auth_status:
         with col1:
             filtro_desde = st.date_input(
                 "📆 Desde",
-                value=pd.to_datetime("2025-07-01").date(),
+                value=pd.to_datetime("2023-01-01").date(),
                 key="desde_fecha_bet_atlantis"
             )
         with col2:
             filtro_hasta = st.date_input(
                 "📆 Hasta",
-                value=pd.to_datetime("2025-07-10").date(),
+                value=datetime.date.today(),
                 key="hasta_fecha_bet_atlantis"
             )
 
@@ -772,13 +772,13 @@ elif auth_status:
         with col1:
             filtro_desde = st.date_input(
                 "📆 Desde",
-                value=pd.to_datetime("2025-07-01").date(),
+                value=pd.to_datetime("2023-01-01").date(),
                 key="desde_spirita"
             )
         with col2:
             filtro_hasta = st.date_input(
                 "📆 Hasta",
-                value=pd.to_datetime("2025-07-10").date(),
+                value=datetime.date.today(),
                 key="hasta_spirita"
             )
 
@@ -908,13 +908,13 @@ elif auth_status:
         with col1:
             filtro_desde = st.date_input(
                 "📆 Desde",
-                value=pd.to_datetime("2025-07-01").date(),
+                value=pd.to_datetime("2023-01-01").date(),
                 key="desde_atenea"
             )
         with col2:
             filtro_hasta = st.date_input(
                 "📆 Hasta",
-                value=pd.to_datetime("2025-07-10").date(),
+                value=datetime.date.today(),
                 key="hasta_atenea"
             )
     
@@ -1059,13 +1059,13 @@ elif auth_status:
         with col1:
             filtro_desde = st.date_input(
                 "📆 Desde",
-                value=pd.to_datetime("2025-07-01").date(),
+                value=pd.to_datetime("2023-01-01").date(),
                 key="desde_fecha_padrino_tiger"
             )
         with col2:
             filtro_hasta = st.date_input(
                 "📆 Hasta",
-                value=pd.to_datetime("2025-07-10").date(),
+               value=datetime.date.today(),
                 key="hasta_fecha_padrino_tiger"
             )
 
@@ -1220,13 +1220,13 @@ elif auth_status:
         with col1:
             filtro_desde = st.date_input(
                 "📆 Desde",
-                value=pd.to_datetime("2025-07-01").date(),
+                value=pd.to_datetime("2023-01-01").date(),
                 key="desde_fecha_fortuna_gana24"
             )
         with col2:
             filtro_hasta = st.date_input(
                 "📆 Hasta",
-                value=pd.to_datetime("2025-07-10").date(),
+                value=datetime.date.today(),
                 key="hasta_fecha_fortuna_gana24"
             )
 
