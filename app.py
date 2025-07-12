@@ -764,11 +764,34 @@ elif auth_status:
     
         st.markdown("---")
         st.subheader("🔍 Vista resumen de jugadores - Spirita")
-    
+
+
+        st.markdown("### 📅 Filtrar jugadores por fecha de última carga")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            filtro_desde = st.date_input(
+                "📆 Desde",
+                value=pd.to_datetime("2025-07-01").date(),
+                key="desde_spirita"
+            )
+        with col2:
+            filtro_hasta = st.date_input(
+                "📆 Hasta",
+                value=pd.to_datetime("2025-07-10").date(),
+                key="hasta_spirita"
+            )
+
         try:
             engine = create_engine(st.secrets["DB_URL"])
             with engine.connect() as conn:
-                query = 'SELECT * FROM "resumen_spirita" ORDER BY "Ganacias casino" DESC'
+                query = f"""
+                SELECT * FROM resumen_spirita_dinamico(
+                  '{filtro_desde.strftime('%Y-%m-%d')}',
+                  '{filtro_hasta.strftime('%Y-%m-%d')}'
+                )
+                ORDER BY "Ganacias casino" DESC
+                """
                 df_resumen = pd.read_sql(query, conn)
     
             df_bonos = cargar_tabla_bonos("spirita", sh)
@@ -797,25 +820,9 @@ elif auth_status:
                 cols.insert(idx, "PRINCI")
                 df_resumen = df_resumen[cols]
     
-            st.markdown("### 📅 Filtrar jugadores por fecha de última carga")
-            col1, col2 = st.columns(2)
-    
-            if not pd.api.types.is_datetime64_any_dtype(df_resumen["Última vez que cargó"]):
-                df_resumen["Última vez que cargó"] = pd.to_datetime(df_resumen["Última vez que cargó"], errors="coerce")
-    
-            with col1:
-                filtro_desde = st.date_input("📆 Desde", value=df_resumen["Última vez que cargó"].min().date(), key="desde_spirita")
-            with col2:
-                filtro_hasta = st.date_input("📆 Hasta", value=df_resumen["Última vez que cargó"].max().date(), key="hasta_spirita")
-    
-            df_filtrado = df_resumen[
-                (df_resumen["Última vez que cargó"] >= pd.to_datetime(filtro_desde)) &
-                (df_resumen["Última vez que cargó"] <= pd.to_datetime(filtro_hasta))
-            ]
-    
-            df_filtrado["Tipo de bono"] = df_filtrado["Tipo de bono"].fillna("N/A")
+            df_resumen["Tipo de bono"] = df_resumen["Tipo de bono"].fillna("N/A")
             col_filtro, _ = st.columns(2)
-            tipos_disponibles = sorted(df_filtrado["Tipo de bono"].unique().tolist())
+            tipos_disponibles = sorted(df_resumen["Tipo de bono"].unique().tolist())
     
             seleccion_tipos = col_filtro.multiselect(
                 "🎯 Filtrar por tipo de bono:",
@@ -824,14 +831,14 @@ elif auth_status:
             )
     
             if seleccion_tipos:
-                df_filtrado = df_filtrado[df_filtrado["Tipo de bono"].isin(seleccion_tipos)]
+                df_resumen = df_resumen[df_resumen["Tipo de bono"].isin(seleccion_tipos)]
     
-            if not df_filtrado.empty:
-                st.dataframe(df_filtrado, use_container_width=True)
+            if not df_resumen.empty:
+                st.dataframe(df_resumen, use_container_width=True)
     
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-                    df_filtrado.to_excel(writer, index=False, sheet_name="Spirita")
+                    df_resumen.to_excel(writer, index=False, sheet_name="Spirita")
     
                 st.download_button(
                     "⬇️ Descargar Excel",
@@ -894,11 +901,33 @@ elif auth_status:
     
         st.markdown("---")
         st.subheader("🔍 Vista resumen de jugadores - Atenea")
+
+        st.markdown("### 📅 Filtrar jugadores por fecha")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            filtro_desde = st.date_input(
+                "📆 Desde",
+                value=pd.to_datetime("2025-07-01").date(),
+                key="desde_atenea"
+            )
+        with col2:
+            filtro_hasta = st.date_input(
+                "📆 Hasta",
+                value=pd.to_datetime("2025-07-10").date(),
+                key="hasta_atenea"
+            )
     
         try:
             engine = create_engine(st.secrets["DB_URL"])
             with engine.connect() as conn:
-                query = 'SELECT * FROM "resumen_atenea" ORDER BY "Ganacias casino" DESC'
+                query = f"""
+                SELECT * FROM resumen_atenea_dinamico(
+                    '{filtro_desde.strftime('%Y-%m-%d')}',
+                    '{filtro_hasta.strftime('%Y-%m-%d')}'
+                )
+                ORDER BY "Ganacias casino" DESC
+                """
                 df_resumen = pd.read_sql(query, conn)
     
             df_bonos = cargar_tabla_bonos("atenea", sh)
@@ -927,25 +956,9 @@ elif auth_status:
                 cols.insert(idx, "PRINCI")
                 df_resumen = df_resumen[cols]
     
-            st.markdown("### 📅 Filtrar jugadores por fecha de última carga")
-            col1, col2 = st.columns(2)
-    
-            if not pd.api.types.is_datetime64_any_dtype(df_resumen["Última vez que cargó"]):
-                df_resumen["Última vez que cargó"] = pd.to_datetime(df_resumen["Última vez que cargó"], errors="coerce")
-    
-            with col1:
-                filtro_desde = st.date_input("📆 Desde", value=df_resumen["Última vez que cargó"].min().date(), key="desde_atenea")
-            with col2:
-                filtro_hasta = st.date_input("📆 Hasta", value=df_resumen["Última vez que cargó"].max().date(), key="hasta_atenea")
-    
-            df_filtrado = df_resumen[
-                (df_resumen["Última vez que cargó"] >= pd.to_datetime(filtro_desde)) &
-                (df_resumen["Última vez que cargó"] <= pd.to_datetime(filtro_hasta))
-            ]
-    
-            df_filtrado["Tipo de bono"] = df_filtrado["Tipo de bono"].fillna("N/A")
+            df_resumen["Tipo de bono"] = df_resumen["Tipo de bono"].fillna("N/A")
             col_filtro, _ = st.columns(2)
-            tipos_disponibles = sorted(df_filtrado["Tipo de bono"].unique().tolist())
+            tipos_disponibles = sorted(df_resumen["Tipo de bono"].unique().tolist())
     
             seleccion_tipos = col_filtro.multiselect(
                 "🎯 Filtrar por tipo de bono:",
@@ -954,14 +967,14 @@ elif auth_status:
             )
     
             if seleccion_tipos:
-                df_filtrado = df_filtrado[df_filtrado["Tipo de bono"].isin(seleccion_tipos)]
+                df_resumen = df_resumen[df_resumen["Tipo de bono"].isin(seleccion_tipos)]
     
-            if not df_filtrado.empty:
-                st.dataframe(df_filtrado, use_container_width=True)
+            if not df_resumen.empty:
+                st.dataframe(df_resumen, use_container_width=True)
     
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-                    df_filtrado.to_excel(writer, index=False, sheet_name="Atenea")
+                    df_resumen.to_excel(writer, index=False, sheet_name="Atenea")
     
                 st.download_button(
                     "⬇️ Descargar Excel",
@@ -1038,12 +1051,34 @@ elif auth_status:
         st.markdown("---")
         st.subheader(f"🔍 Vista resumen de jugadores - {casino_actual}")
 
-        nombre_vista = "resumen_padrino_latino" if casino_actual == "Padrino Latino" else "resumen_tiger"
+        nombre_funcion = "resumen_padrino_latino_dinamico" if casino_actual == "Padrino Latino" else "resumen_tiger_dinamico"
+        st.markdown("### 📅 Filtrar jugadores por fecha")
+
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            filtro_desde = st.date_input(
+                "📆 Desde",
+                value=pd.to_datetime("2025-07-01").date(),
+                key="desde_fecha_padrino_tiger"
+            )
+        with col2:
+            filtro_hasta = st.date_input(
+                "📆 Hasta",
+                value=pd.to_datetime("2025-07-10").date(),
+                key="hasta_fecha_padrino_tiger"
+            )
 
         try:
             engine = create_engine(st.secrets["DB_URL"])
             with engine.connect() as conn:
-                query = f'SELECT * FROM "{nombre_vista}" ORDER BY "Ganacias casino" DESC'
+                query = f"""
+                SELECT * FROM {nombre_funcion}(
+                  '{filtro_desde.strftime('%Y-%m-%d')}',
+                  '{filtro_hasta.strftime('%Y-%m-%d')}'
+                )
+                ORDER BY "Ganacias casino" DESC
+                """
                 df_resumen = pd.read_sql(query, conn)
         
             # 🧠 Actualizar desde tabla de bonos
@@ -1080,27 +1115,10 @@ elif auth_status:
                 cols.insert(idx, "PRINCI")
                 df_resumen = df_resumen[cols]
         
-            # 🗓️ Filtro por fecha
-            st.markdown("### 📅 Filtrar jugadores por fecha de última carga")
-            col1, col2 = st.columns(2)
-        
-            if not pd.api.types.is_datetime64_any_dtype(df_resumen["Última vez que cargó"]):
-                df_resumen["Última vez que cargó"] = pd.to_datetime(df_resumen["Última vez que cargó"], errors="coerce")
-        
-            with col1:
-                filtro_desde = st.date_input("📆 Desde", value=df_resumen["Última vez que cargó"].min().date(), key="desde_ultima_carga")
-            with col2:
-                filtro_hasta = st.date_input("📆 Hasta", value=df_resumen["Última vez que cargó"].max().date(), key="hasta_ultima_carga")
-        
-            df_resumen_filtrado = df_resumen[
-                (df_resumen["Última vez que cargó"] >= pd.to_datetime(filtro_desde)) &
-                (df_resumen["Última vez que cargó"] <= pd.to_datetime(filtro_hasta))
-            ]
-        
             # 🎯 Filtro por tipo de bono
-            df_resumen_filtrado["Tipo de bono"] = df_resumen_filtrado["Tipo de bono"].fillna("N/A")
+            df_resumen["Tipo de bono"] = df_resumen["Tipo de bono"].fillna("N/A")
             col_filtro, col_orden = st.columns(2)
-            tipos_disponibles = sorted(df_resumen_filtrado["Tipo de bono"].unique().tolist())
+            tipos_disponibles = sorted(df_resumen["Tipo de bono"].unique().tolist())
         
             seleccion_tipos = col_filtro.multiselect(
                 "🎯 Filtrar por tipo de bono:",
@@ -1109,15 +1127,15 @@ elif auth_status:
             )
             
             if seleccion_tipos:
-                df_resumen_filtrado = df_resumen_filtrado[df_resumen_filtrado["Tipo de bono"].isin(seleccion_tipos)]
+                df_resumen = df_resumen[df_resumen["Tipo de bono"].isin(seleccion_tipos)]
         
             # ✅ Mostrar y exportar
-            if not df_resumen_filtrado.empty:
-                st.dataframe(df_resumen_filtrado, use_container_width=True)
+            if not df_resumen.empty:
+                st.dataframe(df_resumen, use_container_width=True)
         
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-                    df_resumen_filtrado.to_excel(writer, index=False, sheet_name=casino_actual)
+                    df_resumen.to_excel(writer, index=False, sheet_name=casino_actual)
         
                 st.download_button(
                     "⬇️ Descargar Excel",
@@ -1195,12 +1213,33 @@ elif auth_status:
         st.markdown("---")
         st.subheader(f"🔍 Vista resumen de jugadores - {casino_actual}")
 
-        nombre_vista = "resumen_fortuna" if casino_actual == "Fortuna" else "resumen_gana24"
+        nombre_funcion = "resumen_fortuna_dinamico" if casino_actual == "Fortuna" else "resumen_gana24_dinamico"
+        st.markdown("### 📅 Filtrar jugadores por fecha")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            filtro_desde = st.date_input(
+                "📆 Desde",
+                value=pd.to_datetime("2025-07-01").date(),
+                key="desde_fecha_fortuna_gana24"
+            )
+        with col2:
+            filtro_hasta = st.date_input(
+                "📆 Hasta",
+                value=pd.to_datetime("2025-07-10").date(),
+                key="hasta_fecha_fortuna_gana24"
+            )
 
         try:
             engine = create_engine(st.secrets["DB_URL"])
             with engine.connect() as conn:
-                query = f'SELECT * FROM "{nombre_vista}" ORDER BY "Ganacias casino" DESC'
+                query = f"""
+                SELECT * FROM {nombre_funcion}(
+                  '{filtro_desde.strftime('%Y-%m-%d')}',
+                  '{filtro_hasta.strftime('%Y-%m-%d')}'
+                )
+                ORDER BY "Ganacias casino" DESC
+                """
                 df_resumen = pd.read_sql(query, conn)
 
             df_bonos = cargar_tabla_bonos(clave_casino, sh)
@@ -1229,25 +1268,9 @@ elif auth_status:
                 cols.insert(idx, "PRINCI")
                 df_resumen = df_resumen[cols]
 
-            st.markdown("### 📅 Filtrar jugadores por fecha de última carga")
-            col1, col2 = st.columns(2)
-
-            if not pd.api.types.is_datetime64_any_dtype(df_resumen["Última vez que cargó"]):
-                df_resumen["Última vez que cargó"] = pd.to_datetime(df_resumen["Última vez que cargó"], errors="coerce")
-
-            with col1:
-                filtro_desde = st.date_input("📆 Desde", value=df_resumen["Última vez que cargó"].min().date(), key="desde_fecha_fortuna_gana24")
-            with col2:
-                filtro_hasta = st.date_input("📆 Hasta", value=df_resumen["Última vez que cargó"].max().date(), key="hasta_fecha_fortuna_gana24")
-
-            df_resumen_filtrado = df_resumen[
-                (df_resumen["Última vez que cargó"] >= pd.to_datetime(filtro_desde)) &
-                (df_resumen["Última vez que cargó"] <= pd.to_datetime(filtro_hasta))
-            ]
-
-            df_resumen_filtrado["Tipo de bono"] = df_resumen_filtrado["Tipo de bono"].fillna("N/A")
+            df_resumen["Tipo de bono"] = df_resumen["Tipo de bono"].fillna("N/A")
             col_filtro, _ = st.columns(2)
-            tipos_disponibles = sorted(df_resumen_filtrado["Tipo de bono"].unique().tolist())
+            tipos_disponibles = sorted(df_resumen["Tipo de bono"].unique().tolist())
 
             seleccion_tipos = col_filtro.multiselect(
                 "🎯 Filtrar por tipo de bono:",
@@ -1256,14 +1279,14 @@ elif auth_status:
             )
 
             if seleccion_tipos:
-                df_resumen_filtrado = df_resumen_filtrado[df_resumen_filtrado["Tipo de bono"].isin(seleccion_tipos)]
+                df_resumen = df_resumen[df_resumen["Tipo de bono"].isin(seleccion_tipos)]
 
-            if not df_resumen_filtrado.empty:
-                st.dataframe(df_resumen_filtrado, use_container_width=True)
+            if not df_resumen.empty:
+                st.dataframe(df_resumen, use_container_width=True)
 
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-                    df_resumen_filtrado.to_excel(writer, index=False, sheet_name=casino_actual)
+                    df_resumen.to_excel(writer, index=False, sheet_name=casino_actual)
 
                 st.download_button(
                     "⬇️ Descargar Excel",
