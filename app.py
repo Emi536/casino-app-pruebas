@@ -2597,7 +2597,7 @@ elif auth_status:
                     st.markdown("### 🏢 Configuración")
                     casino = st.selectbox(
                         "Seleccioná el casino al que pertenece este archivo", 
-                        ["Fenix", "Eros", "Bet Argento", "Atlantis"],
+                        ["Fenix", "Eros", "Bet Argento", "Atlantis","Spirita"],
                         help="Esta información se agregará automáticamente a los datos cargados"
                     )
                     
