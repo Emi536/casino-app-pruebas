@@ -1950,7 +1950,7 @@ elif auth_status:
                         st.markdown("---")
                         # Consulta específica a resumen_vip con las columnas seleccionadas
                         query_resumen_vip = """
-                            SELECT jugador, casino, princi, monto_total, total_retirado, 
+                            SELECT jugador, casino, princi, clasificacion, monto_total, total_retirado, 
                                    ultima_vez_que_cargo, racha_activa_dias, fin_racha_activa, dias_desde_ultima_carga
                             FROM resumen_vip
                         """
@@ -1965,9 +1965,31 @@ elif auth_status:
                         casinos_disponibles = ["Todos"] + list(df_resumen_vip["casino"].unique())
                         casino_filtro = st.selectbox("🏢 Casino", casinos_disponibles)
                         
-                        # Aplicamos el filtro
                         if casino_filtro != "Todos":
                             df_resumen_vip = df_resumen_vip[df_resumen_vip["casino"] == casino_filtro]
+                        
+                        # --- Nuevo filtro por clasificación ---
+                        if "clasificacion" in df_resumen_vip.columns:
+                            # Normalizamos para evitar problemas de mayúsculas/espacios
+                            opciones_norm = (
+                                df_resumen_vip["clasificacion"]
+                                .dropna()
+                                .astype(str)
+                                .str.strip()
+                                .str.lower()
+                                .unique()
+                            )
+                            # Armamos opciones visibles (capitalizadas)
+                            opciones_visibles = ["Todos"] + [opt.capitalize() for opt in sorted(opciones_norm)]
+                            
+                            # Preseleccionar "Oro" si existe; si no, "Todos"
+                            index_default = opciones_visibles.index("Oro") if "oro" in opciones_norm else 0
+                            clasificacion_filtro = st.selectbox("🏷 Clasificación", opciones_visibles, index=index_default)
+                        
+                            if clasificacion_filtro != "Todos":
+                                df_resumen_vip = df_resumen_vip[
+                                    df_resumen_vip["clasificacion"].astype(str).str.strip().str.lower() == clasificacion_filtro.lower()
+                                ]
                         
                         # Mostramos la tabla resumida ya filtrada
                         st.markdown("### 📊 Resumen Operativo Actual de VIPs")
