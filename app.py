@@ -107,9 +107,9 @@ elif auth_status:
     
      # Definir qué secciones ve cada rol
     secciones_por_rol = {
-        "admin": ["🏢 Oficina VIP", "📋 Registro Fénix/Eros", "📋 Registro BetArgento/Atlantis","📋 Registro Spirita","📋 Registro Atenea","📋 Registro Padrino Latino/Tiger","📋 Registro Fortuna/Gana 24","📆 Agenda Fénix","📆 Agenda Eros","📆 Agenda BetArgento","📊 Análisis Temporal"],
+        "admin": ["🏢 Oficina VIP", "📋 Registro Fénix/Eros", "📋 Registro BetArgento/Atlantis","📋 Registro Spirita","📋 Registro Mi Jugada","📋 Registro Atenea","📋 Registro Padrino Latino/Tiger","📋 Registro Fortuna/Gana 24","📆 Agenda Fénix","📆 Agenda Eros","📆 Agenda BetArgento","📊 Análisis Temporal"],
         "fenix_eros": ["📋 Registro Fénix/Eros"],
-        "bet": ["📋 Registro BetArgento/Atlantis"],
+        "bet": ["📋 Registro BetArgento/Atlantis,"📋 Registro Mi Jugada"],
         "spirita":["📋 Registro Spirita"],
         "atenea":["📋 Registro Atenea"],
         "padrino":["📋 Registro Padrino Latino/Tiger"],
@@ -873,6 +873,142 @@ elif auth_status:
                 )
             else:
                 st.info("ℹ️ No hay datos en la tabla de bonos de Spirita.")
+        except Exception as e:
+            st.error(f"❌ Error al cargar la tabla de bonos: {e}")
+
+    # SECCIÓN MI JUGADA
+    elif "📋 Registro Mi Jugada" in seccion:
+        st.header("📋 Registro general de jugadores - Mi Jugada")
+    
+        archivo = st.file_uploader("📁 Subí el archivo del reporte (.xlsx)", type=["xlsx"], key="reporte_mijugada")
+    
+        if archivo and not st.session_state.get("archivo_procesado_mijugada"):
+            try:
+                df = pd.read_excel(archivo)
+                df = limpiar_transacciones(df)
+                df = agregar_columna_casino(df, "Mi Jugada")
+    
+                engine = create_engine(st.secrets["DB_URL"])
+                subir_a_supabase(df, "reportes_jugadores", engine)
+    
+                st.session_state["archivo_procesado_mijugada"] = True
+                st.success("✅ Archivo subido y procesado correctamente.")
+            except Exception as e:
+                st.error(f"❌ Error al procesar o subir el archivo: {e}")
+    
+        elif st.session_state.get("archivo_procesado_mijugada"):
+            st.success("✅ El archivo ya fue procesado. Recargá la página si querés subir uno nuevo.")
+    
+        st.markdown("---")
+        st.subheader("🔍 Vista resumen de jugadores - Mi Jugada")
+    
+        st.markdown("### 📅 Filtrar jugadores por fecha de última carga")
+        col1, col2 = st.columns(2)
+    
+        with col1:
+            filtro_desde = st.date_input(
+                "📆 Desde",
+                value=pd.to_datetime("2023-01-01").date(),
+                key="desde_mijugada"
+            )
+        with col2:
+            filtro_hasta = st.date_input(
+                "📆 Hasta",
+                value=datetime.date.today(),
+                key="hasta_mijugada"
+            )
+    
+        try:
+            engine = create_engine(st.secrets["DB_URL"])
+            with engine.connect() as conn:
+                query = f"""
+                SELECT * FROM resumen_mijugada_dinamico(
+                  '{filtro_desde.strftime('%Y-%m-%d')}',
+                  '{filtro_hasta.strftime('%Y-%m-%d')}'
+                )
+                ORDER BY "Ganacias casino" DESC
+                """
+                df_resumen = pd.read_sql(query, conn)
+    
+            df_bonos = cargar_tabla_bonos("mijugada", sh)
+    
+            df_resumen["__user_key"] = df_resumen["Nombre de jugador"].astype(str).str.lower().str.replace(" ", "").str.replace("_", "")
+            df_bonos["__user_key"] = df_bonos["Usuario"].astype(str).str.lower().str.replace(" ", "").str.replace("_", "")
+    
+            dict_tipo_bono = dict(zip(df_bonos["__user_key"], df_bonos["Tipo de Bono"]))
+            dict_contacto = dict(zip(df_bonos["__user_key"], df_bonos["Últ. vez contactado"]))
+    
+            if "Tipo de bono" in df_resumen.columns:
+                df_resumen["Tipo de bono"] = df_resumen["__user_key"].map(dict_tipo_bono).combine_first(df_resumen["Tipo de bono"])
+                df_resumen["Tipo de bono"] = df_resumen["Tipo de bono"].replace("", pd.NA).fillna("N/A")
+    
+            if "Últ. vez contactado" in df_resumen.columns:
+                df_resumen["Últ. vez contactado"] = df_resumen["__user_key"].map(dict_contacto).fillna(df_resumen["Últ. vez contactado"])
+    
+            df_resumen.drop(columns=["__user_key"], inplace=True)
+    
+            df_resumen = asignar_princi(df_resumen, sh, "mijugada")
+    
+            cols = df_resumen.columns.tolist()
+            if "Tipo de bono" in cols and "PRINCI" in cols:
+                cols.remove("PRINCI")
+                idx = cols.index("Tipo de bono") + 1
+                cols.insert(idx, "PRINCI")
+                df_resumen = df_resumen[cols]
+    
+            df_resumen["Tipo de bono"] = df_resumen["Tipo de bono"].fillna("N/A")
+            col_filtro, _ = st.columns(2)
+            tipos_disponibles = sorted(df_resumen["Tipo de bono"].unique().tolist())
+    
+            seleccion_tipos = col_filtro.multiselect(
+                "🎯 Filtrar por tipo de bono:",
+                options=tipos_disponibles,
+                default=tipos_disponibles
+            )
+    
+            if seleccion_tipos:
+                df_resumen = df_resumen[df_resumen["Tipo de bono"].isin(seleccion_tipos)]
+    
+            if not df_resumen.empty:
+                st.dataframe(df_resumen, use_container_width=True)
+    
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+                    df_resumen.to_excel(writer, index=False, sheet_name="Mi Jugada")
+    
+                st.download_button(
+                    "⬇️ Descargar Excel",
+                    data=output.getvalue(),
+                    file_name="mijugada_resumen.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+            else:
+                st.info("ℹ️ No hay jugadores que coincidan con los filtros.")
+    
+        except Exception as e:
+            st.error(f"❌ Error al consultar la vista resumen de Mi Jugada: {e}")
+    
+        st.markdown("----")
+        st.subheader("🎁 Tabla de Bonos - Mi Jugada")
+    
+        try:
+            df_bonos = cargar_tabla_bonos("mijugada", sh)
+    
+            if not df_bonos.empty:
+                st.dataframe(df_bonos, use_container_width=True)
+    
+                output_bonos = io.BytesIO()
+                with pd.ExcelWriter(output_bonos, engine="xlsxwriter") as writer:
+                    df_bonos.to_excel(writer, index=False, sheet_name="Bonos_Mi_Jugada")
+    
+                st.download_button(
+                    "⬇️ Descargar Tabla de Bonos",
+                    data=output_bonos.getvalue(),
+                    file_name="mijugada_bonos.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+            else:
+                st.info("ℹ️ No hay datos en la tabla de bonos de Mi Jugada.")
         except Exception as e:
             st.error(f"❌ Error al cargar la tabla de bonos: {e}")
 
