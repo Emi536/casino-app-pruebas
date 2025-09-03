@@ -109,7 +109,7 @@ elif auth_status:
     secciones_por_rol = {
         "admin": ["🏢 Oficina VIP", "📋 Registro Fénix/Eros", "📋 Registro BetArgento/Atlantis","📋 Registro Spirita","📋 Registro Mi Jugada","📋 Registro Atenea","📋 Registro Padrino Latino/Tiger","📋 Registro Fortuna/Gana 24","📆 Agenda Fénix","📆 Agenda Eros","📆 Agenda BetArgento","📊 Análisis Temporal"],
         "fenix_eros": ["📋 Registro Fénix/Eros"],
-        "bet": ["📋 Registro BetArgento/Atlantis,"📋 Registro Mi Jugada"],
+        "bet": ["📋 Registro BetArgento/Atlantis/Mi Jugada"],
         "spirita":["📋 Registro Spirita"],
         "atenea":["📋 Registro Atenea"],
         "padrino":["📋 Registro Padrino Latino/Tiger"],
