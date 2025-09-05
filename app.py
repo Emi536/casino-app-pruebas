@@ -1674,8 +1674,8 @@ elif auth_status:
     
                     generar = st.checkbox("Generar ext_id si falta (hash usuario|fecha|casino)", value=False)
                     if st.button("🚀 Guardar en tabla `registro`"):
-                        upsert_registro(df_reg, engine, use_ext_id=True, generar_hash_si_falta=generar)
-    
+                        upsert_registro(df_reg, engine, generar_hash_si_falta=generar)
+                        
             except Exception as e:
                 st.error(f"❌ Error al procesar archivo de registro: {e}")
 
