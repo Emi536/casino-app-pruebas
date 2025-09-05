@@ -356,11 +356,12 @@ elif auth_status:
             return v.to_pydatetime()
         return v
     
-    def upsert_registro(df: pd.DataFrame, engine, use_ext_id=True, chunk_size: int = 1000, generar_hash_si_falta=False):
+    def upsert_registro(df: pd.DataFrame, engine, use_ext_id=True, chunk_size: int = 500, generar_hash_si_falta=False):
         if df.empty:
             st.warning("⚠️ El archivo de registro no tiene filas válidas.")
             return
     
+        # 1) validar/generar ext_id
         if use_ext_id:
             if "ext_id" not in df.columns:
                 st.error("❌ Falta la columna 'ext_id' para hacer upsert.")
@@ -382,19 +383,42 @@ elif auth_status:
             st.warning("⚠️ Tras limpiar/validar, no quedaron filas para subir.")
             return
     
+        # 2) payload nativo
         records = df.to_dict(orient="records")
         payload = [{k: _py(v) for k, v in r.items()} for r in records]
     
-        # ❗️clave para no chocar con la columna generada
+        # ❗️No enviar usuario_norm (columna GENERATED en la DB)
         for p in payload:
             p.pop("usuario_norm", None)
     
-        with engine.begin() as conn:
-            conn.execute(text("SET TIME ZONE :tz"), {"tz": AR_TZ})
-            for i in range(0, len(payload), chunk_size):
-                conn.execute(UPSERT_EXT, payload[i:i+chunk_size])
+        total = len(payload)
+        prog = st.progress(0)
+        errores = 0
     
-        st.success(f"✅ {len(payload)} registros de contacto upserteados en `registro`.")
+        # 3) conexión y commit por batch
+        with engine.connect() as conn:
+            # TZ literal (evita issues con parámetros)
+            conn.execute(text("SET TIME ZONE 'America/Argentina/Buenos_Aires'"))
+    
+            for i in range(0, total, chunk_size):
+                batch = payload[i:i+chunk_size]
+                tx = conn.begin()
+                try:
+                    conn.execute(UPSERT_EXT, batch)
+                    tx.commit()
+                except Exception as e:
+                    tx.rollback()
+                    errores += 1
+                    st.error(f"❌ Error en batch {i//chunk_size + 1}: {e}")
+                    # si querés continuar con los demás lotes, no hagas raise
+                    # raise
+                finally:
+                    prog.progress(min((i + chunk_size) / total, 1.0))
+    
+        if errores == 0:
+            st.success(f"✅ {total} registros de contacto upserteados en `registro`.")
+        else:
+            st.warning(f"⚠️ Upsert finalizado con {errores} lote(s) con error. Revisá los mensajes arriba.")
     
     # ✅ Detecta la tabla por estructura de columnas
     def detectar_tabla(df):
