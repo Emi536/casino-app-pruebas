@@ -397,22 +397,24 @@ elif auth_status:
     
         try:
             with engine.begin() as conn:
-                # TZ literal y staging limpio
                 conn.execute(text("SET TIME ZONE 'America/Argentina/Buenos_Aires'"))
                 conn.execute(text("TRUNCATE registro_stage"))
-    
-                # Carga masiva a stage (rápida)
+            
+                # ❌ ANTES (mal: usa DBAPI crudo y pandas cree que es SQLite)
+                # df_stage.to_sql("registro_stage", con=conn.connection, if_exists="append",
+                #                 index=False, method="multi", chunksize=5000)
+            
+                # ✅ AHORA (bien: usa la Connection de SQLAlchemy)
                 df_stage.to_sql(
                     "registro_stage",
-                    con=conn.connection,      # conexión DBAPI
+                    con=conn,                 # ← usa conn, no conn.connection
                     if_exists="append",
                     index=False,
                     method="multi",
                     chunksize=5000
+                    # , schema="public"       # (opcional) si tu schema no es el default
                 )
-                prog.progress(0.6)
-    
-                # Un solo upsert/merge a destino
+            
                 conn.execute(text("""
                     INSERT INTO registro (fecha, usuario, casino, tipo_bono, categoria_bono, usado, monto, respondio, ext_id)
                     SELECT fecha, usuario, casino, tipo_bono, categoria_bono, usado, monto, respondio, ext_id
