@@ -397,21 +397,18 @@ elif auth_status:
     
         # 3) conexión y commit por batch
         with engine.connect() as conn:
-            # TZ literal (evita issues con parámetros)
             conn.execute(text("SET TIME ZONE 'America/Argentina/Buenos_Aires'"))
+            conn.commit()  # deja la conexión limpia
     
             for i in range(0, total, chunk_size):
                 batch = payload[i:i+chunk_size]
-                tx = conn.begin()
                 try:
-                    conn.execute(UPSERT_EXT, batch)
-                    tx.commit()
+                    conn.execute(UPSERT_EXT, batch)   # inicia transacción implícita
+                    conn.commit()                     # commit del lote
                 except Exception as e:
-                    tx.rollback()
+                    conn.rollback()                   # rollback solo del lote
                     errores += 1
                     st.error(f"❌ Error en batch {i//chunk_size + 1}: {e}")
-                    # si querés continuar con los demás lotes, no hagas raise
-                    # raise
                 finally:
                     prog.progress(min((i + chunk_size) / total, 1.0))
     
