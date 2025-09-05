@@ -331,12 +331,11 @@ elif auth_status:
             st.error(f"❌ Error al subir datos a `{tabla}`: {e}")
 
     UPSERT_EXT = text("""
-    INSERT INTO registro (fecha, usuario, usuario_norm, casino, tipo_bono, categoria_bono, usado, monto, respondio, ext_id)
-    VALUES (:fecha, :usuario, :usuario_norm, :casino, :tipo_bono, :categoria_bono, :usado, :monto, :respondio, :ext_id)
+    INSERT INTO registro (fecha, usuario, casino, tipo_bono, categoria_bono, usado, monto, respondio, ext_id)
+    VALUES (:fecha, :usuario, :casino, :tipo_bono, :categoria_bono, :usado, :monto, :respondio, :ext_id)
     ON CONFLICT (ext_id) DO UPDATE
     SET fecha = EXCLUDED.fecha,
         usuario = EXCLUDED.usuario,
-        usuario_norm = EXCLUDED.usuario_norm,
         casino = EXCLUDED.casino,
         tipo_bono = EXCLUDED.tipo_bono,
         categoria_bono = EXCLUDED.categoria_bono,
@@ -344,7 +343,7 @@ elif auth_status:
         monto = EXCLUDED.monto,
         respondio = EXCLUDED.respondio;
     """)
-    
+        
     def _py(v):
         """Convierte tipos pandas/numpy a nativos para el driver."""
         if isinstance(v, (np.floating,)):
@@ -362,7 +361,6 @@ elif auth_status:
             st.warning("⚠️ El archivo de registro no tiene filas válidas.")
             return
     
-        # Validación/Gestión de ext_id
         if use_ext_id:
             if "ext_id" not in df.columns:
                 st.error("❌ Falta la columna 'ext_id' para hacer upsert.")
@@ -384,9 +382,12 @@ elif auth_status:
             st.warning("⚠️ Tras limpiar/validar, no quedaron filas para subir.")
             return
     
-        # Payload nativo
         records = df.to_dict(orient="records")
         payload = [{k: _py(v) for k, v in r.items()} for r in records]
+    
+        # ❗️clave para no chocar con la columna generada
+        for p in payload:
+            p.pop("usuario_norm", None)
     
         with engine.begin() as conn:
             conn.execute(text("SET TIME ZONE :tz"), {"tz": AR_TZ})
