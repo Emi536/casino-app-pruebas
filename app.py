@@ -215,53 +215,53 @@ elif auth_status:
         return df
 
     def limpiar_registro(df: pd.DataFrame, casino_actual: str) -> pd.DataFrame:
-    df.columns = df.columns.str.strip()
-    map_cols = {
-        "FECHA": "fecha", "Fecha": "fecha",
-        "USUARIO": "usuario", "Usuario": "usuario",
-        "TIPO DE BONO": "tipo_bono", "Tipo de bono": "tipo_bono",
-        "CATEGORIA DE BONO": "categoria_bono", "Categoría de Bono": "categoria_bono",
-        "USADO": "usado", "Usado": "usado",
-        "MONTO": "monto", "Monto": "monto",
-        "RESPONDIÓ": "respondio", "Respondió": "respondio",
-        "ID": "ext_id", "Id": "ext_id"
-    }
-    rename_dict = {c: map_cols[c] for c in df.columns if c in map_cols}
-    df = df.rename(columns=rename_dict)
-
-    for c in ["fecha", "usuario"]:
-        if c not in df.columns:
-            df[c] = None
-
-    if "fecha" in df.columns:
-        df["fecha"] = parse_datetime_flexible_series(df["fecha"])
-    if "usuario" in df.columns:
-        df["usuario"] = df["usuario"].astype(str).str.strip()
-        df["usuario_norm"] = norm_user_series(df["usuario"])
-    if "usado" in df.columns:
-        df["usado"] = parse_bool_series(df["usado"])
-    if "respondio" in df.columns:
-        df["respondio"] = parse_bool_series(df["respondio"])
-    if "monto" in df.columns:
-        df["monto"] = parse_monto_lat_series(df["monto"])
-
-    for c in ["tipo_bono", "categoria_bono", "ext_id"]:
-        if c not in df.columns:
-            df[c] = None
-
-    df["casino"] = casino_actual
-    df = df.dropna(subset=["usuario_norm", "fecha"])
-
-    cols_finales = ["fecha", "usuario", "usuario_norm", "casino",
-                    "tipo_bono", "categoria_bono", "usado", "monto", "respondio", "ext_id"]
-    df = df[[c for c in cols_finales if c in df.columns]]
-
-    if "ext_id" in df.columns:
-        df = df.drop_duplicates(subset=["ext_id"], keep="last")
-    else:
-        df = df.drop_duplicates(subset=["usuario_norm", "fecha", "casino"], keep="last")
-
-    return df
+        df.columns = df.columns.str.strip()
+        map_cols = {
+            "FECHA": "fecha", "Fecha": "fecha",
+            "USUARIO": "usuario", "Usuario": "usuario",
+            "TIPO DE BONO": "tipo_bono", "Tipo de bono": "tipo_bono",
+            "CATEGORIA DE BONO": "categoria_bono", "Categoría de Bono": "categoria_bono",
+            "USADO": "usado", "Usado": "usado",
+            "MONTO": "monto", "Monto": "monto",
+            "RESPONDIÓ": "respondio", "Respondió": "respondio",
+            "ID": "ext_id", "Id": "ext_id"
+        }
+        rename_dict = {c: map_cols[c] for c in df.columns if c in map_cols}
+        df = df.rename(columns=rename_dict)
+    
+        for c in ["fecha", "usuario"]:
+            if c not in df.columns:
+                df[c] = None
+    
+        if "fecha" in df.columns:
+            df["fecha"] = parse_datetime_flexible_series(df["fecha"])
+        if "usuario" in df.columns:
+            df["usuario"] = df["usuario"].astype(str).str.strip()
+            df["usuario_norm"] = norm_user_series(df["usuario"])
+        if "usado" in df.columns:
+            df["usado"] = parse_bool_series(df["usado"])
+        if "respondio" in df.columns:
+            df["respondio"] = parse_bool_series(df["respondio"])
+        if "monto" in df.columns:
+            df["monto"] = parse_monto_lat_series(df["monto"])
+    
+        for c in ["tipo_bono", "categoria_bono", "ext_id"]:
+            if c not in df.columns:
+                df[c] = None
+    
+        df["casino"] = casino_actual
+        df = df.dropna(subset=["usuario_norm", "fecha"])
+    
+        cols_finales = ["fecha", "usuario", "usuario_norm", "casino",
+                        "tipo_bono", "categoria_bono", "usado", "monto", "respondio", "ext_id"]
+        df = df[[c for c in cols_finales if c in df.columns]]
+    
+        if "ext_id" in df.columns:
+            df = df.drop_duplicates(subset=["ext_id"], keep="last")
+        else:
+            df = df.drop_duplicates(subset=["usuario_norm", "fecha", "casino"], keep="last")
+    
+        return df
     
     AR_TZ = "America/Argentina/Buenos_Aires"
 
