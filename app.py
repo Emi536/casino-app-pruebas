@@ -107,7 +107,7 @@ elif auth_status:
     
      # Definir qué secciones ve cada rol
     secciones_por_rol = {
-        "admin": ["🏢 Oficina VIP", "📋 Registro Fénix/Eros", "📋 Registro BetArgento/Atlantis","📋 Registro Spirita","📋 Registro Mi Jugada","📋 Registro Atenea","📋 Registro Padrino Latino/Tiger","📋 Registro Fortuna/Gana 24","🗒️ Registro de Contactos",📊 Análisis Temporal"],
+        "admin": ["🏢 Oficina VIP", "📋 Registro Fénix/Eros", "📋 Registro BetArgento/Atlantis","📋 Registro Spirita","📋 Registro Mi Jugada","📋 Registro Atenea","📋 Registro Padrino Latino/Tiger","📋 Registro Fortuna/Gana 24","🗒️ Registro de Contactos","📊 Análisis Temporal"],
         "fenix_eros": ["📋 Registro Fénix/Eros"],
         "bet": ["📋 Registro BetArgento/Atlantis/Mi Jugada"],
         "spirita":["📋 Registro Spirita"],
