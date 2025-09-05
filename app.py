@@ -19,7 +19,7 @@ import io
 from pathlib import Path
 import re
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 import psycopg2
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -107,7 +107,7 @@ elif auth_status:
     
      # Definir qué secciones ve cada rol
     secciones_por_rol = {
-        "admin": ["🏢 Oficina VIP", "📋 Registro Fénix/Eros", "📋 Registro BetArgento/Atlantis","📋 Registro Spirita","📋 Registro Mi Jugada","📋 Registro Atenea","📋 Registro Padrino Latino/Tiger","📋 Registro Fortuna/Gana 24","📆 Agenda Fénix","📆 Agenda Eros","📆 Agenda BetArgento","📊 Análisis Temporal"],
+        "admin": ["🏢 Oficina VIP", "📋 Registro Fénix/Eros", "📋 Registro BetArgento/Atlantis","📋 Registro Spirita","📋 Registro Mi Jugada","📋 Registro Atenea","📋 Registro Padrino Latino/Tiger","📋 Registro Fortuna/Gana 24","🗒️ Registro de Contactos",📊 Análisis Temporal"],
         "fenix_eros": ["📋 Registro Fénix/Eros"],
         "bet": ["📋 Registro BetArgento/Atlantis/Mi Jugada"],
         "spirita":["📋 Registro Spirita"],
@@ -213,6 +213,82 @@ elif auth_status:
                 df[col] = df[col].astype(str).fillna("").str.strip()
     
         return df
+
+    def limpiar_registro(df: pd.DataFrame, casino_actual: str) -> pd.DataFrame:
+    df.columns = df.columns.str.strip()
+    map_cols = {
+        "FECHA": "fecha", "Fecha": "fecha",
+        "USUARIO": "usuario", "Usuario": "usuario",
+        "TIPO DE BONO": "tipo_bono", "Tipo de bono": "tipo_bono",
+        "CATEGORIA DE BONO": "categoria_bono", "Categoría de Bono": "categoria_bono",
+        "USADO": "usado", "Usado": "usado",
+        "MONTO": "monto", "Monto": "monto",
+        "RESPONDIÓ": "respondio", "Respondió": "respondio",
+        "ID": "ext_id", "Id": "ext_id"
+    }
+    rename_dict = {c: map_cols[c] for c in df.columns if c in map_cols}
+    df = df.rename(columns=rename_dict)
+
+    for c in ["fecha", "usuario"]:
+        if c not in df.columns:
+            df[c] = None
+
+    if "fecha" in df.columns:
+        df["fecha"] = parse_datetime_flexible_series(df["fecha"])
+    if "usuario" in df.columns:
+        df["usuario"] = df["usuario"].astype(str).str.strip()
+        df["usuario_norm"] = norm_user_series(df["usuario"])
+    if "usado" in df.columns:
+        df["usado"] = parse_bool_series(df["usado"])
+    if "respondio" in df.columns:
+        df["respondio"] = parse_bool_series(df["respondio"])
+    if "monto" in df.columns:
+        df["monto"] = parse_monto_lat_series(df["monto"])
+
+    for c in ["tipo_bono", "categoria_bono", "ext_id"]:
+        if c not in df.columns:
+            df[c] = None
+
+    df["casino"] = casino_actual
+    df = df.dropna(subset=["usuario_norm", "fecha"])
+
+    cols_finales = ["fecha", "usuario", "usuario_norm", "casino",
+                    "tipo_bono", "categoria_bono", "usado", "monto", "respondio", "ext_id"]
+    df = df[[c for c in cols_finales if c in df.columns]]
+
+    if "ext_id" in df.columns:
+        df = df.drop_duplicates(subset=["ext_id"], keep="last")
+    else:
+        df = df.drop_duplicates(subset=["usuario_norm", "fecha", "casino"], keep="last")
+
+    return df
+    
+    AR_TZ = "America/Argentina/Buenos_Aires"
+
+    def norm_user_series(s: pd.Series) -> pd.Series:
+        return (s.astype(str).str.strip().str.lower()
+                .str.replace(" ", "", regex=False)
+                .str.replace("_", "", regex=False))
+    
+    def parse_bool_series(s: pd.Series) -> pd.Series:
+        return (s.astype(str).str.strip().str.lower()
+                  .replace({"true": True, "false": False, "": None, "nan": None}))
+    
+    def parse_monto_lat_series(s: pd.Series) -> pd.Series:
+        s = s.astype(str).str.strip().replace({"": None, "nan": None})
+        s = s.str.replace("$", "", regex=False).str.replace(" ", "", regex=False)
+        s = s.str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
+        return pd.to_numeric(s, errors="coerce")
+    
+    def parse_datetime_flexible_series(s: pd.Series) -> pd.Series:
+        dt = pd.to_datetime(s, errors="coerce", dayfirst=True)
+        try:
+            # si ya viene tz-aware, convertimos a AR; si no, la asignamos
+            if getattr(dt.dt, "tz", None) is not None:
+                return dt.dt.tz_convert(AR_TZ)
+            return dt.dt.tz_localize(AR_TZ, nonexistent="shift_forward", ambiguous="NaT")
+        except Exception:
+            return pd.to_datetime(None)
     
     # ✅ Inserta datos en Supabase
     def subir_a_supabase(df, tabla, engine):
@@ -253,6 +329,71 @@ elif auth_status:
     
         except SQLAlchemyError as e:
             st.error(f"❌ Error al subir datos a `{tabla}`: {e}")
+
+    UPSERT_EXT = text("""
+    INSERT INTO registro (fecha, usuario, usuario_norm, casino, tipo_bono, categoria_bono, usado, monto, respondio, ext_id)
+    VALUES (:fecha, :usuario, :usuario_norm, :casino, :tipo_bono, :categoria_bono, :usado, :monto, :respondio, :ext_id)
+    ON CONFLICT (ext_id) DO UPDATE
+    SET fecha = EXCLUDED.fecha,
+        usuario = EXCLUDED.usuario,
+        usuario_norm = EXCLUDED.usuario_norm,
+        casino = EXCLUDED.casino,
+        tipo_bono = EXCLUDED.tipo_bono,
+        categoria_bono = EXCLUDED.categoria_bono,
+        usado = EXCLUDED.usado,
+        monto = EXCLUDED.monto,
+        respondio = EXCLUDED.respondio;
+    """)
+    
+    def _py(v):
+        """Convierte tipos pandas/numpy a nativos para el driver."""
+        if isinstance(v, (np.floating,)):
+            return None if np.isnan(v) else float(v)
+        if isinstance(v, (np.integer,)):
+            return int(v)
+        if pd.isna(v):
+            return None
+        if isinstance(v, pd.Timestamp):
+            return v.to_pydatetime()
+        return v
+    
+    def upsert_registro(df: pd.DataFrame, engine, use_ext_id=True, chunk_size: int = 1000, generar_hash_si_falta=False):
+        if df.empty:
+            st.warning("⚠️ El archivo de registro no tiene filas válidas.")
+            return
+    
+        # Validación/Gestión de ext_id
+        if use_ext_id:
+            if "ext_id" not in df.columns:
+                st.error("❌ Falta la columna 'ext_id' para hacer upsert.")
+                return
+            if not generar_hash_si_falta:
+                faltantes = df["ext_id"].isna().sum()
+                if faltantes > 0:
+                    st.info(f"ℹ️ {faltantes} filas sin ext_id fueron descartadas.")
+                    df = df[~df["ext_id"].isna()]
+            else:
+                mask = df["ext_id"].isna()
+                if mask.any():
+                    gen = (df.loc[mask, "usuario_norm"].astype(str) + "|" +
+                           df.loc[mask, "fecha"].astype(str) + "|" +
+                           df.loc[mask, "casino"].astype(str))
+                    df.loc[mask, "ext_id"] = gen.apply(lambda s: hashlib.sha256(s.encode()).hexdigest())
+    
+        if df.empty:
+            st.warning("⚠️ Tras limpiar/validar, no quedaron filas para subir.")
+            return
+    
+        # Payload nativo
+        records = df.to_dict(orient="records")
+        payload = [{k: _py(v) for k, v in r.items()} for r in records]
+    
+        with engine.begin() as conn:
+            conn.execute(text("SET TIME ZONE :tz"), {"tz": AR_TZ})
+            for i in range(0, len(payload), chunk_size):
+                conn.execute(UPSERT_EXT, payload[i:i+chunk_size])
+    
+        st.success(f"✅ {len(payload)} registros de contacto upserteados en `registro`.")
     
     # ✅ Detecta la tabla por estructura de columnas
     def detectar_tabla(df):
@@ -1457,6 +1598,47 @@ elif auth_status:
                 st.info("ℹ️ No hay datos en la tabla de bonos para este casino.")
         except Exception as e:
             st.error(f"❌ Error al cargar tabla de bonos: {e}")
+
+    elif "🗒️ Registro de Contactos" in seccion:
+        st.header("🗒️ Registro de Contactos")
+    
+        casino_actual = st.selectbox("🎰 Casino del archivo", [
+            "Fénix", "Eros", "Bet Argento", "Atlantis", "Spirita", "Atenea", "Mi jugada"
+        ], key="casino_selector_registro")
+    
+        archivo_reg = st.file_uploader("📁 Subí el archivo de REGISTRO (.xlsx o .csv)", type=["xlsx","csv"], key="uploader_registro")
+    
+        if archivo_reg:
+            try:
+                # leer archivo
+                if archivo_reg.name.lower().endswith(".xlsx"):
+                    df_raw = pd.read_excel(archivo_reg)
+                else:
+                    df_raw = pd.read_csv(archivo_reg, encoding="utf-8", sep=",")  # ajustá ';' si tu CSV lo usa
+    
+                # limpiar y normalizar
+                df_reg = limpiar_registro(df_raw, casino_actual)
+    
+                if df_reg.empty:
+                    st.warning("⚠️ No se detectaron filas válidas tras la limpieza.")
+                else:
+                    # mini QC opcional
+                    col_a, col_b, col_c = st.columns(3)
+                    with col_a: st.metric("Filas limpias", len(df_reg))
+                    with col_b: st.metric("ext_id faltantes", int(df_reg["ext_id"].isna().sum()))
+                    with col_c: st.metric("Usuarios únicos", df_reg["usuario_norm"].nunique())
+    
+                    st.write("Vista previa (primeras 50 filas):")
+                    st.dataframe(df_reg.head(50), use_container_width=True)
+    
+                    engine = create_engine(st.secrets["DB_URL"])  # mantenemos tu estilo
+    
+                    generar = st.checkbox("Generar ext_id si falta (hash usuario|fecha|casino)", value=False)
+                    if st.button("🚀 Guardar en tabla `registro`"):
+                        upsert_registro(df_reg, engine, use_ext_id=True, generar_hash_si_falta=generar)
+    
+            except Exception as e:
+                st.error(f"❌ Error al procesar archivo de registro: {e}")
 
     # Sección: Análisis Temporal
     elif seccion == "📊 Análisis Temporal":
