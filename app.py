@@ -356,67 +356,84 @@ elif auth_status:
             return v.to_pydatetime()
         return v
     
-    def upsert_registro(df: pd.DataFrame, engine, use_ext_id=True, chunk_size: int = 500, generar_hash_si_falta=False):
-        if df.empty:
+    def upsert_registro(df_reg: pd.DataFrame, engine, generar_hash_si_falta: bool = True):
+        """
+        Carga df_reg a `registro_stage` y hace UN SOLO merge a `registro`.
+        Mucho más rápido que upserts por lotes.
+        """
+        if df_reg.empty:
             st.warning("⚠️ El archivo de registro no tiene filas válidas.")
             return
     
-        # 1) validar/generar ext_id
-        if use_ext_id:
-            if "ext_id" not in df.columns:
-                st.error("❌ Falta la columna 'ext_id' para hacer upsert.")
-                return
-            if not generar_hash_si_falta:
-                faltantes = df["ext_id"].isna().sum()
-                if faltantes > 0:
-                    st.info(f"ℹ️ {faltantes} filas sin ext_id fueron descartadas.")
-                    df = df[~df["ext_id"].isna()]
-            else:
-                mask = df["ext_id"].isna()
-                if mask.any():
-                    gen = (df.loc[mask, "usuario_norm"].astype(str) + "|" +
-                           df.loc[mask, "fecha"].astype(str) + "|" +
-                           df.loc[mask, "casino"].astype(str))
-                    df.loc[mask, "ext_id"] = gen.apply(lambda s: hashlib.sha256(s.encode()).hexdigest())
+        # 1) Garantizar columna ext_id
+        if "ext_id" not in df_reg.columns:
+            df_reg["ext_id"] = None
     
-        if df.empty:
-            st.warning("⚠️ Tras limpiar/validar, no quedaron filas para subir.")
+        # 2) Generar ext_id si falta (hash estable usuario_norm|fecha|casino)
+        if generar_hash_si_falta:
+            mask = df_reg["ext_id"].isna()
+            if mask.any():
+                gen = (df_reg.loc[mask, "usuario_norm"].astype(str) + "|" +
+                       df_reg.loc[mask, "fecha"].astype(str) + "|" +
+                       df_reg.loc[mask, "casino"].astype(str))
+                df_reg.loc[mask, "ext_id"] = gen.apply(lambda s: hashlib.sha256(s.encode()).hexdigest())
+        else:
+            faltantes = df_reg["ext_id"].isna().sum()
+            if faltantes > 0:
+                st.info(f"ℹ️ {faltantes} filas sin ext_id fueron descartadas.")
+                df_reg = df_reg[~df_reg["ext_id"].isna()]
+    
+        if df_reg.empty:
+            st.warning("⚠️ Tras validar ext_id, no quedaron filas para subir.")
             return
     
-        # 2) payload nativo
-        records = df.to_dict(orient="records")
-        payload = [{k: _py(v) for k, v in r.items()} for r in records]
+        # 3) Preparar dataframe para staging (sin usuario_norm, que es GENERATED en destino)
+        cols_stage = ["fecha","usuario","casino","tipo_bono","categoria_bono","usado","monto","respondio","ext_id"]
+        df_stage = df_reg.drop(columns=["usuario_norm"], errors="ignore")
+        df_stage = df_stage[[c for c in cols_stage if c in df_stage.columns]]
     
-        # ❗️No enviar usuario_norm (columna GENERATED en la DB)
-        for p in payload:
-            p.pop("usuario_norm", None)
-    
-        total = len(payload)
+        total = len(df_stage)
         prog = st.progress(0)
-        errores = 0
     
-        # 3) conexión y commit por batch
-        with engine.connect() as conn:
-            conn.execute(text("SET TIME ZONE 'America/Argentina/Buenos_Aires'"))
-            conn.commit()  # deja la conexión limpia
+        try:
+            with engine.begin() as conn:
+                # TZ literal y staging limpio
+                conn.execute(text("SET TIME ZONE 'America/Argentina/Buenos_Aires'"))
+                conn.execute(text("TRUNCATE registro_stage"))
     
-            for i in range(0, total, chunk_size):
-                batch = payload[i:i+chunk_size]
-                try:
-                    conn.execute(UPSERT_EXT, batch)   # inicia transacción implícita
-                    conn.commit()                     # commit del lote
-                except Exception as e:
-                    conn.rollback()                   # rollback solo del lote
-                    errores += 1
-                    st.error(f"❌ Error en batch {i//chunk_size + 1}: {e}")
-                finally:
-                    prog.progress(min((i + chunk_size) / total, 1.0))
+                # Carga masiva a stage (rápida)
+                df_stage.to_sql(
+                    "registro_stage",
+                    con=conn.connection,      # conexión DBAPI
+                    if_exists="append",
+                    index=False,
+                    method="multi",
+                    chunksize=5000
+                )
+                prog.progress(0.6)
     
-        if errores == 0:
-            st.success(f"✅ {total} registros de contacto upserteados en `registro`.")
-        else:
-            st.warning(f"⚠️ Upsert finalizado con {errores} lote(s) con error. Revisá los mensajes arriba.")
+                # Un solo upsert/merge a destino
+                conn.execute(text("""
+                    INSERT INTO registro (fecha, usuario, casino, tipo_bono, categoria_bono, usado, monto, respondio, ext_id)
+                    SELECT fecha, usuario, casino, tipo_bono, categoria_bono, usado, monto, respondio, ext_id
+                    FROM registro_stage
+                    ON CONFLICT (ext_id) DO UPDATE
+                    SET fecha = EXCLUDED.fecha,
+                        usuario = EXCLUDED.usuario,
+                        casino = EXCLUDED.casino,
+                        tipo_bono = EXCLUDED.tipo_bono,
+                        categoria_bono = EXCLUDED.categoria_bono,
+                        usado = EXCLUDED.usado,
+                        monto = EXCLUDED.monto,
+                        respondio = EXCLUDED.respondio;
+                """))
+                prog.progress(1.0)
     
+            st.success(f"✅ {total} registros procesados vía staging (merge a `registro`).")
+    
+        except Exception as e:
+            st.error(f"❌ Error en carga staging/merge: {e}")
+        
     # ✅ Detecta la tabla por estructura de columnas
     def detectar_tabla(df):
         columnas = set(col.lower().strip() for col in df.columns)
