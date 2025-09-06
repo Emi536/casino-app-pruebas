@@ -107,7 +107,7 @@ elif auth_status:
     
      # Definir qué secciones ve cada rol
     secciones_por_rol = {
-        "admin": ["🏢 Oficina VIP", "📋 Registro Fénix/Eros", "📋 Registro BetArgento/Atlantis","📋 Registro Spirita","📋 Registro Mi Jugada","📋 Registro Atenea","📋 Registro Padrino Latino/Tiger","📋 Registro Fortuna/Gana 24","🗒️ Registro de Contactos","📊 Análisis Temporal"],
+        "admin": ["🏢 Oficina VIP", "📋 Registro Fénix/Eros", "📋 Registro BetArgento/Atlantis","📋 Registro Spirita","📋 Registro Mi Jugada","📋 Registro Atenea","📋 Registro Padrino Latino/Tiger","📋 Registro Fortuna/Gana 24","🗒️ Registro de Contactos","📊 Segmentos & Contactabilidad","📊 Análisis Temporal"],
         "fenix_eros": ["📋 Registro Fénix/Eros"],
         "bet": ["📋 Registro BetArgento/Atlantis/Mi Jugada"],
         "spirita":["📋 Registro Spirita"],
@@ -435,7 +435,23 @@ elif auth_status:
     
         except Exception as e:
             st.error(f"❌ Error en carga staging/merge: {e}")
-        
+
+    def _run_sql_noresult(engine, sql: str, params: dict | None = None):
+        """Ejecuta SQL sin resultado (commit automático)."""
+        with engine.begin() as conn:
+            conn.execute(text(sql), params or {})
+
+    def refresh_dim(engine):
+        """Refresca la dimensión de jugadores (obligatorio post-carga)."""
+        _run_sql_noresult(engine, "SELECT refresh_dim_jugador();")
+
+    
+    def refresh_daily_and_dim(engine):
+        with engine.begin() as conn:
+            conn.execute(text("SELECT refresh_dim_jugador();"))
+            conn.execute(text("SELECT refresh_mv_user_daily();"))   
+
+    
     # ✅ Detecta la tabla por estructura de columnas
     def detectar_tabla(df):
         columnas = set(col.lower().strip() for col in df.columns)
@@ -638,6 +654,9 @@ elif auth_status:
     
                 engine = create_engine(st.secrets["DB_URL"])
                 subir_a_supabase(df, "reportes_jugadores", engine)
+
+                refresh_dim(engine)
+                refresh_daily_and_dim(engine)
     
                 st.session_state["archivo_procesado_fenix_eros"] = True
                 st.success("✅ Archivo subido y procesado correctamente.")
@@ -795,7 +814,9 @@ elif auth_status:
     
                 engine = create_engine(st.secrets["DB_URL"])
                 subir_a_supabase(df, "reportes_jugadores", engine)
-    
+
+                refresh_dim(engine)
+                refresh_daily_and_dim(engine)
                 st.session_state["archivo_procesado_bet_atlantis"] = True
                 st.success("✅ Archivo subido y procesado correctamente.")
     
@@ -935,7 +956,9 @@ elif auth_status:
     
                 engine = create_engine(st.secrets["DB_URL"])
                 subir_a_supabase(df, "reportes_jugadores", engine)
-    
+                
+                refresh_dim(engine)
+                refresh_daily_and_dim(engine)
                 st.session_state["archivo_procesado_spirita"] = True
                 st.success("✅ Archivo subido y procesado correctamente.")
             except Exception as e:
@@ -1072,7 +1095,9 @@ elif auth_status:
     
                 engine = create_engine(st.secrets["DB_URL"])
                 subir_a_supabase(df, "reportes_jugadores", engine)
-    
+
+                refresh_dim(engine)
+                refresh_daily_and_dim(engine)
                 st.session_state["archivo_procesado_mijugada"] = True
                 st.success("✅ Archivo subido y procesado correctamente.")
             except Exception as e:
@@ -1208,7 +1233,9 @@ elif auth_status:
     
                 engine = create_engine(st.secrets["DB_URL"])
                 subir_a_supabase(df, "reportes_jugadores", engine)
-    
+
+                refresh_dim(engine)
+                refresh_daily_and_dim(engine)
                 st.session_state["archivo_procesado_atenea"] = True
                 st.success("✅ Archivo subido y procesado correctamente.")
             except Exception as e:
@@ -1355,7 +1382,9 @@ elif auth_status:
 
                 engine = create_engine(st.secrets["DB_URL"])
                 subir_a_supabase(df, "reportes_jugadores", engine)
-
+                
+                refresh_dim(engine)
+                refresh_daily_and_dim(engine)
                 st.session_state["archivo_procesado"] = True
                 st.success("✅ Archivo subido y procesado correctamente.")
 
@@ -1520,6 +1549,8 @@ elif auth_status:
                 engine = create_engine(st.secrets["DB_URL"])
                 subir_a_supabase(df, "reportes_jugadores", engine)
 
+                refresh_dim(engine)
+                refresh_daily_and_dim(engine)
                 st.session_state["archivo_procesado_fortuna_gana24"] = True
                 st.success("✅ Archivo subido y procesado correctamente.")
             except Exception as e:
@@ -1678,8 +1709,107 @@ elif auth_status:
                     if st.button("🚀 Guardar en tabla `registro`"):
                         upsert_registro(df_reg, engine, generar_hash_si_falta=generar)
                         
+                        refresh_dim(engine)
+                        refresh_daily_and_dim(engine) 
             except Exception as e:
                 st.error(f"❌ Error al procesar archivo de registro: {e}")
+
+    elif "📊 Segmentos & Contactabilidad" in seccion:
+        st.header("📊 Segmentos & Contactabilidad")
+    
+        casino = st.selectbox("🎰 Casino", [
+            "Fénix", "Eros", "Bet Argento", "Atlantis", "Spirita", "Atenea", "Mi jugada"
+        ], index=0)
+    
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            ini = st.date_input("📆 Desde", value=pd.to_datetime("2024-01-01").date())
+        with col2:
+            fin = st.date_input("📆 Hasta", value=datetime.date.today())
+        with col3:
+            contacto = st.selectbox("📨 Contactabilidad",
+                                    ["todos", "contactables", "no_contactables", "switch"], index=0)
+    
+        # Catálogo A–Z
+        CATS = {
+            "A · Monto apostado diario (top)": "A",
+            "B · Ganancia (finde)": "B",
+            "C · Monto semanal ≥ 50k": "C",
+            "D · Top cargadores (ayer)": "D",
+            "E · 2do segmento semana anterior": "E",
+            "F · Top perdedores (diario)": "F",
+            "G · Top cargadores fin de semana": "G",
+            "H · Racha activa (días)": "H",
+            "I · Cargas semanales (excluye top prev.)": "I",
+            "J · Pérdida neta (semana pasada)": "J",
+            "K · Días activos sin contacto": "K",
+            "L · Constantes del mes": "L",
+            "M · Ganancias esta semana": "M",
+            "N · Repiten monto 3 días": "N",
+            "O · Racha perfecta lun–sab": "O",
+            "P · Top no contactados nunca (monto)": "P",
+            "Q · Activos sin historial en contacto": "Q",
+            "R · Alta inicial sin continuidad": "R",
+            "S · 3+ cargas un día (solo ese día)": "S",
+            "T · Activos sin carga hace 3 días": "T",
+            "U · 3+ cargas un día + abandono": "U",
+            "V · Switch (3 FALSE seguidos)": "V",
+            "W · Racha lun–jue": "W",
+            "X · Más constantes de mayo": "X",
+            "Z · 5+ cargas semana sin contacto": "Z",
+        }
+        cat_label = st.selectbox("🔠 Categoría (A–Z)", list(CATS.keys()))
+        cat = CATS[cat_label]
+    
+        # Normalizar params para SQL
+        contacto_param = None if contacto == "todos" else contacto
+        ini_date = pd.to_datetime(ini).date()
+        fin_date = pd.to_datetime(fin).date()
+    
+        from sqlalchemy import text, create_engine
+        engine = create_engine(st.secrets["DB_URL"])
+    
+        sql = text("""
+            SELECT *
+            FROM segmentos(:casino, :ini, :fin, :cat, :contacto);
+        """)
+    
+        params = {
+            "casino": casino,
+            "ini": ini_date,
+            "fin": fin_date,
+            "cat": cat,
+            "contacto": contacto_param,  # NULL si "todos"
+        }
+    
+        # Botón opcional para refrescar MV + dim si recién cargaste data
+        with st.expander("⚙️ Utilidades"):
+            if st.button("🔄 Refrescar vistas base (dim + daily)"):
+                try:
+                    with engine.begin() as conn:
+                        conn.execute(text("SELECT refresh_dim_jugador();"))
+                        conn.execute(text("SELECT refresh_mv_user_daily();"))
+                    st.success("Listo: dim_jugador y mv_user_daily refrescadas.")
+                except Exception as e:
+                    st.error(f"Error al refrescar vistas: {e}")
+    
+        try:
+            with engine.connect() as conn:
+                df_seg = pd.read_sql(sql, conn, params=params)
+            if df_seg.empty:
+                st.info("No hay resultados con los filtros seleccionados.")
+            else:
+                st.dataframe(df_seg, use_container_width=True)
+                csv = df_seg.to_csv(index=False).encode("utf-8")
+                st.download_button(
+                    "⬇️ Descargar CSV",
+                    data=csv,
+                    file_name=f"segmento_{cat}_{casino}_{ini_date}_{fin_date}.csv",
+                    mime="text/csv"
+                )
+        except Exception as e:
+            st.error(f"Error ejecutando la métrica: {e}")
+
 
     # Sección: Análisis Temporal
     elif seccion == "📊 Análisis Temporal":
